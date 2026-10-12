@@ -1,6 +1,6 @@
 # SmartRail – Delivery Plan (whole application)
 
-**Written:** 8 Oct 2026, 14:30 · **Deadline:** demo and submission Tue 20 Oct 2026 · **Owner:** Senuja
+**Written:** 8 Oct 2026, 14:30 · **Re-planned:** 12 Oct 2026 · **Deadline:** demo and submission Tue 20 Oct 2026 · **Owner:** Senuja
 **Builds on:** Delivery Timeline v2, `define/moscow.md`, Epic Breakdown (12 epics, apps × events matrix), ADR-01 to ADR-07, `develop/01-domain-model.md` (agreed 8 Oct).
 
 ---
@@ -106,43 +106,29 @@ smartrail/
 
 ---
 
-## 4. Day-by-day plan
+## 4. Day-by-day plan (re-planned 12 Oct)
 
-### Develop – finish design (Thu 8 – Fri 9 Oct)
+**Why re-planned:** design work (domain model, architecture discussion, API contract, threat model, QA strategy) ran until 12 Oct and no code existed on the morning of 12 Oct. Six build days remain (12–17 Oct, using Sat 17) instead of the original seven, and QA shrinks from two days to one. Scope was cut deliberately (section 7, MoSCoW change log 12 Oct) rather than discovered missing on 16 Oct.
 
-| Day | Block | Work | Output |
-|---|---|---|---|
-| **Thu 8** | Afternoon | API contract (design-first doc, option B) incl. auth per endpoint, error format, SSE stream filters | `develop/02-api-contract.md` |
-| | Evening | Record ADR-08 (testing approach) and ADR-09 (contract approach B); repo scaffold, Docker Compose, CI skeleton | Repo builds green |
-| **Fri 9** | Morning | **Spikes** (ADR-05 list): SSE backend → browser < 5 s; Flutter SSE + reconnect; FCM push with app closed; cab GPS every 10 s screen-on. Decide ADR-02 | Spike notes, ADR-02 final |
-| | Afternoon | Design tokens + `status-fixtures.json`; lo-fi wireframes for passenger and ops-web key screens | `develop/03-wireframes`, `shared/tokens.json` |
-| | Evening | Threat model v1 (STRIDE per trust boundary, top risks → controls per build day); QA strategy v1 incl. the mobile E2E decision (section 6) | `security/threat-model.md`, `qa/strategy.md` |
+**Develop – what happened to the remaining items:** API contract, auth design, threat model v1 and QA strategy v1 are done. Separate spikes are replaced by build steps that test the same risks with a fallback (SSE → walking skeleton on 13 Oct; FCM push → passenger day; cab GPS → crew day). Design tokens and status fixtures are made on 12 Oct; lo-fi wireframes are sketched at the start of each app's build day.
 
-**Scope cut for these two days:** the threat model and QA strategy are written as short v1 documents (1–2 pages) on 9 Oct and completed on 16–17 Oct with evidence. Crew and display wireframes are sketched at the start of their own build day (just in time), not now.
-
-**Gate G1 (end of 9 Oct):** spikes pass or a fallback is chosen; contract agreed; repo + CI green; seed data sources identified.
-
-### Deliver – build (Sat 10 – Fri 16 Oct)
-
-Build order: backend first, then the event **producers** (ops web) before the **consumers** (passenger app, crew app, displays). This differs from the app priority order (passenger first) on purpose: the passenger app has nothing live to show until controller actions and the live data pipeline exist. The simulator stands in for the crew app until 14 Oct.
+### Deliver – build (Mon 12 – Sat 17 Oct)
 
 | Day | Epics | Work | Exit check |
 |---|---|---|---|
-| **Sat 10** | EP-10, EP-11 (part), EP-9 (part) | Verified seed network (one line – Main Line – ~10–15 stations, services, train sets, staff, cab devices, Poya day); Network module; daily journey generation (B-2); Identity: passenger, staff, device, provider credentials; role + scope policies; audit writer | Journeys for 3 days exist; permission matrix tests pass |
-| **Sun 11** | EP-9 | Position intake + simulator; detection, delay, ETA, freshness (**TDD**, R-01–R-10, R-21–R-22); SSE stream + snapshot + resume; outbox | **Gate G2 – walking skeleton:** simulator moves a train → delay calculated → event reaches a bare ops-web page, a bare Flutter screen and a bare display page in < 5 s |
-| **Mon 12** | EP-5, EP-6 | Ops web: problems-first dashboard, filters, source/freshness badges; controller actions with confirmation and concurrency; platform change with lead time, hold, conflict warning; crew messages; station announcements; crew report alerts | Flows 3 and 4 work from the ops side (events visible on the stream) |
-| **Tue 13** | EP-1, EP-2, EP-3 | Passenger app: search, train details + line diagram, live tracking (waiting / on board), disruptions + freshness, sign-up / sign-in, saved trip, push (R-16) | **Flow 1** works by hand; push received for a saved trip |
-| **Wed 14** | EP-7 | Crew app: phone mode roster; cab mode start/end + GPS; glance view; Arrived / Departed; incident report; instructions with acknowledgement; offline queue | **Flow 2** works with the real cab app instead of the simulator |
-| **Thu 15** | EP-8, EP-4 | Station displays: main board, platform display, large info screen, offline cache; catering: provider service, signed webhooks with retries, menu/hotline cache, hotline in passenger app, provider health on dashboard | **Flow 5** works; all 5 flows work by hand |
-| **Fri 16** | EP-11, EP-12 | Hardening: rate limits, input validation, display read-only credentials, logs without personal data, health checks, OpenTelemetry; offline behaviour checks; Shoulds only if all Musts are done (order in section 7) | **Gate G3 – feature freeze** at end of day: all Musts done or consciously cut |
+| **Mon 12** | EP-10, EP-11 (part) | Repo scaffold (projects per CLAUDE.md §9, Docker Compose, CI, domain-purity architecture test); `shared/tokens.json` + `status-fixtures.json`; verified seed data (Main Line ~10 stations, both directions, services, train sets, staff, cab devices, Poya day); Network module; daily journey generation (B-2); staff and passenger sign-in (JWT) + role policies; audit writer | Journeys exist; staff sign-in returns a token; CI green |
+| **Tue 13** | EP-9 | Position intake + simulator; rules R-01–R-06 test-first (delay, ETA, detection, source priority, freshness); outbox; SSE stream + snapshot + resume | **G2 – walking skeleton:** simulator delays a train → event reaches a bare ops-web page, a bare Flutter screen and a bare display page in < 5 s (this is the SSE spike) |
+| **Wed 14** | EP-5, EP-6 | 30-min lo-fi sketch of dashboard + platform-change dialog; ops web: dashboard (alerts, disrupted trains, line view, section / station filters), source / freshness badges; delay, hold, cancel, reinstate, terminate, skip / add stop with confirmation and **control version**; platform change with preview, lead time, hold and conflict warning; crew messages; station announcements; audit log view | Flows 3 and 4 work from the ops side |
+| **Thu 15** | EP-1, EP-2, EP-3 | Lo-fi sketch; passenger app: search, details + simple line diagram, live tracking (waiting / on board), disruptions + freshness, sign-up / sign-in, saved trip, push via FCM (fallback: in-app alerts only) | **Flow 1** works by hand |
+| **Fri 16** | EP-7, EP-8 | Lo-fi sketches; crew app: cab mode start / end + GPS, glance view, Arrived / Departed, instructions with acknowledgement, phone-mode roster, simple offline queue; station displays: main board, platform display, info screen, offline banner + cached timetable | **Flow 2** works with the real cab app |
+| **Sat 17** | EP-4, EP-11, EP-12 | Catering (light): provider service + own DB, signed webhooks with retries, menu / hotline cache, hotline screen in passenger app, provider health; hardening: rate limits, input validation, display read-only token, logs without personal data, health checks | **Flow 5** works · **G3 – feature freeze** in the evening |
 
-### QA and wrap-up (Sat 17 – Tue 20 Oct)
+### QA and wrap-up (Sun 18 – Tue 20 Oct)
 
 | Day | Work | Output |
 |---|---|---|
-| **Sat 17** | Automate the 5 E2E flows; security tests (authorisation matrix, rate limits, tampered webhook signature, replayed event, input validation, display credential cannot act); axe scans | `qa/evidence/`, CI run with results |
-| **Sun 18** | Bug fixing only (no features); defect log with severity and status; quality assessment against success measures SM-1 – SM-5 | `qa/defect-log.md`, `qa/quality-assessment.md` · **Gate G4:** 5 flows green |
-| **Mon 19** | Architecture document (diagrams, boundaries, data ownership, auth); AI usage report; screenshots as high-fidelity evidence; demo script (story: Kasun's delayed train, Ruwan's platform change, Dilani's food order); rehearsal + backup recording | `docs/` complete · **Gate G5:** rehearsal done |
+| **Sun 18** | Automate the 5 E2E flows (K-2 approach); security tests (permission matrix, lockout, tampered / replayed webhook, injection, display token cannot write); axe scans; bug fixing only; defect log; quality assessment against SM-1 – SM-5 | `qa/evidence/`, `qa/defect-log.md`, `qa/quality-assessment.md` · **G4:** 5 flows green |
+| **Mon 19** | Architecture document; AI usage report (complete sections 6–7); screenshots as high-fidelity evidence; demo script; rehearsal + backup recording | `docs/` complete · **G5:** rehearsal done |
 | **Tue 20** | Final check, present, submit | Submission |
 
 ---
@@ -151,10 +137,10 @@ Build order: backend first, then the event **producers** (ops web) before the **
 
 | Gate | When | Pass condition | If it fails |
 |---|---|---|---|
-| G1 | Fri 9 Oct, evening | Spikes pass; contract agreed; repo + CI green | SSE fails → SignalR for web, polling fallback for Flutter; FCM fails → in-app notices only, push moved to Should |
-| G2 | Sun 11 Oct, evening | Walking skeleton end to end | Do not start the ops web on 12 Oct; fix the pipeline first and cut from the bottom of 12–15 Oct |
-| G3 | Fri 16 Oct, evening | All Musts done | Cut per section 7; record what was cut and why (it is assessed as scope management) |
-| G4 | Sun 18 Oct, evening | 5 E2E flows green in CI | Demo the failing flow by hand and record it in the defect log honestly |
+| G1 | ~~Fri 9 Oct~~ replaced | Contract agreed ✔; repo + CI green (Mon 12) | — |
+| G2 | Tue 13 Oct, evening | Walking skeleton end to end | Do not start the ops web; fix the pipeline first. SSE fails → SignalR for web, polling for Flutter |
+| G3 | Sat 17 Oct, evening | All remaining Musts done | Cut per section 7; record what was cut and why |
+| G4 | Sun 18 Oct, evening | 5 E2E flows green | Demo the failing flow by hand and record it in the defect log honestly |
 | G5 | Mon 19 Oct, evening | Rehearsed demo; backup video | Simplify the demo story |
 
 ---
@@ -173,13 +159,15 @@ Build order: backend first, then the event **producers** (ops web) before the **
 
 ---
 
-## 7. Cut list (if behind)
+## 7. Cut list
 
-Cut in this order and record each cut:
+**Already cut on 12 Oct (re-plan):** O-8 unscheduled stop alert; O-6 + C-5 crew incident reports and the incident workflow; all Shoulds (P-9, S-1 … S-11); station manager limited to announcements (O-9). Recorded in the MoSCoW change log.
 
-1. Shoulds, from the bottom of the MoSCoW list upwards (S-11 … P-9).
-2. Polish inside Musts: line-diagram animation, rotating content, text-to-speech.
-3. Third-tier Must details that keep the flow intact: O-8 unscheduled stop alert, O-9 announcements (automatic ones still appear).
+**If still behind, cut next in this order:**
+
+1. Polish inside Musts: line-diagram animation, rotating content, phone-mode roster details.
+2. O-7 crew messages reduced to the hold instruction only (needed by flow 4).
+3. Crew offline queue reduced to Arrived / Departed only.
 
 **Never cut:** the 5 E2E flows, authentication with role + scope, the audit log, the catering integration (§23), the AI usage log.
 
