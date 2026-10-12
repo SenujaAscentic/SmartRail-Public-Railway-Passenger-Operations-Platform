@@ -40,9 +40,9 @@
 | O-3 | Every value shows source and freshness (GPS / driver tap / controller, "updated 20 s ago") |
 | O-4 | Controller actions: delay with reason, hold, cancel, terminate early, **skip a stop, add a stop**; confirmation for high-impact actions |
 | O-5 | Platform change by the controller: automatic lead time, three levels, hold + calm announcement under 5 min; **platform conflict warning** if another train is expected at that platform |
-| O-6 | Crew incident reports as alerts → create incident or dismiss |
+| O-6 | Crew incident reports as alerts → create incident or dismiss **→ deferred 12 Oct (re-plan)** |
 | O-7 | Messages to crew with acknowledgement shown |
-| O-8 | "Unscheduled stop" alert after 3 min stopped between stations |
+| O-8 | "Unscheduled stop" alert after 3 min stopped between stations **→ deferred 12 Oct (re-plan)** |
 | O-9 | Station manager posts announcements to the large information screen |
 | O-10 | Audit log of every operational action (who, when, why) |
 
@@ -53,7 +53,7 @@
 | C-2 | **Cab mode** (registered Android tablet in the cab, kiosk, train-powered): driver signs in, starts journey (GPS on) / ends journey (GPS off); assigned journey only; one active cab session per driver; the driver cannot start a journey from a phone (ADR-05) |
 | C-3 | Glance view: next stop, scheduled vs actual, delay; dark, landscape, large targets |
 | C-4 | Arrived / Departed buttons as fallback |
-| C-5 | Incident report from fixed types (guard can add a note) |
+| C-5 | Incident report from fixed types (guard can add a note) **→ deferred 12 Oct (re-plan)** |
 | C-6 | Controller messages and instructions (incl. "hold at Platform 5") with acknowledgement |
 | C-7 | Offline queue: actions saved with timestamps, sent on reconnect |
 
@@ -105,7 +105,7 @@ No passenger data is shared with the provider in this release.
 
 ---
 
-## SHOULD (build in this order if time allows)
+## SHOULD – **all deferred 12 Oct (re-plan)**; build only if every Must is done
 | ID | Capability |
 |---|---|
 | P-9 | Ticket prices for the searched journey, by class, only for classes the train has (fictional prices) |
@@ -134,3 +134,4 @@ In-app food ordering, payment and collection · **second line, regions, chief / 
 | Date | Change | Reason |
 |---|---|---|
 | 9 Oct | MVP reduced to **one line** (Main Line, both directions) and **one controller role** for the whole line. Regions, chief / regional controllers and interchanges deferred; **P-12 "Change at" moved from Should to Won't** (no second line to change to). Station manager role unchanged. `Line` stays in the data model so a second line is new data, not new code. | Scope management: saves seed verification, permission-matrix and filter work in a 7-day build; no Must or E2E flow lost |
+| 12 Oct | **Re-plan:** no code existed on 12 Oct, leaving 6 build days (12–17 Oct) instead of 7, with QA reduced to one day. Deferred: **O-8** unscheduled stop alert; **O-6 + C-5** crew incident reports and incident workflow (the controller's delay reason covers the cause; none of the 5 E2E flows needs them); **all Shoulds**; station manager limited to announcements (O-9). Never cut: 5 E2E flows, auth with role + scope, audit log, catering (light), AI log | Deliberate scope management instead of running out of time on 16 Oct |
