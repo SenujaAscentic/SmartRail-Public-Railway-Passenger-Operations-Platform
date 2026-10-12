@@ -2,7 +2,7 @@
 
 One row per AI interaction, added as it happens. Prompts are quoted verbatim.
 
-**Covers:** 1–12 Oct 2026 (Discover, Define, Develop; start of Deliver). Rows 74–98 and the Overview sections below were added on 12 Oct from the consolidated overview log, which came from planning sessions. Entries from local Claude Code sessions after 7 Oct and from the build phase are still to be added (see the notes under the table).
+**Covers:** 1–12 Oct 2026 (Discover, Define, Develop; start of Deliver). Rows 74–100 and the Overview sections below were added on 12 Oct from the consolidated overview log, which came from planning sessions. Entries from local Claude Code sessions after 7 Oct and from the build phase are still to be added (see the notes under the table).
 **Brief:** §21 (AI-assisted development) and §23 *AI Usage*.
 
 | # | Date | Tool | Task | Prompt (or link) | Accepted | Rejected and why |
@@ -128,11 +128,12 @@ One row per AI interaction, added as it happens. Prompts are quoted verbatim.
 | 95 | 2026-10-12 | Claude (claude.ai project) | Develop phase: journey version (the author's own question) | "what is journey version?" | The control version: only decisions bump it. The AI found a flaw in its own R-18 (GPS updates would invalidate the controller's version every few seconds, which would make the ops screen unusable). An internal row version covers automatic updates. | The draft R-18 (see W-5 below). |
 | 96 | 2026-10-12 | Claude (claude.ai project) | Develop phase: do we need OAuth 2.0 (the author's own question) | Question: do we need OAuth 2.0? | Not in the MVP. Identity plus JWT with OAuth practices, because only first-party apps are used. OpenID Connect later. | OAuth 2.0 in the MVP. |
 | 97 | 2026-10-12 | Claude (claude.ai project) | Develop phase: agentic development | Not recorded | The decisions were written into `CLAUDE.md`, because a decision only exists for the agent if the agent can read it. | Nothing rejected. |
-| 98 | 2026-10-12 | Claude (claude.ai project) | Develop phase: why not Clean Architecture (the author's own question) | Question: why not Clean Architecture? | Q6: feature slices plus pure Domain projects for the rich modules, so structure is in proportion to complexity and the compiler guards the rules. | Full Clean Architecture for every module. |
+| 98 | 2026-10-12 | Claude (claude.ai project) | Develop phase: why not Clean Architecture (the author's own question) | Question: why not Clean Architecture? | Q6: feature slices plus pure Domain projects for the rich modules, so structure is in proportion to complexity and the compiler guards the rules. | Full Clean Architecture for every module. || 99 | 2026-10-07 | Claude (claude.ai project) | Develop phase: web app structure | Not recorded | Eliminated Blazor Server for displays (the screen freezes when the network drops) and proposed two separate web apps, so public display devices never load operations code. Accepted (ADR-06). | Nothing rejected. |
+| 100 | 2026-10-07 | Claude (claude.ai project) | Develop phase: database | Not recorded | PostgreSQL with EF Core. Redis and PostGIS deferred to avoid unneeded infrastructure in the MVP. Accepted (ADR-03). | MongoDB, because the domain is relational and integrity rules would have to be rebuilt in code. |
 
 **Notes on the table**
 - Older rows mention `assumptions-log.md`. That file was merged into `discover/00-brief-analysis.md` (section "Assumptions log") on 12 Oct.
-- Rows 74–98 come from the consolidated overview log. Prompts are quoted only where that log quotes them; the rest are marked "Not recorded" or give the question in plain words.
+- Rows 74–100 come from the consolidated overview log. Prompts are quoted only where that log quotes them; the rest are marked "Not recorded" or give the question in plain words.
 - Row numbers 27 to 50 appear twice (rows from the brief analysis, then rows from the agent work). They are left as they are so that existing references still work. New rows continue from 74.
 - Entries from the local Claude Code (VS Code) sessions after 7 Oct and from the build phase are not yet in this log.
 
