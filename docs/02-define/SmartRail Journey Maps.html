@@ -1,0 +1,279 @@
+<title>SmartRail Journey Maps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: persona tabs; per persona a header, an emotion curve whose points sit exactly above stage columns, then the stage columns. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --fg: #17212b;
+  --muted: #5b6875;
+  --line: #d8dee4;
+  --soft: #eef1f4;
+  --asis: #8a96a3;
+  --tobe: #0b7a75;
+  --tobe-soft: #dff1ef;
+  --pain: #c2410c;
+  --mot: #b45309;
+  --display: "Overpass", "Segoe UI", system-ui, sans-serif;
+  --mono: "Overpass Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #2c3743; --soft: #1f2832;
+    --asis: #7d8994; --tobe: #3fc1b8; --tobe-soft: #163533; --pain: #fb8a4a; --mot: #f5b04a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #2c3743; --soft: #1f2832;
+  --asis: #7d8994; --tobe: #3fc1b8; --tobe-soft: #163533; --pain: #fb8a4a; --mot: #f5b04a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 28px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; line-height: 1.1; }
+h2 { font-size: 24px; font-weight: 800; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 72ch; }
+header { display: grid; gap: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 26px; height: 0; border-top: 3px solid var(--tobe); display: inline-block; }
+.sw.asis { border-top: 3px dashed var(--asis); }
+.dotm { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--mot); display: inline-block; }
+.tag-u { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--soft); color: var(--pain); border: 1px solid var(--line); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: inherit; font-size: 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 7px 14px; display: inline-flex; gap: 8px; align-items: baseline; }
+.tab small { color: var(--muted); font-size: 12px; }
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tab[aria-selected="true"] small { color: var(--bg); opacity: 0.75; }
+.tab:focus-visible { outline: 3px solid var(--tobe); outline-offset: 2px; }
+
+.persona { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+@media (max-width: 760px) { .persona { grid-template-columns: 1fr; } }
+.persona .who { display: grid; gap: 6px; }
+.persona .role { color: var(--muted); }
+.persona blockquote { margin: 6px 0 0; padding-left: 12px; border-left: 3px solid var(--line); color: var(--fg); font-style: italic; }
+.facts { display: grid; gap: 8px; font-size: 14px; align-content: start; }
+.facts div { display: grid; grid-template-columns: 92px 1fr; gap: 8px; }
+.facts dt, .facts .k { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding-top: 2px; }
+.ext { font-family: var(--mono); font-size: 11px; background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+
+.map { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.map-head { padding: 16px 22px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+.scroll { overflow-x: auto; }
+.inner { min-width: calc(var(--n) * 190px); }
+.chart { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--mono); fill: var(--muted); font-size: 11px; }
+.chart .val { font-size: 11px; font-weight: 600; }
+.stages { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.stage { padding: 14px 14px 16px; border-left: 1px solid var(--line); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.stage:first-child { border-left: 0; }
+.stage.mot { background: linear-gradient(var(--soft), var(--soft)); }
+.stage h3 { font-size: 15px; font-weight: 800; line-height: 1.25; }
+.stage .num { font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.mot-label { font-family: var(--mono); font-size: 11px; color: var(--mot); font-weight: 600; }
+.f { display: grid; gap: 2px; font-size: 13px; }
+.f .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.f.pain p { color: var(--pain); }
+.f.smart { background: var(--tobe-soft); border-radius: 6px; padding: 8px 9px; }
+.f.smart .k { color: var(--tobe); }
+.ids { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.foot { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; padding: 16px 22px; border-top: 1px solid var(--line); font-size: 14px; }
+.foot h4 { margin: 0 0 4px; font-size: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
+.note { font-size: 13px; color: var(--muted); max-width: 90ch; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } .map-head, .foot, .persona { padding-inline: 16px; } }
+@media (prefers-reduced-motion: no-preference) { .tobe-line { transition: opacity .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">SmartRail · Define phase</div>
+    <h1>SmartRail Journey Maps</h1>
+    <p class="lede">How six people move through a railway day today, and what changes with SmartRail. Each map follows one scenario with a normal day and a disruption, because a railway service is judged on its bad days.</p>
+    <div class="legend">
+      <span><i class="sw asis"></i>Feeling today (as-is)</span>
+      <span><i class="sw"></i>Feeling with SmartRail (to-be)</span>
+      <span><i class="dotm"></i>Moment of truth</span>
+      <span><span class="tag-u">Disruption</span> Unhappy path</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Personas" id="tabs"></nav>
+
+  <section id="persona" class="persona" aria-live="polite"></section>
+
+  <section class="map" id="map"></section>
+
+  <p class="note">Personas are synthesised from AI stakeholder simulations and an AI-generated "day in the life" interview, not real people. Times and frequencies are unverified hypotheses. Feeling scores run from −2 (very stressed) to +2 (confident). Capability IDs refer to the MVP scope (moscow.md).</p>
+</div>
+
+<script>
+(function () {
+  var P = [
+    { id: "kasun", name: "Kasun Perera", age: 34, role: "Daily commuter · Gampaha → Colombo Fort, 06:40",
+      quote: "Five minutes is the difference between getting on and missing it. Don't tell me 'On time' when it isn't.",
+      goal: "Decide at home; never miss the train or a school pickup.", pain: "RDMNS has no platforms and no background alerts; an indefinite delay about twice a week.",
+      scenario: "Weekday morning to work. In the evening his platform changes with 4 minutes' notice; the next day his train is cancelled.",
+      outcome: "No false “On time”; decisions made at home, not on the platform.",
+      notChanging: "Paper ticket; the RDMNS community still exists.",
+      s: [
+        ["Check before leaving", "06:15 · checks his train over tea", "Phone", -1, 2, "RDMNS grey box, no platform", "Saved trip: “06:40 · On time · Platform 2 · updated 30 s ago”", "P-6 P-1 P-4"],
+        ["Change at home", "06:24 · decides when to leave", "Push", -2, 1, "No warning; finds out on the platform", "“8 min late – signal fault near Ragama”; leaves later", "P-7 O-4", true],
+        ["At the station", "Finds his platform", "Platform display, app", -1, 2, "Garbled PA; asks regulars", "Display and app say the same thing", "D-2 B-5"],
+        ["Waiting", "Waits for the train", "App, waiting mode", -1, 1, "Watches the track", "“Passed Ragama · arrives in 4 min”", "P-3"],
+        ["On board", "Plans his arrival", "App, on-board mode", 0, 2, "No information", "“Next: Kelaniya · Fort 07:33”", "P-3"],
+        ["Platform change", "Evening · moves to a new platform", "Push, large screen", -2, 1, "Crowd surge on the stairs", "“Platform 5 (was 2) – the train will wait for passengers”", "P-7 O-5 D-3", true, true],
+        ["Cancellation", "Needs a new plan", "App", -2, 1, "“Indefinite delay”; phones home", "“Cancelled – next: 17:45 (Platform 3), 18:05”", "P-4", false, true]
+      ] },
+    { id: "fathima", name: "Fathima Rizwan", age: 58, role: "Occasional traveller · Colombo Fort → Kandy · knee problems",
+      quote: "I come 45 minutes early because I don't trust what I'll find.",
+      goal: "Travel without stress and check things herself.", pain: "Small abbreviated boards, no alerts, hunting for staff.",
+      scenario: "Visiting her daughter in Kandy. Her platform changes while she waits.",
+      outcome: "Fewer questions to staff; she can check things herself in plain language.",
+      notChanging: "No exit guidance or station facilities information; no ticket purchase.",
+      s: [
+        ["Plan", "Day before · chooses a train", "App, no account", -1, 1, "Asks friends which is “the good one”", "Express / Slow, times and 2nd / 3rd class price", "P-1 P-9 S-5"],
+        ["Arrive at Fort", "45 min early · finds her departure", "Main board, large screen", -1, 1, "Small flickering boards with abbreviations", "“10:35 Kandy · Express · Platform 4 · On time”", "D-1 D-3"],
+        ["Confirm the train", "Checks it is hers", "Platform display", -1, 2, "Shows her ticket to staff", "“Stops: Ragama, Gampaha, Polgahawela, Peradeniya, Kandy”", "D-2", true],
+        ["Platform change", "Moves to the new platform", "Announcement, display", -2, 1, "Rushes the stairs with bad knees", "“Now Platform 5 – the train will wait. Assistance is available from staff.”", "O-5 D-3", true, true],
+        ["On board", "Watches progress", "App line diagram", -1, 1, "Worries about missing her stop", "Train moving on the line; “Kandy in 25 min”", "P-2 P-3"],
+        ["Food", "Wants a meal", "App → provider hotline", 0, 1, "Buys whatever is on the platform", "“Food at Polgahawela” → menu → one-tap call; kitchen knows the live arrival", "P-8 F-2 F-3"]
+      ] },
+    { id: "sunil", name: "Sunil Bandara", age: 49, role: "Train driver · 22 years on the Main Line (with the guard)",
+      quote: "Don't give me a screen to tap while I'm driving.",
+      goal: "Drive safely; no data entry.", pain: "Reports get lost in a phone chain; passengers know about delays before he does.",
+      scenario: "Morning Main Line run with a signal fault, a hold instruction and a tunnel without signal.",
+      outcome: "His report reaches the controller and passengers without a phone chain, and no extra work while driving.",
+      notChanging: "Signals, caution orders, speed restrictions, logbook and defect book.",
+      s: [
+        ["Sign on", "04:30 · logbook, driver's pack, radio", "Shed, cab device", 0, 0, "Unchanged", "Plus sign-in: “Today: 05:20 Maradana → Kandy”", "C-1"],
+        ["Depart", "Starts the run", "Crew app", 0, 1, "—", "One tap: Start journey (tracking on)", "C-2"],
+        ["Running", "Drives, watches signals", "Glance view", 0, 1, "No information in the cab", "“Next: Ragama 05:41 · 2 min late”; no typing while moving", "C-3", true],
+        ["Signal fault", "Radios the signalman", "Radio; guard's app", -2, -1, "Report lost in a phone chain", "Radio first; the guard reports “Signal fault”; controller sees it at once", "A-50 C-5 O-6", true, true],
+        ["Instruction", "Receives a hold order", "Crew app + radio", -1, 1, "Verbal or written order only", "“Hold at Platform 5 for passengers”, acknowledged when stopped", "C-6 O-5"],
+        ["Tunnel", "No signal", "Crew app", null, 0, "—", "Actions queued, sent later with their real times", "C-7", false, true],
+        ["Sign off", "End of the run", "Crew app, logbook", 0, 1, "—", "End journey: tracking off, no location off duty", "C-2 A-29"]
+      ] },
+    { id: "chamari", name: "Chamari Jayasinghe", age: 44, role: "Station manager · Maradana",
+      quote: "We on the station floor face the crowd when things go wrong.",
+      goal: "Keep crowds safe.", pain: "Late platform changes cause surges; she learns at the same time as the crowd.",
+      scenario: "Friday evening peak: a 4-minute platform change and an escalator fault.",
+      outcome: "Staff and passengers learn at the same moment; the announcement calms the crowd instead of starting a rush.",
+      notChanging: "Platform decisions stay with the controller; the PA system is not integrated.",
+      s: [
+        ["Morning check", "06:00 · checks the boards", "Platforms, ops web", -1, 1, "Compares boards with the printed timetable", "Boards fed by the same live source; ops view of Maradana only", "O-1 D-1"],
+        ["Special day", "Poya timetable", "Boards", -1, 1, "Paper special timetable", "Boards follow the Poya calendar automatically", "B-1"],
+        ["Late platform change", "18:02 · manages the crowd", "Ops alert, large screen", -2, 0, "Learns with the crowd; grabs the PA", "Alert at the same moment as passengers; screen says the train will wait; staff to the stairs", "O-5 D-3", true, true],
+        ["Escalator fault", "Informs passengers and control", "Ops web", -1, 1, "Paper notice, radio", "Posts an announcement; station notice to the controller", "O-9 S-2"],
+        ["Handover", "14:00 · hands over the shift", "Logbook", 0, 0, "Unchanged in the MVP", "Digital handover note is a Could", "–"]
+      ] },
+    { id: "ruwan", name: "Ruwan Dissanayake", age: 51, role: "Regional controller · Colombo region",
+      quote: "I decide what the public sees. I won't put my name on a guess.",
+      goal: "One decision, everyone informed.", pain: "Learns about stalled trains 5–10 minutes late; doesn't trust screens.",
+      scenario: "A train stalls near Kelaniya at peak; a following train is cancelled and another picks up its passengers.",
+      outcome: "One action reaches everyone; he learns about problems from the system, not the phone chain.",
+      notChanging: "Signalling, section clearance and relief engines.",
+      s: [
+        ["Take the desk", "05:45 · learns the current state", "Dashboard", -1, 1, "Verbal “hot list”", "Problems first: stale GPS, open incidents, crew reports", "O-2"],
+        ["Trust check", "Checks the data", "Dashboard", -2, 1, "Screens show trains “arrived” too early", "Every value shows its source and age", "O-3", true],
+        ["Train stops", "07:38 · detects the problem", "Alert", -2, 1, "Learns at 07:45–07:48 via a phone chain", "07:41 “Unscheduled stop” + guard's report; passengers already see the delay growing", "O-8 O-6 B-4", false, true],
+        ["Decide", "Sets delay and reason", "Dashboard", -1, 2, "Phones three stations", "One action reaches every app, display, crew device and the provider in seconds", "O-4 B-6 F-2", true, true],
+        ["Recover", "Cancels 07:50, adds stops to 08:05", "Dashboard", -1, 1, "Phones stations and signal boxes", "Cancel + add stops; passengers and boards update", "O-4", false, true],
+        ["Handover", "14:00 · hands over", "Logbook + audit log", 0, 1, "Handwritten Daily Occurrence Book", "Audit log is a full record of every action", "O-10"]
+      ] },
+    { id: "dilani", name: "Dilani Fernando", age: 39, role: "Operations manager · RailBites Catering (fictional provider)", ext: true,
+      quote: "If I knew when the train would really arrive, nothing would go cold or to waste.",
+      goal: "Food ready exactly when the train arrives.", pain: "Cooks to the printed timetable; delays mean cold food and waste.",
+      scenario: "Lunchtime at Polgahawela: one train is delayed, another has its Polgahawela stop skipped.",
+      outcome: "Cooking follows the real arrival time; skipped stops stop waste. She never uses a SmartRail screen – SmartRail reaches her through the integration.",
+      notChanging: "In-app ordering, payment and collection come in the next release; payment stays cash at handover.",
+      s: [
+        ["Plan the day", "Plans cooking", "Own system", -1, 1, "Uses the printed timetable", "Receives SmartRail's catering stations and journeys", "F-1"],
+        ["Publish menu", "Updates menu and availability", "Own system → SmartRail", 0, 1, "Menu only at the counter", "Menu, availability, hotline and hours appear in the passenger app", "F-3 P-8"],
+        ["Phone orders", "Answers calls", "Hotline", -1, 1, "Callers don't know their arrival time", "Callers read “Train 1005 · arriving 10:52 · coach” from the app", "P-8"],
+        ["Train delayed", "Times the cooking", "Event log", -2, 2, "Food goes cold; hears from staff calls", "“1005 Polgahawela expected 11:07 (+15)”", "F-2", true, true],
+        ["Stop skipped", "Stops cooking", "Event log", -2, 1, "Food wasted", "“1007 will not stop at Polgahawela” arrives in seconds", "F-2 O-4", true, true],
+        ["SmartRail unreachable", "Keeps working", "Own system", null, 0, "—", "Events retried; nothing lost when the connection returns", "F-2", false, true]
+      ] }
+  ];
+
+  var tabs = document.getElementById("tabs");
+  var personaEl = document.getElementById("persona");
+  var mapEl = document.getElementById("map");
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  function fmt(v) { return v === null ? "—" : (v > 0 ? "+" + v : (v < 0 ? "−" + Math.abs(v) : "0")); }
+
+  P.forEach(function (p, i) {
+    var b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role", "tab"); b.id = "tab-" + p.id;
+    b.innerHTML = esc(p.name.split(" ")[0]) + " <small>" + esc(p.role.split(" · ")[0]) + "</small>";
+    b.addEventListener("click", function () { show(p.id, true); });
+    tabs.appendChild(b);
+  });
+
+  function chart(p) {
+    var n = p.s.length, W = n * 190, H = 230, top = 26, bot = 46;
+    var y = function (v) { return top + (2 - v) * (H - top - bot) / 4; };
+    var x = function (i) { return (i + 0.5) * 190; };
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Feeling per stage, as-is versus with SmartRail">';
+    [2, 1, 0, -1, -2].forEach(function (v) {
+      svg += '<line x1="0" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"' + (v === 0 ? '' : ' stroke-dasharray="2 4"') + '/>';
+      svg += '<text x="6" y="' + (y(v) - 4) + '">' + fmt(v) + '</text>';
+    });
+    function path(key, cls, style) {
+      var d = "", pen = false;
+      p.s.forEach(function (s, i) { var v = s[key]; if (v === null) { pen = false; return; } d += (pen ? " L" : " M") + x(i) + " " + y(v); pen = true; });
+      return '<path d="' + d + '" fill="none" ' + style + ' class="' + cls + '"/>';
+    }
+    svg += path(3, "", 'stroke="var(--asis)" stroke-width="2.5" stroke-dasharray="6 5"');
+    svg += path(4, "tobe-line", 'stroke="var(--tobe)" stroke-width="3"');
+    p.s.forEach(function (s, i) {
+      if (s[8]) svg += '<circle cx="' + x(i) + '" cy="' + y(s[4]) + '" r="13" fill="none" stroke="var(--mot)" stroke-width="2"/>';
+      if (s[3] !== null) svg += '<circle cx="' + x(i) + '" cy="' + y(s[3]) + '" r="5" fill="var(--surface)" stroke="var(--asis)" stroke-width="2"/>';
+      svg += '<circle cx="' + x(i) + '" cy="' + y(s[4]) + '" r="6" fill="var(--tobe)"/>';
+      var labelY = s[3] !== null && s[3] === s[4] ? y(s[4]) - 16 : y(s[4]) - 12;
+      svg += '<text class="val" x="' + (x(i) + 10) + '" y="' + labelY + '" fill="var(--tobe)" style="fill:var(--tobe)">' + fmt(s[4]) + '</text>';
+      if (s[3] !== null && s[3] !== s[4]) svg += '<text class="val" x="' + (x(i) + 10) + '" y="' + (y(s[3]) + 15) + '">' + fmt(s[3]) + '</text>';
+      svg += '<text x="' + x(i) + '" y="' + (H - 16) + '" text-anchor="middle" style="fill:var(--fg)">' + (i + 1) + '. ' + esc(s[0].length > 22 ? s[0].slice(0, 21) + "…" : s[0]) + '</text>';
+    });
+    return svg + '</svg>';
+  }
+
+  function show(id, push) {
+    var p = P.filter(function (q) { return q.id === id; })[0] || P[0];
+    Array.prototype.forEach.call(tabs.children, function (b) { b.setAttribute("aria-selected", b.id === "tab-" + p.id ? "true" : "false"); });
+    personaEl.innerHTML =
+      '<div class="who"><div class="eyebrow">' + (p.ext ? 'External partner persona <span class="ext">never uses a SmartRail screen</span>' : 'Primary persona') + '</div>' +
+      '<h2>' + esc(p.name) + ', ' + p.age + '</h2><p class="role">' + esc(p.role) + '</p>' +
+      '<blockquote>“' + esc(p.quote) + '”</blockquote></div>' +
+      '<dl class="facts" style="margin:0"><div><dt>Goal</dt><dd style="margin:0">' + esc(p.goal) + '</dd></div>' +
+      '<div><dt>Pain today</dt><dd style="margin:0">' + esc(p.pain) + '</dd></div>' +
+      '<div><dt>Scenario</dt><dd style="margin:0">' + esc(p.scenario) + '</dd></div></dl>';
+    var n = p.s.length;
+    var cols = p.s.map(function (s, i) {
+      return '<article class="stage' + (s[8] ? ' mot' : '') + '">' +
+        '<div class="num">Stage ' + (i + 1) + (s[9] ? ' <span class="tag-u">Disruption</span>' : '') + (s[8] ? ' <span class="mot-label">Moment of truth</span>' : '') + '</div>' +
+        '<h3>' + esc(s[0]) + '</h3>' +
+        '<div class="f"><span class="k">Doing</span><p>' + esc(s[1]) + '</p></div>' +
+        '<div class="f"><span class="k">Touchpoint</span><p>' + esc(s[2]) + '</p></div>' +
+        '<div class="f pain"><span class="k">Pain today</span><p>' + esc(s[5]) + '</p></div>' +
+        '<div class="f smart"><span class="k">With SmartRail</span><p>' + esc(s[6]) + '</p></div>' +
+        '<div class="ids">' + esc(s[7]) + '</div></article>';
+    }).join("");
+    mapEl.innerHTML =
+      '<div class="map-head"><div class="eyebrow">Journey map</div><p>' + esc(p.scenario) + '</p></div>' +
+      '<div class="scroll"><div class="inner" style="--n:' + n + '">' + chart(p) +
+      '<div class="stages" style="--n:' + n + '">' + cols + '</div></div></div>' +
+      '<div class="foot"><div><h4>Outcome</h4><p>' + esc(p.outcome) + '</p></div><div><h4>Not changing in this MVP</h4><p>' + esc(p.notChanging) + '</p></div></div>';
+    if (push) { try { history.replaceState(null, "", "#" + p.id); } catch (e) {} }
+  }
+
+  var start = (location.hash || "").replace("#", "");
+  show(start || "kasun", false);
+  window.addEventListener("hashchange", function () { show(location.hash.replace("#", ""), false); });
+})();
+</script>

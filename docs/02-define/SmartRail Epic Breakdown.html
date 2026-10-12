@@ -1,0 +1,443 @@
+<title>SmartRail Epic Breakdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: epic picker, then a tree: goal box → spine → rows of feature cards (stories + tasks). Phone width: single column with a left spine. */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --fg: #17212b; --muted: #5b6875; --line: #c9d1d9; --soft: #eef1f4;
+  --c1: #6d28d9; --c2: #15803d; --c3: #c2410c; --c4: #1d4ed8; --c5: #0e7490; --c6: #b45309;
+  --must: #17212b; --should: #5b6875;
+  --display: "Overpass", "Segoe UI", system-ui, sans-serif; --mono: "Overpass Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #3a4652; --soft: #1f2832;
+  --c1: #a78bfa; --c2: #4ade80; --c3: #fb923c; --c4: #60a5fa; --c5: #22d3ee; --c6: #fbbf24; --must: #e6ebf0; --should: #98a4b0; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #3a4652; --soft: #1f2832;
+  --c1: #a78bfa; --c2: #4ade80; --c3: #fb923c; --c4: #60a5fa; --c5: #22d3ee; --c6: #fbbf24; --must: #e6ebf0; --should: #98a4b0; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 24px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; line-height: 1.1; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 76ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.pill { font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.pill.must { background: var(--must); color: var(--bg); border-color: var(--must); }
+.pill.should { color: var(--should); border-style: dashed; }
+.picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.pick { font: inherit; text-align: left; cursor: pointer; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; display: grid; gap: 2px; }
+.pick b { font-size: 14px; }
+.pick span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.pick[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.pick[aria-selected="true"] span { color: var(--bg); opacity: .75; }
+.pick:focus-visible { outline: 3px solid var(--c4); outline-offset: 2px; }
+
+.tree { display: grid; justify-items: center; }
+.epic { background: var(--surface); border: 2px solid var(--fg); border-radius: 12px; padding: 16px 22px; max-width: 640px; width: 100%; text-align: center; display: grid; gap: 6px; }
+.epic h2 { font-size: clamp(20px, 3vw, 26px); font-weight: 800; }
+.epic .goal { font-size: 15px; }
+.epic .goal b { font-weight: 800; }
+.epic .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; }
+.stem { width: 2px; height: 26px; background: var(--line); }
+.rows { width: 100%; display: grid; gap: 0; }
+.row { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding-top: 26px; }
+.row + .row { margin-top: 8px; }
+.rail { position: absolute; top: 0; height: 2px; background: var(--line); }
+.spine { position: absolute; top: -8px; left: calc(50% - 1px); width: 2px; background: var(--line); }
+.feat { position: relative; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.feat::before { content: ""; position: absolute; top: -26px; left: calc(50% - 1px); width: 2px; height: 26px; background: var(--line); }
+.fhead { border: 2px solid var(--fc); border-radius: 10px; background: var(--surface); padding: 10px 12px; text-align: center; display: grid; gap: 4px; justify-items: center; }
+.fhead .fid { font-family: var(--mono); font-size: 12px; color: var(--fc); font-weight: 600; }
+.fhead h3 { font-size: 15px; font-weight: 800; color: var(--fc); line-height: 1.25; }
+.items { margin: 0 0 0 14px; padding: 0 0 0 12px; border-left: 2px solid var(--line); list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.items li { position: relative; }
+.items li::before { content: ""; position: absolute; left: -12px; top: .7em; width: 9px; height: 2px; background: var(--line); }
+.items .st { font-family: var(--mono); font-size: 11.5px; color: var(--fg); font-weight: 600; }
+.items .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.items .lbl::before { display: none; }
+.note { font-size: 13px; color: var(--muted); max-width: 90ch; }
+.hier { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.hier b { color: var(--fg); }
+
+/* View switch */
+.views { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); gap: 2px; justify-self: start; }
+.views button { font: inherit; font-size: 14px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.views button[aria-selected="true"] { background: var(--fg); color: var(--bg); }
+.views button:focus-visible { outline: 3px solid var(--c4); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Matrix */
+.mx-intro { display: grid; gap: 8px; }
+.mx-intro h2, .ev h2 { font-size: 22px; font-weight: 800; }
+.mx-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table.mx { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1060px; font-size: 13px; }
+.mx th, .mx td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--soft); padding: 8px 9px; vertical-align: top; text-align: left; }
+.mx thead th { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--soft); position: sticky; top: 0; }
+.mx tbody tr:last-child th, .mx tbody tr:last-child td { border-bottom: 0; }
+.mx th[scope="row"] { position: sticky; left: 0; background: var(--surface); min-width: 190px; max-width: 210px; z-index: 1; box-shadow: 1px 0 0 var(--line); }
+.mx thead th:first-child { left: 0; z-index: 2; }
+.mx .eid { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.mx .et { display: block; font-weight: 800; font-size: 14px; line-height: 1.25; }
+.mx .ek { display: inline-block; margin-top: 4px; font-family: var(--mono); font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.mx .ek.goal { color: var(--c2); border-color: var(--c2); }
+.mx .ek.app { color: var(--c6); border-color: var(--c6); }
+.mx .ek.enb { color: var(--c1); border-color: var(--c1); }
+.mx .e2e { display: block; margin-top: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.mx td.empty::after { content: "–"; color: var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font: inherit; font-size: 12px; text-align: left; cursor: pointer; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 3px 7px; display: grid; gap: 0; line-height: 1.25; }
+.chip b { font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.chip span { font-size: 11.5px; color: var(--muted); }
+.chip.should { border-style: dashed; }
+.chip:focus-visible { outline: 3px solid var(--c4); outline-offset: 1px; }
+.mx.filtering .chip { opacity: .3; }
+.mx.filtering .chip.prod, .mx.filtering .chip.cons { opacity: 1; }
+.chip.prod { background: var(--c4); border-color: var(--c4); color: var(--bg); }
+.chip.prod span { color: var(--bg); opacity: .85; }
+.chip.cons { border-color: var(--c3); box-shadow: inset 0 0 0 1.5px var(--c3); }
+.chip.sel { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* Event catalogue */
+.ev { display: grid; gap: 12px; }
+.ev-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: start; }
+.ev-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.evb { font: inherit; font-family: var(--mono); font-size: 12px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 10px; }
+.evb[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.evb.int { border-style: dashed; }
+.evb:focus-visible { outline: 3px solid var(--c4); outline-offset: 2px; }
+.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; font-size: 14px; position: sticky; top: 12px; }
+.detail h3 { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+.detail .what { color: var(--muted); }
+.flow { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start; }
+.flow dt { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding-top: 3px; }
+.flow dt.p { color: var(--c4); } .flow dt.c { color: var(--c3); }
+.flow dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.flow dd span { white-space: nowrap; }
+.flow dd span i { font-style: normal; color: var(--muted); font-size: 12px; }
+.mxlegend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1.5px solid var(--line); }
+.sw.p { background: var(--c4); border-color: var(--c4); }
+.sw.c { box-shadow: inset 0 0 0 1.5px var(--c3); border-color: var(--c3); }
+.sw.s { border-style: dashed; }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+
+@media (max-width: 860px) {
+  .ev-layout { grid-template-columns: 1fr; }
+  .detail { position: static; }
+  .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .wrap { padding-inline: 16px; }
+  .rows { border-left: 2px solid var(--line); margin-left: 8px; width: calc(100% - 8px); }
+  .row { grid-template-columns: 1fr; padding-top: 14px; gap: 14px; }
+  .row + .row { margin-top: 0; }
+  .rail, .spine { display: none; }
+  .feat { padding-left: 16px; }
+  .feat::before { top: 22px; left: 0; width: 14px; height: 2px; }
+  .stem { height: 14px; margin-right: auto; margin-left: 8px; }
+}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <div class="eyebrow">SmartRail · Define phase · MVP</div>
+    <h1>SmartRail Epic Breakdown</h1>
+    <p class="lede">Twelve epics, organised by user goal rather than by app. Each story carries its app as a label, and stories in different apps are linked by the domain events one produces and the others consume. Features are capabilities from the MoSCoW list; technical layers (API, screens, events, audit, tests) appear as tasks inside every feature.</p>
+    <div class="hier"><b>Epic</b> (user outcome) → <b>Feature</b> (MoSCoW item) → <b>User story</b> (acceptance criteria, app label) → <b>Tasks</b> (build work)</div>
+    <div class="views" role="tablist" aria-label="View">
+      <button role="tab" id="v-tree" aria-selected="true">Epic tree</button>
+      <button role="tab" id="v-mx" aria-selected="false">Apps × epics &amp; events</button>
+    </div>
+  </header>
+
+  <div id="view-tree" style="display:grid;gap:24px">
+    <div class="legend"><span class="pill must">Must</span> in the MVP <span class="pill should">Should</span> if time allows</div>
+    <nav class="picker" role="tablist" aria-label="Epics" id="picker"></nav>
+    <section class="tree" id="tree" aria-live="polite"></section>
+    <p class="note">IDs refer to define/moscow.md (features) and define/user-stories.md (stories). Tasks are high level; detailed tasks are written at the start of each build day.</p>
+  </div>
+
+  <div id="view-mx" hidden style="display:grid;gap:28px">
+    <section class="mx-intro">
+      <h2>Which app each story lives in</h2>
+      <p class="lede">Rows are epics, columns are apps. An epic is done only when its end-to-end flow passes across every app it touches, not when each screen exists. Pick an event below (or tap a story) to see who produces it and who reacts to it.</p>
+      <div class="mxlegend">
+        <span><i class="sw p"></i>Produces the selected event</span>
+        <span><i class="sw c"></i>Consumes it</span>
+        <span><i class="sw s"></i>Should</span>
+        <span><b style="color:var(--c2)">Goal</b> epic spans apps · <b style="color:var(--c6)">App-shaped</b> epic mostly consumes events · <b style="color:var(--c1)">Enabler</b> makes the others possible</span>
+      </div>
+      <div class="mx-scroll"><table class="mx" id="mx"></table></div>
+    </section>
+
+    <section class="ev" aria-labelledby="ev-h">
+      <h2 id="ev-h">Event catalogue (draft)</h2>
+      <p class="lede">The events are the contracts between apps. Names are past tense: something that has already happened. This is the first draft; payloads and versioning are fixed in the domain model step.</p>
+      <div class="ev-layout">
+        <div style="display:grid;gap:10px">
+          <div class="ev-list" id="evlist" role="group" aria-label="Events"></div>
+          <p class="note">Dashed = integration event sent to the external catering provider (signed webhook), not on the internal stream.</p>
+        </div>
+        <div class="detail" id="detail" aria-live="polite"></div>
+      </div>
+      <ul class="rules">
+        <li><b>US-B5</b> delivers every internal event to the apps over one stream (SSE); <b>US-B6</b> decides which consumers get each one (propagation matrix).</li>
+        <li><b>US-O10</b> records every event a controller or station manager produces in the audit log.</li>
+        <li>Plan data (timetable, roster, menus, hotline) is read through APIs, not events: US-D4 caches the day timetable, US-C1 the roster, US-F3 the provider menus.</li>
+        <li>Each consumer story is built and tested against fixtures of the event, so an app can be built before the producer's screen is finished.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  function F(id, t, pri, stories, tasks) { return { id: id, t: t, pri: pri, stories: stories, tasks: tasks }; }
+  var E = [
+    { id: "EP-1", t: "Find a train", goal: "A passenger finds the right train and knows what to expect before travelling.", who: "Kasun, Fathima", sm: "–", build: "13 Oct", f: [
+      F("P-1", "Search direct trains", "Must", ["US-P1 Search between two stations"], ["Search API: stops in order, service date, calendar", "Station type-ahead", "Results screen with expected times", "Unit tests for stop order and calendar"]),
+      F("P-2", "Train details & line diagram", "Must", ["US-P2 Stops, live position, train set"], ["Journey details API", "Line diagram painter (CustomPainter)", "Traction and seat types from today's train set", "Live position binding"]),
+      F("P-9", "Ticket prices", "Should", ["US-P1 (prices by class)"], ["Fare table in seed data", "Price lookup API", "Price row in results"]),
+      F("S-9", "Train front illustration", "Should", ["US-P2 AC7"], ["2–3 illustrations per traction type", "Text descriptions", "Matching icon on platform display"])
+    ]},
+    { id: "EP-2", t: "Live journey", goal: "A passenger always knows where the train is and how late it is.", who: "Kasun, Fathima", sm: "SM-1, SM-2", build: "13 Oct", f: [
+      F("P-3", "Live tracking", "Must", ["US-P3 Waiting and on-board modes"], ["Tracking screen with two modes", "“I'm on this train” tap", "“Are you on board?” prompt after departure", "Next trains when missed"]),
+      F("P-4", "Disruptions & freshness", "Must", ["US-P4 Exact lateness, reasons, freshness"], ["Status formatter with shared test fixtures", "Two-update rule against flicker", "Last seen / unavailable labels", "Alternatives on cancellation"])
+    ]},
+    { id: "EP-3", t: "Account and alerts", goal: "A commuter is told about changes to their trip before leaving home.", who: "Kasun", sm: "SM-2", build: "13 Oct", f: [
+      F("P-5", "Account", "Must", ["US-P5 Sign up, sign in, delete"], ["Register / sign-in API", "Lockout and rate limit", "Delete account (anonymise)", "Secure token storage on device"]),
+      F("P-6", "Saved trip", "Must", ["US-P6 Today's status on home"], ["Saved trips API", "Home screen cards", "“Does not run today” rule"]),
+      F("P-7", "Push notifications", "Must", ["US-P7 Changes to saved trips"], ["FCM setup", "Notification rules: thresholds, window, expiry, no duplicates", "Message templates", "Deep link to the trip"])
+    ]},
+    { id: "EP-4", t: "Catering", goal: "Food is ready when the train really arrives, through a separate provider system.", who: "Fathima, Dilani", sm: "SM-5", build: "15 Oct", f: [
+      F("F-1", "Provider service", "Must", ["US-F1 Separate system with own data"], ["Separate ASP.NET Core service + own database", "Stations, menus, hotline API", "Event log page", "Daily calling list per station"]),
+      F("F-2", "Events to the provider", "Must", ["US-F2 Signed, retried, no duplicates"], ["Transactional outbox", "HMAC signing", "Retries with back-off", "Contract tests"]),
+      F("F-3", "Menus and hotline in SmartRail", "Must", ["US-F3 Fetch and cache"], ["5-minute fetch and cache", "“Menu unavailable” fallback"]),
+      F("P-8", "Catering in the passenger app", "Must", ["US-P8 Food at station, call to order"], ["“Food available at” label", "Menu preview", "Call to order with opening hours", "Call summary, “Coming soon” banner"]),
+      F("F-4", "Provider health", "Must", ["US-F4 Connected / unreachable"], ["Health indicator on dashboard", "Alert for undelivered events"])
+    ]},
+    { id: "EP-5", t: "Network monitoring", goal: "The controller sees problems first and trusts the data on screen.", who: "Ruwan", sm: "SM-3", build: "12 Oct", f: [
+      F("O-2", "Problems-first dashboard", "Must", ["US-O2 Alerts, disrupted trains, line view"], ["Alerts panel", "Disrupted trains list", "Network line view", "Filters by section, station"]),
+      F("O-3", "Source & freshness", "Must", ["US-O3 Source and age of every value"], ["Source / age badges", "Stale highlighting", "Override contradicted by GPS warning"]),
+      F("O-6", "Crew incident reports", "Must", ["US-O6 Report → incident or dismiss"], ["Report alert", "Create / dismiss incident", "Link report to incident"]),
+      F("O-8", "Unscheduled stop alert", "Must", ["US-O8 Stopped ≥ 3 min between stations"], ["Stationary detector (background job)", "Alert lifecycle"])
+    ]},
+    { id: "EP-6", t: "Disruption management", goal: "One decision by the controller reaches everyone safely and at once.", who: "Ruwan, Chamari", sm: "SM-3, SM-4", build: "12 Oct", f: [
+      F("O-4", "Controller actions", "Must", ["US-O4 Delay, hold, cancel, terminate, skip / add stop"], ["Actions API", "Confirmation dialog with impact", "Event publishing", "Audit entry + concurrency check"]),
+      F("O-5", "Platform change with lead time", "Must", ["US-O5 Lead-time levels, hold, conflict warning"], ["Lead-time calculation", "Platform conflict check", "Hold + crew instruction", "“Train will wait” template"]),
+      F("O-7", "Messages to crew", "Must", ["US-O7 Sent, delivered, acknowledged"], ["Message API", "Delivery / acknowledgement tracking", "Unacknowledged highlight"]),
+      F("O-9", "Station announcements", "Must", ["US-O9 Compose, priority, templates"], ["Announcement editor (own station)", "Priority rules", "Automatic templates with assistance line"]),
+      F("B-6", "Disruption propagation", "Must", ["US-B6 Every channel per matrix"], ["Propagation rules per event type", "Message templates"])
+    ]},
+    { id: "EP-7", t: "Crew journey", goal: "The crew report from the train without distraction, even without signal.", who: "Sunil, guard", sm: "SM-2", build: "14 Oct", f: [
+      F("C-1", "Phone mode", "Must", ["US-C1 Today's journeys on own phone"], ["Roster screen", "Offline cache", "Guard actions access"]),
+      F("C-2", "Cab mode", "Must", ["US-C2 Start / end on the cab tablet"], ["Registered device check", "Crew session (one active)", "GPS every 10 s, batched", "Start / end journey"]),
+      F("C-3", "Glance view", "Must", ["US-C3 Driving-safe view"], ["Dark landscape layout", "Inputs locked while moving (driver)", "64 px targets"]),
+      F("C-4", "Arrived / Departed", "Must", ["US-C4 Fallback taps"], ["Large buttons", "Source priority over GPS"]),
+      F("C-5", "Incident report", "Must", ["US-C5 Fixed types, auto location"], ["Type picker", "Auto location and time", "Guard note"]),
+      F("C-6", "Messages & instructions", "Must", ["US-C6 Acknowledge when stopped"], ["Instruction inbox", "Sound / vibration", "Acknowledge rules"]),
+      F("C-7", "Offline queue", "Must", ["US-C7 Works in tunnels"], ["SQLite queue", "Ordered replay with idempotency keys", "“Offline · 3 waiting” indicator"]),
+      F("S-10/11", "PIN sign-in & train set check", "Should", ["US-C2 AC1, AC7"], ["Staff ID + PIN", "Train set mismatch warning"])
+    ]},
+    { id: "EP-8", t: "Station displays", goal: "Everyone in the station sees the same trustworthy information, even offline.", who: "Fathima, Chamari", sm: "SM-3", build: "15 Oct", f: [
+      F("D-1", "Main board", "Must", ["US-D1 Next 10 departures"], ["Board layout", "Departed / cancelled removal rules"]),
+      F("D-2", "Platform display", "Must", ["US-D2 Next train and remaining stops"], ["Platform layout", "“Does not stop here”", "Redirect after platform change"]),
+      F("D-3", "Large information screen", "Must", ["US-D3 Arrivals and announcements"], ["Arrivals list", "Announcement area with priority"]),
+      F("D-4", "Offline behaviour", "Must", ["US-D4 Banner and schedule fallback"], ["PWA cache of day timetable", "Clock-based removal", "Snapshot on reconnect", "Read-only device credential"]),
+      F("S-1", "Text-to-speech", "Should", ["US-O9 / S-1"], ["Web Speech API", "One speaking screen per area"])
+    ]},
+    { id: "EP-9", t: "Live data platform", goal: "Positions become delays, ETAs and events within seconds.", who: "All", sm: "SM-1, SM-2, SM-3", build: "10–11 Oct", f: [
+      F("B-2", "Daily journeys", "Must", ["US-B2 Generate 3 days ahead"], ["Generator job", "Calendar and Poya exception"]),
+      F("B-3", "Position intake & simulator", "Must", ["US-B3 Cab devices only"], ["Positions API (batched)", "Plausibility checks", "Clock correction", "Simulator scenarios"]),
+      F("B-4", "Detection, delay & ETA", "Must", ["US-B4 Zones, delay, ETA, staleness"], ["Station zone detection", "Delay / ETA calculation", "Stale / lost timers", "Tests with FakeTimeProvider"]),
+      F("B-5", "Event stream", "Must", ["US-B5 Pushed in < 5 s"], ["SSE endpoint with filters", "Sequence numbers + Last-Event-ID resume", "Snapshot API"])
+    ]},
+    { id: "EP-10", t: "Network data", goal: "A realistic network to run and demo on.", who: "All", sm: "–", build: "10 Oct", f: [
+      F("B-1", "Seed network", "Must", ["US-B1 Main Line, services, crew, devices"], ["Verify real station data", "Main Line (both directions), platforms, distances, coordinates", "Services, train types, train sets, traction", "Calendar + Poya, interchanges", "Staff, crew assignments, cab devices"])
+    ]},
+    { id: "EP-11", t: "Security and access", goal: "Everyone can do exactly what their role allows, and every action is traceable.", who: "All", sm: "–", build: "Every day", f: [
+      F("O-1", "Roles and scope", "Must", ["US-O1 Role + scope on every request"], ["Policy authorisation", "Scope resolvers (station, assigned journey)", "Out-of-scope logging"]),
+      F("B-7", "Authentication", "Must", ["US-B7 Separate credential types"], ["Passenger, staff, device, provider credentials", "Permission matrix tests"]),
+      F("O-10", "Audit log", "Must", ["US-O10 Append-only record"], ["Append-only table", "Insert-only database rights", "Log viewer (controller)"]),
+      F("Q-2", "Threat model & controls", "Must", ["Q-2"], ["STRIDE threat model", "Rate limits, input validation", "Plain-text announcements", "Secret and dependency scanning"]),
+      F("S-8", "Staff two-factor", "Should", ["S-8"], ["Second factor for ops web"])
+    ]},
+    { id: "EP-12", t: "Quality and operability", goal: "The system is tested, observable and accessible.", who: "All", sm: "All", build: "16–18 Oct", f: [
+      F("Q-1", "5 E2E flows", "Must", ["Q-1"], ["Playwright scenarios", "Seeded test data", "Run before code freeze"]),
+      F("Q-3", "Logs and health", "Must", ["Q-3"], ["Structured logs, request IDs", "Health checks", "OpenTelemetry"]),
+      F("Q-4", "Accessibility", "Must", ["Q-4"], ["axe checks", "Status not by colour alone", "WCAG 2.2 AA contrast"])
+    ]}
+  ];
+
+  var picker = document.getElementById("picker"), tree = document.getElementById("tree");
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  E.forEach(function (e) {
+    var b = document.createElement("button");
+    b.className = "pick"; b.setAttribute("role", "tab"); b.id = "pick-" + e.id;
+    b.innerHTML = "<span>" + e.id + " · " + e.f.length + " features</span><b>" + esc(e.t) + "</b>";
+    b.addEventListener("click", function () { show(e.id, true); });
+    picker.appendChild(b);
+  });
+
+  function cols() { return window.innerWidth <= 560 ? 1 : (window.innerWidth <= 860 ? 2 : 4); }
+
+  function show(id, push) {
+    var e = E.filter(function (x) { return x.id === id; })[0] || E[0];
+    Array.prototype.forEach.call(picker.children, function (b) { b.setAttribute("aria-selected", b.id === "pick-" + e.id ? "true" : "false"); });
+    var n = cols(), rows = [];
+    for (var i = 0; i < e.f.length; i += n) rows.push(e.f.slice(i, i + n));
+    var html = '<div class="epic"><div class="eyebrow">' + e.id + '</div><h2>' + esc(e.t) + '</h2>' +
+      '<p class="goal"><b>Goal:</b> ' + esc(e.goal) + '</p>' +
+      '<div class="meta"><span>Personas: ' + esc(e.who) + '</span><span>Supports: ' + esc(e.sm) + '</span><span>Build: ' + esc(e.build) + '</span></div></div>' +
+      '<div class="stem"></div><div class="rows">';
+    rows.forEach(function (r, ri) {
+      var k = r.length, first = (100 / n) / 2, last = (100 / n) * (k - 0.5);
+      var left = Math.min(first, 50), right = Math.max(last, 50);
+      html += '<div class="row">';
+      if (n > 1) {
+        html += '<div class="rail" style="left:' + left + '%;width:' + (right - left) + '%"></div>';
+        if (ri < rows.length - 1) html += '<div class="spine" style="height:calc(100% + 16px)"></div>';
+      }
+      r.forEach(function (f, fi) {
+        var colour = "var(--c" + (((ri * n + fi) % 6) + 1) + ")";
+        html += '<article class="feat" style="--fc:' + colour + '"><div class="fhead"><span class="fid">' + esc(f.id) + '</span><h3>' + esc(f.t) + '</h3>' +
+          '<span class="pill ' + (f.pri === "Must" ? "must" : "should") + '">' + f.pri + '</span></div>' +
+          '<ul class="items"><li class="lbl">Stories</li>' + f.stories.map(function (s) { return '<li class="st">' + esc(s) + '</li>'; }).join("") +
+          '<li class="lbl">Tasks</li>' + f.tasks.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul></article>';
+      });
+      html += '</div>';
+    });
+    tree.innerHTML = html + '</div>';
+    if (push) { try { history.replaceState(null, "", "#" + e.id.toLowerCase()); } catch (x) {} }
+    current = e.id;
+  }
+  var current = null;
+  var h = (location.hash || "").replace("#", "").toUpperCase();
+  show(/^EP-\d+$/.test(h) ? h : "EP-6", false);
+  var lastCols = cols();
+  window.addEventListener("resize", function () { var c = cols(); if (c !== lastCols) { lastCols = c; show(current, false); } });
+
+  /* ---------- Apps × epics matrix and event catalogue ---------- */
+  var APPS = [
+    { k: "pas", t: "Passenger app" }, { k: "ops", t: "Ops web" }, { k: "crew", t: "Crew app" },
+    { k: "disp", t: "Station displays" }, { k: "be", t: "Backend" }, { k: "prov", t: "Catering provider" }, { k: "all", t: "All apps" }
+  ];
+  var KIND = {
+    "EP-1": ["goal", "1"], "EP-2": ["goal", "1"], "EP-3": ["goal", "3"], "EP-4": ["goal", "5"], "EP-5": ["goal", "2"], "EP-6": ["goal", "3, 4"],
+    "EP-7": ["app", "2, 4"], "EP-8": ["app", "2, 3, 4"], "EP-9": ["enb", "1, 2"], "EP-10": ["enb", "all"], "EP-11": ["enb", "–"], "EP-12": ["enb", "all"]
+  };
+  var KLABEL = { goal: "Goal", app: "App-shaped", enb: "Enabler" };
+  function S(id, ep, app, t, should) { return { id: id, ep: ep, app: app, t: t, should: !!should }; }
+  var ST = [
+    S("US-P1", "EP-1", "pas", "Search"), S("US-P2", "EP-1", "pas", "Train details"), S("P-9", "EP-1", "pas", "Ticket prices", 1), S("S-9", "EP-1", "pas", "Train front", 1),
+    S("US-P3", "EP-2", "pas", "Live tracking"), S("US-P4", "EP-2", "pas", "Disruptions"),
+    S("US-P5", "EP-3", "pas", "Account"), S("US-P6", "EP-3", "pas", "Saved trip"), S("US-P7", "EP-3", "pas", "Push alerts"),
+    S("US-P8", "EP-4", "pas", "Food & hotline"), S("US-F4", "EP-4", "ops", "Provider health"), S("US-F2", "EP-4", "be", "Events to provider"), S("US-F3", "EP-4", "be", "Menu cache"), S("US-F1", "EP-4", "prov", "Provider service"),
+    S("US-O2", "EP-5", "ops", "Dashboard"), S("US-O3", "EP-5", "ops", "Source & freshness"), S("US-O6", "EP-5", "ops", "Crew reports"), S("US-O8", "EP-5", "ops", "Unscheduled stop"),
+    S("US-O4", "EP-6", "ops", "Controller actions"), S("US-O5", "EP-6", "ops", "Platform change"), S("US-O7", "EP-6", "ops", "Crew messages"), S("US-O9", "EP-6", "ops", "Announcements"), S("US-B6", "EP-6", "be", "Propagation"),
+    S("US-C1", "EP-7", "crew", "Phone mode"), S("US-C2", "EP-7", "crew", "Cab mode"), S("US-C3", "EP-7", "crew", "Glance view"), S("US-C4", "EP-7", "crew", "Arrived / Departed"),
+    S("US-C5", "EP-7", "crew", "Incident report"), S("US-C6", "EP-7", "crew", "Instructions"), S("US-C7", "EP-7", "crew", "Offline queue"), S("S-10/11", "EP-7", "crew", "PIN & set check", 1),
+    S("US-D1", "EP-8", "disp", "Main board"), S("US-D2", "EP-8", "disp", "Platform display"), S("US-D3", "EP-8", "disp", "Info screen"), S("US-D4", "EP-8", "disp", "Offline"), S("S-1", "EP-8", "disp", "Text-to-speech", 1),
+    S("US-B2", "EP-9", "be", "Daily journeys"), S("US-B3", "EP-9", "be", "Positions + simulator"), S("US-B4", "EP-9", "be", "Detection & ETA"), S("US-B5", "EP-9", "be", "Event stream"),
+    S("US-B1", "EP-10", "be", "Seed network"),
+    S("US-O1", "EP-11", "ops", "Roles & scope"), S("S-8", "EP-11", "ops", "Staff 2FA", 1), S("US-B7", "EP-11", "be", "Authentication"), S("US-O10", "EP-11", "be", "Audit log"), S("Q-2", "EP-11", "all", "Threat model"),
+    S("Q-1", "EP-12", "all", "5 E2E flows"), S("Q-3", "EP-12", "all", "Logs & health"), S("Q-4", "EP-12", "all", "Accessibility")
+  ];
+  function V(n, what, p, c, integ) { return { n: n, what: what, p: p, c: c, integ: !!integ }; }
+  var EV = [
+    V("JourneyStarted", "The driver started the journey on the cab tablet; GPS is now accepted for it.", ["US-C2"], ["US-B3", "US-P3", "US-O2"]),
+    V("TrainPositionUpdated", "A new, plausible position for a running journey (cab tablet or simulator).", ["US-B3"], ["US-B4", "US-P2", "US-P3", "US-O2"]),
+    V("StopStatusChanged", "A train arrived at, passed or departed a stop (from GPS zones or a crew tap).", ["US-B4", "US-C4"], ["US-P2", "US-P3", "US-O2", "US-C3", "US-D1", "US-D2", "US-D3", "US-F2"]),
+    V("DelayChanged", "The journey's delay and ETAs changed (calculated, or set by the controller).", ["US-B4", "US-O4"], ["US-P1", "US-P4", "US-P6", "US-P7", "US-O2", "US-C3", "US-D1", "US-D2", "US-D3", "US-F2"]),
+    V("DataFreshnessChanged", "Live data for a journey became stale (2 min) or lost (10 min), or recovered.", ["US-B4"], ["US-P4", "US-O3"]),
+    V("JourneyHeld", "The controller is holding the train (e.g. so passengers can reach a new platform).", ["US-O4", "US-O5"], ["US-P4", "US-O2", "US-C6", "US-D3"]),
+    V("PlatformChanged", "The departure platform at a station changed, with the lead-time level.", ["US-O5"], ["US-P1", "US-P4", "US-P7", "US-D1", "US-D2", "US-D3", "US-C6"]),
+    V("JourneyCancelled", "The journey will not run, with a reason.", ["US-O4"], ["US-P4", "US-P6", "US-P7", "US-O2", "US-C1", "US-C6", "US-D1", "US-D2", "US-D3", "US-F2"]),
+    V("JourneyTerminatedEarly", "The journey ends at an earlier station than planned.", ["US-O4"], ["US-P4", "US-P7", "US-C6", "US-D1", "US-D2", "US-D3", "US-F2"]),
+    V("StopSkipped", "The train will not stop at a station it was due to call at.", ["US-O4"], ["US-P2", "US-P4", "US-P7", "US-C3", "US-D2", "US-F2"]),
+    V("StopAdded", "The train will call at an extra station.", ["US-O4"], ["US-P2", "US-P7", "US-C3", "US-D1", "US-D2", "US-F2"]),
+    V("CrewMessageSent", "A message or instruction (e.g. “hold at Platform 3”) was sent to a journey's crew.", ["US-O7", "US-O5"], ["US-C6"]),
+    V("CrewMessageAcknowledged", "The crew acknowledged a message.", ["US-C6"], ["US-O7"]),
+    V("IncidentReported", "The driver or guard reported a problem from a fixed list.", ["US-C5"], ["US-O6"]),
+    V("IncidentCreated", "The controller turned a report (or own observation) into an incident with a cause.", ["US-O6"], ["US-O2", "US-P4"]),
+    V("UnscheduledStopDetected", "A train has been stationary for 3 min between stations.", ["US-B4"], ["US-O8"]),
+    V("AnnouncementPosted", "A station announcement was posted (by the station manager or automatically).", ["US-O9", "US-B6"], ["US-D3"]),
+    V("JourneyEnded", "The driver ended the journey; GPS stops being accepted.", ["US-C2"], ["US-B3", "US-P3", "US-O2"]),
+    V("ProviderHealthChanged", "The catering provider became reachable or unreachable, or events are piling up.", ["US-F2", "US-F3"], ["US-F4"]),
+    V("provider.eta-updated", "Signed webhook: new ETA at a catering station.", ["US-F2"], ["US-F1"], 1),
+    V("provider.journey-changed", "Signed webhook: journey cancelled, terminated early, or stop skipped / added at a catering station.", ["US-F2"], ["US-F1"], 1)
+  ];
+  var byId = {}; ST.forEach(function (s) { byId[s.id] = s; });
+  var mx = document.getElementById("mx"), evlist = document.getElementById("evlist"), detail = document.getElementById("detail");
+  var selEv = null, selSt = null;
+
+  function buildMatrix() {
+    var h = '<thead><tr><th scope="col">Epic</th>' + APPS.map(function (a) { return '<th scope="col">' + a.t + '</th>'; }).join("") + '</tr></thead><tbody>';
+    E.forEach(function (e) {
+      var k = KIND[e.id];
+      h += '<tr><th scope="row"><span class="eid">' + e.id + '</span><span class="et">' + esc(e.t) + '</span><span class="ek ' + k[0] + '">' + KLABEL[k[0]] + '</span><span class="e2e">E2E flow: ' + k[1] + '</span></th>';
+      APPS.forEach(function (a) {
+        var ss = ST.filter(function (s) { return s.ep === e.id && s.app === a.k; });
+        if (!ss.length) { h += '<td class="empty"></td>'; return; }
+        h += '<td><div class="chips">' + ss.map(function (s) {
+          return '<button class="chip' + (s.should ? " should" : "") + '" data-st="' + s.id + '"><b>' + s.id + '</b><span>' + esc(s.t) + '</span></button>';
+        }).join("") + '</div></td>';
+      });
+      h += '</tr>';
+    });
+    mx.innerHTML = h + '</tbody>';
+    mx.addEventListener("click", function (ev) { var b = ev.target.closest(".chip"); if (b) pickStory(b.getAttribute("data-st")); });
+  }
+  function buildEvents() {
+    EV.forEach(function (v, i) {
+      var b = document.createElement("button");
+      b.className = "evb" + (v.integ ? " int" : ""); b.textContent = v.n; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () { pickEvent(i); });
+      evlist.appendChild(b);
+    });
+  }
+  function storyRef(id) { var s = byId[id]; return '<span>' + id + ' <i>' + esc(s.t) + ' · ' + APPS.filter(function (a) { return a.k === s.app; })[0].t + ' · ' + s.ep + '</i></span>'; }
+  function mark(prod, cons, sel) {
+    mx.classList.toggle("filtering", !!(prod.length || cons.length || sel));
+    Array.prototype.forEach.call(mx.querySelectorAll(".chip"), function (c) {
+      var id = c.getAttribute("data-st");
+      c.classList.toggle("prod", prod.indexOf(id) > -1);
+      c.classList.toggle("cons", cons.indexOf(id) > -1 && prod.indexOf(id) < 0);
+      c.classList.toggle("sel", id === sel);
+    });
+    Array.prototype.forEach.call(evlist.children, function (b, i) { b.setAttribute("aria-pressed", i === selEv ? "true" : "false"); });
+  }
+  function pickEvent(i) {
+    selEv = i; selSt = null; var v = EV[i];
+    var apps = {}; v.p.concat(v.c).forEach(function (id) { apps[byId[id].app] = 1; });
+    detail.innerHTML = '<h3>' + esc(v.n) + '</h3><p class="what">' + esc(v.what) + '</p><dl class="flow"><dt class="p">Produced by</dt><dd>' + v.p.map(storyRef).join("") +
+      '</dd><dt class="c">Consumed by</dt><dd>' + v.c.map(storyRef).join("") + '</dd></dl><p class="note">Touches ' + Object.keys(apps).length + ' of 6 apps' + (v.integ ? ' · crosses the system boundary to the provider' : '') + '.</p>';
+    mark(v.p, v.c, null);
+  }
+  function pickStory(id) {
+    selSt = id; selEv = null; var s = byId[id];
+    var prod = EV.filter(function (v) { return v.p.indexOf(id) > -1; }), cons = EV.filter(function (v) { return v.c.indexOf(id) > -1; });
+    var others = {}; prod.forEach(function (v) { v.c.forEach(function (x) { others[x] = "c"; }); }); cons.forEach(function (v) { v.p.forEach(function (x) { if (!others[x]) others[x] = "p"; }); });
+    var oc = Object.keys(others).filter(function (x) { return others[x] === "c" && x !== id; }), op = Object.keys(others).filter(function (x) { return others[x] === "p" && x !== id; });
+    function list(a) { return a.length ? a.map(function (v) { return '<span>' + esc(v.n) + '</span>'; }).join("") : '<span><i>none</i></span>'; }
+    detail.innerHTML = '<h3>' + id + ' · ' + esc(s.t) + '</h3><p class="what">' + APPS.filter(function (a) { return a.k === s.app; })[0].t + ' · ' + s.ep + (s.should ? ' · Should' : '') + '</p>' +
+      '<dl class="flow"><dt class="p">Produces</dt><dd>' + list(prod) + '</dd><dt class="c">Consumes</dt><dd>' + list(cons) + '</dd></dl>' +
+      '<p class="note">Highlighted: stories that react to what this one produces (outlined) and stories it depends on (filled).' + (!prod.length && !cons.length ? ' This story has no event links; it works through APIs or applies to every app.' : '') + '</p>';
+    mark(op, oc, id);
+  }
+
+  var vt = document.getElementById("v-tree"), vm = document.getElementById("v-mx"), pt = document.getElementById("view-tree"), pm = document.getElementById("view-mx"), built = false;
+  function view(m) {
+    vt.setAttribute("aria-selected", m ? "false" : "true"); vm.setAttribute("aria-selected", m ? "true" : "false");
+    pt.hidden = !!m; pm.hidden = !m;
+    if (m && !built) { buildMatrix(); buildEvents(); pickEvent(6); built = true; }
+    try { history.replaceState(null, "", m ? "#matrix" : "#" + current.toLowerCase()); } catch (x) {}
+  }
+  vt.addEventListener("click", function () { view(false); });
+  vm.addEventListener("click", function () { view(true); });
+  if (h === "MATRIX") view(true);
+})();
+</script>

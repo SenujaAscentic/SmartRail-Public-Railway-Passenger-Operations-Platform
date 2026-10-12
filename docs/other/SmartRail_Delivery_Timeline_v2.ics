@@ -1,0 +1,268 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//SmartRail//Delivery Timeline//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:SmartRail Delivery (to 20 Oct)
+BEGIN:VEVENT
+UID:day6-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261006
+DTEND;VALUE=DATE:20261007
+SUMMARY:SmartRail · Define: Success measures\, MoSCoW\, MVP and deferred
+  list\; Primary personas and to-be journeys
+DESCRIPTION:Today:\n- Success measures\, MoSCoW\, MVP and deferred list\n
+ - Primary personas and to-be journeys (day 1 of 2)\n- Log today's AI usa
+ ge: tool\, prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day7-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261007
+DTEND;VALUE=DATE:20261008
+SUMMARY:SmartRail · Define: Primary personas and to-be journeys\; User s
+ tories + acceptance criteria (Musts)\; Edge cases\, refined requirements
+DESCRIPTION:Today:\n- Primary personas and to-be journeys (day 2 of 2)\n-
+  User stories + acceptance criteria (Musts)\n- Edge cases\, refined requ
+ irements\n- Log today's AI usage: tool\, prompt\, accepted\, rejected an
+ d why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day8-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261008
+DTEND;VALUE=DATE:20261009
+SUMMARY:SmartRail · Develop: Architecture\, domain model\, tech stack\, 
+ ADRs\; Threat model and QA strategy\; Lo-fi wireframes and design tokens
+DESCRIPTION:Today:\n- Architecture\, domain model\, tech stack\, ADRs\n- 
+ Threat model and QA strategy (day 1 of 2)\n- Lo-fi wireframes and design
+  tokens (day 1 of 2)\n- Log today's AI usage: tool\, prompt\, accepted\,
+  rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day9-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261009
+DTEND;VALUE=DATE:20261010
+SUMMARY:SmartRail · Develop: Threat model and QA strategy\; Lo-fi wirefr
+ ames and design tokens
+DESCRIPTION:Today:\n- Threat model and QA strategy (day 2 of 2)\n- Lo-fi 
+ wireframes and design tokens (day 2 of 2)\n- Log today's AI usage: tool\
+ , prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day10-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261010
+DTEND;VALUE=DATE:20261011
+SUMMARY:SmartRail · Deliver: Backend core\, seed data\, GPS simulator\, 
+ events\, sign-in
+DESCRIPTION:Today:\n- Backend core\, seed data\, GPS simulator\, events\,
+  sign-in (day 1 of 2)\n- Write unit/API tests and security controls for 
+ today's feature\n- Log today's AI usage: tool\, prompt\, accepted\, reje
+ cted and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day11-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261011
+DTEND;VALUE=DATE:20261012
+SUMMARY:SmartRail · Deliver: Backend core\, seed data\, GPS simulator\, 
+ events\, sign-in
+DESCRIPTION:Today:\n- Backend core\, seed data\, GPS simulator\, events\,
+  sign-in (day 2 of 2)\n- Write unit/API tests and security controls for 
+ today's feature\n- Log today's AI usage: tool\, prompt\, accepted\, reje
+ cted and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day12-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261012
+DTEND;VALUE=DATE:20261013
+SUMMARY:SmartRail · Deliver: Operations web app
+DESCRIPTION:Today:\n- Operations web app\n- Write unit/API tests and secu
+ rity controls for today's feature\n- Log today's AI usage: tool\, prompt
+ \, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day13-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261013
+DTEND;VALUE=DATE:20261014
+SUMMARY:SmartRail · Deliver: Passenger app (native)
+DESCRIPTION:Today:\n- Passenger app (native)\n- Write unit/API tests and 
+ security controls for today's feature\n- Log today's AI usage: tool\, pr
+ ompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day14-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261014
+DTEND;VALUE=DATE:20261015
+SUMMARY:SmartRail · Deliver: Crew app (native)
+DESCRIPTION:Today:\n- Crew app (native)\n- Write unit/API tests and secur
+ ity controls for today's feature\n- Log today's AI usage: tool\, prompt\
+ , accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day15-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261015
+DTEND;VALUE=DATE:20261016
+SUMMARY:SmartRail · Deliver: Station displays + catering integration (li
+ ght)
+DESCRIPTION:Today:\n- Station displays + catering integration (light)\n- 
+ Write unit/API tests and security controls for today's feature\n- Log to
+ day's AI usage: tool\, prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day16-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261016
+DTEND;VALUE=DATE:20261017
+SUMMARY:SmartRail · Deliver: Hardening: security\, logs\, offline
+DESCRIPTION:Today:\n- Hardening: security\, logs\, offline\n- Write unit/
+ API tests and security controls for today's feature\n- Log today's AI us
+ age: tool\, prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day17-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261017
+DTEND;VALUE=DATE:20261018
+SUMMARY:SmartRail · QA & wrap-up: 5 automated E2E flows + security tests
+DESCRIPTION:Today:\n- 5 automated E2E flows + security tests (day 1 of 2)
+ \n- Log today's AI usage: tool\, prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day18-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261018
+DTEND;VALUE=DATE:20261019
+SUMMARY:SmartRail · QA & wrap-up: 5 automated E2E flows + security tests
+ \; Defect log and quality assessment
+DESCRIPTION:Today:\n- 5 automated E2E flows + security tests (day 2 of 2)
+ \n- Defect log and quality assessment\n- Log today's AI usage: tool\, pr
+ ompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day19-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261019
+DTEND;VALUE=DATE:20261020
+SUMMARY:SmartRail · QA & wrap-up: AI usage report\, final docs\, demo re
+ hearsal
+DESCRIPTION:Today:\n- AI usage report\, final docs\, demo rehearsal\n- Lo
+ g today's AI usage: tool\, prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:day20-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:SmartRail · QA & wrap-up: Present and submit
+DESCRIPTION:Today:\n- Present and submit\n- Log today's AI usage: tool\, 
+ prompt\, accepted\, rejected and why
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:ms7-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261007
+DTEND;VALUE=DATE:20261008
+SUMMARY:SmartRail milestone: Scope frozen
+DESCRIPTION:Gate: MoSCoW\, Must stories with acceptance criteria\, edge c
+ ases
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Scope frozen
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ms9-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261009
+DTEND;VALUE=DATE:20261010
+SUMMARY:SmartRail milestone: Design & architecture ready
+DESCRIPTION:Gate: Architecture\, ADRs\, threat model\, wireframes\, QA st
+ rategy
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Design & architecture ready
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ms11-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261011
+DTEND;VALUE=DATE:20261012
+SUMMARY:SmartRail milestone: Walking skeleton
+DESCRIPTION:Gate: Live train data flows from backend to one client
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Walking skeleton
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ms16-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261016
+DTEND;VALUE=DATE:20261017
+SUMMARY:SmartRail milestone: Feature freeze
+DESCRIPTION:Gate: All Must stories built\; no new features
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Feature freeze
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ms18-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261018
+DTEND;VALUE=DATE:20261019
+SUMMARY:SmartRail milestone: Code freeze
+DESCRIPTION:Gate: E2E tests green\; defects logged
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Code freeze
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ms20-v2@smartrail-plan
+DTSTAMP:20261006T054649Z
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:SmartRail milestone: Demo & submit
+DESCRIPTION:Gate: Story-led stakeholder presentation
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:SmartRail milestone: Demo & submit
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,315 @@
+<title>SmartRail Delivery Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a timetable page. Route strip of milestone "stations" on top, a 20-day Gantt below, then phase detail cards. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --fg: #17212b;
+  --muted: #5b6875;
+  --line: #d8dee4;
+  --weekend: #e9edf1;
+  --accent: #d9480f;
+  --discover: #1c7ed6;
+  --define: #6741d9;
+  --develop: #e67700;
+  --deliver: #2b8a3e;
+  --wrap: #c2255c;
+  --cont: #868e96;
+  --display: "Overpass", "Segoe UI", system-ui, sans-serif;
+  --body: "Overpass", "Segoe UI", system-ui, sans-serif;
+  --mono: "Overpass Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #2c3743; --weekend: #1e2731;
+    --accent: #ff7a3d; --discover: #4dabf7; --define: #9775fa; --develop: #ffa94d; --deliver: #51cf66; --wrap: #f06595; --cont: #74808c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #98a4b0; --line: #2c3743; --weekend: #1e2731;
+  --accent: #ff7a3d; --discover: #4dabf7; --define: #9775fa; --develop: #ffa94d; --deliver: #51cf66; --wrap: #f06595; --cont: #74808c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
+h2 { font-size: 22px; font-weight: 800; }
+h3 { font-size: 17px; font-weight: 800; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+header { display: grid; gap: 12px; }
+.lede { color: var(--muted); max-width: 70ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 6px; }
+.facts div { display: grid; }
+.facts b { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.facts span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--surface); font-size: 14px; color: var(--muted); max-width: 80ch; }
+.note b { color: var(--fg); }
+section { display: grid; gap: 16px; }
+.sec-head { display: grid; gap: 4px; }
+
+/* Route strip */
+.route { overflow-x: auto; padding-bottom: 6px; }
+.stops { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); min-width: 920px; position: relative; }
+.stops::before { content: ""; position: absolute; left: 7%; right: 7%; top: 11px; height: 4px; background: var(--fg); border-radius: 2px; }
+.stop { position: relative; display: grid; justify-items: center; text-align: center; gap: 6px; padding-inline: 6px; }
+.dot { width: 26px; height: 26px; border-radius: 50%; background: var(--surface); border: 4px solid var(--fg); position: relative; z-index: 1; }
+.stop.terminus .dot { background: var(--accent); border-color: var(--accent); }
+.stop .date { font-family: var(--mono); font-weight: 600; font-size: 13px; }
+.stop .name { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.stop .gate { font-size: 12px; color: var(--muted); line-height: 1.35; }
+
+/* Gantt */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.gantt-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.gantt { display: grid; grid-template-columns: 260px repeat(20, minmax(30px, 1fr)); min-width: 900px; font-size: 13px; }
+.gantt > div { border-bottom: 1px solid var(--line); min-height: 30px; }
+.g-label { position: sticky; left: 0; background: var(--surface); z-index: 2; padding: 5px 10px; border-right: 1px solid var(--line); display: flex; align-items: center; line-height: 1.25; }
+.g-group { font-weight: 800; font-family: var(--display); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 12px; }
+.g-day { position: relative; }
+.g-day.we { background: var(--weekend); }
+.g-head { font-family: var(--mono); font-size: 11px; text-align: center; color: var(--muted); padding-top: 4px; line-height: 1.2; }
+.g-head b { display: block; color: var(--fg); font-size: 12px; }
+.bar { position: absolute; top: 7px; bottom: 7px; left: 2px; right: 2px; border-radius: 4px; }
+.bar.cont { top: 12px; bottom: 12px; opacity: 0.55; }
+.ms { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; background: var(--fg); transform: translate(-50%, -50%) rotate(45deg); }
+.ms.final { background: var(--accent); }
+.today-col { box-shadow: inset 2px 0 0 var(--accent); }
+.today-tag { color: var(--accent) !important; font-weight: 600; }
+
+/* Phase cards */
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.phase-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.chip { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; color: var(--surface); }
+.phase .goal { color: var(--muted); font-size: 14px; }
+.phase h4 { margin: 4px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
+.phase ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 14px; }
+.days { list-style: none; padding: 0 !important; display: grid; gap: 4px; }
+.days li { display: grid; grid-template-columns: 74px 1fr; gap: 8px; }
+.days .mono { color: var(--muted); font-size: 13px; }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.panel ol, .panel ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.panel p { font-size: 14px; color: var(--muted); }
+.keep { font-size: 14px; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">SmartRail · Individual assessment plan</div>
+    <h1>SmartRail Delivery Timeline</h1>
+    <p class="lede">From an incomplete brief on 1 October to a stakeholder demo on 20 October. Revised on 6 October after the deadline was corrected from 29 to 20 October. The plan follows the Double Diamond: discover and define the problem first, then develop and deliver the solution, with Lean UX loops during the build.</p>
+    <div class="facts">
+      <div><b>01 Oct</b><span>Start</span></div>
+      <div><b>20 Oct</b><span>Demo &amp; submit</span></div>
+      <div><b>20</b><span>Calendar days</span></div>
+      <div><b>7</b><span>Build days</span></div>
+      <div><b>7</b><span>Milestones</span></div>
+    </div>
+    <p class="note"><b>Assumption:</b> you work on this every day, weekends included (weekends are shaded in the chart). There is no spare day, so anything that slips is cut using the list at the bottom.</p>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Route</div>
+      <h2>Milestones</h2>
+      <p class="lede">Each milestone is a gate. Do not start the next phase until its gate condition is true.</p>
+    </div>
+    <div class="route">
+      <ol class="stops" id="stops"></ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Timetable</div>
+      <h2>Day-by-day plan</h2>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="gantt-scroll"><div class="gantt" id="gantt"></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Phases</div>
+      <h2>What each phase produces</h2>
+    </div>
+    <div class="phases" id="phases"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Running all month</div>
+      <h2>Continuous work and contingency</h2>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3>Every day, not at the end</h3>
+        <ul>
+          <li><b>AI usage log.</b> Record the tool, the prompt, what you accepted, what you rejected and why. Section 23 asks for this, and it cannot be rebuilt from memory on 19 October.</li>
+          <li><b>Security.</b> The threat model is done on 8–9 October. Each build day then adds its controls (auth, input validation, rate limits), as section 17 requires.</li>
+          <li><b>Tests alongside code.</b> Write unit and API tests on each build day. The QA days at the end are for the 5 end-to-end flows, defects and the quality assessment.</li>
+          <li><b>Decision records.</b> Write a short ADR whenever you choose a technology or reject an AI suggestion.</li>
+          <li><b>Commit daily</b> with clear messages. The git history is evidence of your process.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>If you fall behind, cut in this order</h3>
+        <ol>
+          <li>Could items are already out of the plan: station terminal, fares, one-change journeys, waiting-area display, shift handover note.</li>
+          <li>Should items first: guest mode, Emergency button, network incident banner.</li>
+          <li>Station manager notices and closure request.</li>
+          <li>Text-to-speech on the large screen (keep the visual announcements).</li>
+          <li>One incident applied to many journeys; staff two-factor login.</li>
+        </ol>
+        <p class="keep"><b>Never cut:</b> the discovery and requirements artifacts, the AI usage evidence, the threat model, the 5 automated E2E flows, the catering integration required by section 23, and the deferred-scope list.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var C = { discover: "var(--discover)", define: "var(--define)", develop: "var(--develop)", deliver: "var(--deliver)", wrap: "var(--wrap)", cont: "var(--cont)" };
+
+  var milestones = [
+    { d: 6,  name: "Discovery complete", gate: "Brief analysed, 22 simulations reviewed, findings written" },
+    { d: 7,  name: "Scope frozen", gate: "MoSCoW, Must stories with acceptance criteria, edge cases" },
+    { d: 9,  name: "Design & architecture ready", gate: "Architecture, ADRs, threat model, wireframes, QA strategy" },
+    { d: 11, name: "Walking skeleton", gate: "Live train data flows from backend to one client" },
+    { d: 16, name: "Feature freeze", gate: "All Must stories built; no new features" },
+    { d: 18, name: "Code freeze", gate: "E2E tests green; defects logged" },
+    { d: 20, name: "Demo & submit", gate: "Story-led stakeholder presentation", final: true }
+  ];
+
+  var rows = [
+    { group: "Discover (done)", k: "discover" },
+    { t: "Brief analysis, sections 2–20", s: 1, e: 5, k: "discover" },
+    { t: "Stakeholder simulations (LangGraph + Gemini)", s: 4, e: 6, k: "discover" },
+    { t: "Consolidation, conflicts, discovery findings", s: 5, e: 6, k: "discover" },
+    { ms: 6, t: "Discovery complete" },
+    { group: "Define", k: "define" },
+    { t: "Success measures, MoSCoW, MVP and deferred list", s: 6, e: 6, k: "define" },
+    { t: "Primary personas and to-be journeys", s: 6, e: 7, k: "define" },
+    { t: "User stories + acceptance criteria (Musts)", s: 7, e: 7, k: "define" },
+    { t: "Edge cases, refined requirements", s: 7, e: 7, k: "define" },
+    { ms: 7, t: "Scope frozen" },
+    { group: "Develop", k: "develop" },
+    { t: "Architecture, domain model, tech stack, ADRs", s: 8, e: 8, k: "develop" },
+    { t: "Threat model and QA strategy", s: 8, e: 9, k: "develop" },
+    { t: "Lo-fi wireframes and design tokens", s: 8, e: 9, k: "develop" },
+    { ms: 9, t: "Design & architecture ready" },
+    { group: "Deliver", k: "deliver" },
+    { t: "Backend core, seed data, GPS simulator, events, sign-in", s: 10, e: 11, k: "deliver" },
+    { ms: 11, t: "Walking skeleton" },
+    { t: "Operations web app", s: 12, e: 12, k: "deliver" },
+    { t: "Passenger app (native)", s: 13, e: 13, k: "deliver" },
+    { t: "Crew app (native)", s: 14, e: 14, k: "deliver" },
+    { t: "Station displays + catering integration (light)", s: 15, e: 15, k: "deliver" },
+    { t: "Hardening: security, logs, offline", s: 16, e: 16, k: "deliver" },
+    { ms: 16, t: "Feature freeze" },
+    { group: "QA & wrap-up", k: "wrap" },
+    { t: "5 automated E2E flows + security tests", s: 17, e: 18, k: "wrap" },
+    { t: "Defect log and quality assessment", s: 18, e: 18, k: "wrap" },
+    { ms: 18, t: "Code freeze" },
+    { t: "AI usage report, final docs, demo rehearsal", s: 19, e: 19, k: "wrap" },
+    { ms: 20, t: "Demo & submit", final: true },
+    { group: "Continuous", k: "cont" },
+    { t: "AI usage log (daily)", s: 1, e: 20, k: "cont", cont: true },
+    { t: "Unit & API tests with each feature", s: 10, e: 16, k: "cont", cont: true },
+    { t: "Security controls per feature", s: 10, e: 16, k: "cont", cont: true }
+  ];
+
+  var phases = [
+    { k: "discover", name: "Discover", range: "1–6 Oct (done)", goal: "Find out what the brief does not say.",
+      days: [["1–5 Oct", "Section-by-section brief analysis: stated, implied, missing; 111 assumptions"], ["4–6 Oct", "22 stakeholder simulations with LangGraph + Gemini agents, reviewed in 5 groups"], ["6 Oct", "Conflicts C-1 to C-12, discovery findings, as-is day-in-the-life"]],
+      out: ["Brief analysis and assumptions log", "Conflicts and discovery findings", "AI usage log with accept / reject evidence"] },
+    { k: "define", name: "Define", range: "6–7 Oct", goal: "Turn findings into a scoped, prioritised MVP.",
+      days: [["6 Oct", "Success measures, MoSCoW, MVP and deferred list"], ["6–7 Oct", "Primary personas, to-be journeys"], ["7 Oct", "User stories + acceptance criteria for Musts, edge cases"]],
+      out: ["All section 23 Requirements artifacts", "Frozen MVP scope", "Deferred list with reasons"] },
+    { k: "develop", name: "Develop", range: "8–9 Oct", goal: "Design the system before writing code.",
+      days: [["8 Oct", "Architecture, domain model, tech stack, ADRs"], ["8–9 Oct", "Threat model, QA strategy"], ["8–9 Oct", "Lo-fi wireframes, design tokens"]],
+      out: ["Architecture artifacts and ADRs", "Threat model and QA strategy", "Wireframes and design tokens"] },
+    { k: "deliver", name: "Deliver", range: "10–16 Oct", goal: "Build in priority order: passenger, operations, crew, displays.",
+      days: [["10–11 Oct", "Backend: seed network, plan/operation model, GPS simulator, events, sign-in, roles"], ["12 Oct", "Operations web: dashboard, controller actions, platform change with lead time and hold"], ["13 Oct", "Passenger app: search, details, tracking, disruptions, push"], ["14 Oct", "Crew app: journeys, GPS, Arrived / Departed, incidents, messages, offline queue"], ["15 Oct", "Station displays (main, platform, large screen) + catering integration (light)"], ["16 Oct", "Security controls, logs, health checks, offline behaviour"]],
+      out: ["Backend + 3 apps + station displays", "Catering integration (light)", "Logs and health checks"] },
+    { k: "wrap", name: "QA & wrap-up", range: "17–20 Oct", goal: "Prove quality and tell the story.",
+      days: [["17–18 Oct", "Automate the 5 critical E2E flows, run security tests"], ["18 Oct", "Defect log, quality assessment"], ["19 Oct", "AI usage report, final docs, demo rehearsal"], ["20 Oct", "Present and submit"]],
+      out: ["QA and Security evidence", "AI usage documentation", "Story-led demo (section 27)"] }
+  ];
+
+  var N = 20;
+  var dow = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  function day(d) { return new Date(2026, 9, d); }
+  function isWE(d) { var w = day(d).getDay(); return w === 0 || w === 6; }
+  var now = new Date();
+  var today = (now.getFullYear() === 2026 && now.getMonth() === 9) ? now.getDate() : null;
+
+  // Route stops
+  var stops = document.getElementById("stops");
+  milestones.forEach(function (m) {
+    var li = document.createElement("li");
+    li.className = "stop" + (m.final ? " terminus" : "");
+    li.innerHTML = '<span class="dot"></span><span class="date">' + dow[day(m.d).getDay()] + " " + m.d + ' Oct</span><span class="name">' + m.name + '</span><span class="gate">' + m.gate + "</span>";
+    stops.appendChild(li);
+  });
+
+  // Legend
+  var legend = document.getElementById("legend");
+  [["Discover", "discover"], ["Define", "define"], ["Develop", "develop"], ["Deliver", "deliver"], ["QA & wrap-up", "wrap"], ["Continuous", "cont"]].forEach(function (l) {
+    legend.insertAdjacentHTML("beforeend", '<span><i style="background:' + C[l[1]] + '"></i>' + l[0] + "</span>");
+  });
+  legend.insertAdjacentHTML("beforeend", '<span><i style="background:var(--fg);transform:rotate(45deg);width:10px;height:10px"></i>Milestone</span>');
+
+  // Gantt
+  var g = document.getElementById("gantt");
+  function cellClass(d) { return "g-day" + (isWE(d) ? " we" : "") + (d === today ? " today-col" : ""); }
+  var head = '<div class="g-label g-head" style="justify-content:flex-start;color:var(--muted)">October 2026</div>';
+  for (var d = 1; d <= N; d++) {
+    head += '<div class="' + cellClass(d) + ' g-head' + (d === today ? " today-tag" : "") + '"><b>' + d + "</b>" + dow[day(d).getDay()] + "</div>";
+  }
+  g.insertAdjacentHTML("beforeend", head);
+
+  rows.forEach(function (r) {
+    var html = "";
+    if (r.group) {
+      html += '<div class="g-label g-group" style="color:' + C[r.k] + '">' + r.group + "</div>";
+      for (var d = 1; d <= N; d++) html += '<div class="' + cellClass(d) + '"></div>';
+    } else if (r.ms) {
+      html += '<div class="g-label" style="font-weight:600">◆ ' + r.t + "</div>";
+      for (var d2 = 1; d2 <= N; d2++) html += '<div class="' + cellClass(d2) + '">' + (d2 === r.ms ? '<span class="ms' + (r.final ? " final" : "") + '" title="' + r.t + '"></span>' : "") + "</div>";
+    } else {
+      html += '<div class="g-label">' + r.t + "</div>";
+      for (var d3 = 1; d3 <= N; d3++) {
+        var on = d3 >= r.s && d3 <= r.e;
+        html += '<div class="' + cellClass(d3) + '">' + (on ? '<span class="bar' + (r.cont ? " cont" : "") + '" style="background:' + C[r.k] + ";" + (d3 > r.s ? "left:0;border-top-left-radius:0;border-bottom-left-radius:0;" : "") + (d3 < r.e ? "right:0;border-top-right-radius:0;border-bottom-right-radius:0;" : "") + '"></span>' : "") + "</div>";
+      }
+    }
+    g.insertAdjacentHTML("beforeend", html);
+  });
+
+  // Phase cards
+  var ph = document.getElementById("phases");
+  phases.forEach(function (p) {
+    var days = p.days.map(function (x) { return '<li><span class="mono">' + x[0] + "</span><span>" + x[1] + "</span></li>"; }).join("");
+    var out = p.out.map(function (x) { return "<li>" + x + "</li>"; }).join("");
+    ph.insertAdjacentHTML("beforeend",
+      '<article class="phase">' +
+      '<div class="phase-top"><h3>' + p.name + '</h3><span class="chip" style="background:' + C[p.k] + '">' + p.range + "</span></div>" +
+      '<p class="goal">' + p.goal + "</p>" +
+      "<h4>Schedule</h4><ul class=\"days\">" + days + "</ul>" +
+      "<h4>Outputs</h4><ul>" + out + "</ul></article>");
+  });
+})();
+</script>
