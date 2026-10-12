@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 
 export const PROJECT_ROOT = resolve(here, "../..");
-export const DISCOVER_DIR = resolve(PROJECT_ROOT, "docs/01-discover");
+export const DISCOVER_DIR = resolve(PROJECT_ROOT, "docs/discover");
 export const PERSONAS_DIR = resolve(DISCOVER_DIR, "personas");
 export const SESSIONS_DIR = resolve(DISCOVER_DIR, "stakeholder-sessions");
 export const TRANSCRIPTS_DIR = resolve(SESSIONS_DIR, "transcripts");

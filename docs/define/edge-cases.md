@@ -9,7 +9,7 @@ Each edge case names the expected behaviour and the story that covers it. **Test
 |---|---|---|---|---|
 | E-01 | GPS lost in a tunnel | Hold last position; "Last seen" after 2 min; ETA stays stable | US-B4, US-P4 | Unit |
 | E-02 | No position for 10 min | "Live location unavailable – scheduled times shown" | US-P4 | Unit |
-| E-03 | Crew phone offline, reconnects with old positions | Queued data applied by time it happened; never overwrites newer data | US-C7, US-B3 | Integration |
+| E-03 | Cab tablet offline, reconnects with old positions | Queued data applied by time it happened; never overwrites newer data | US-C7, US-B3 | Integration |
 | E-04 | Position jumps 5 km in 10 s / goes backwards / off route | Rejected as implausible | US-B3 | Unit |
 | E-05 | Driver starts the wrong journey | Positions rejected (off route / not assigned); start only for assigned journey | US-C2, US-B3 | Unit |
 | E-06 | Train stops at a red signal for 2 min | Delay shows briefly; no alert; no push (< 5 min) | US-P4, US-O8 | Unit |

@@ -14,11 +14,11 @@ I am doing an individual cross-practice, AI-assisted software development assess
 ## What I have built so far
 
 ### 1. Requirement analysis (my own, section by section)
-`00-brief-analysis.md` covers brief sections 2 to 20: what is stated, implied and missing, with IDs (S3-12 and so on), my decisions and open questions. `assumptions-log.md` holds numbered assumptions (A-01 to A-138) with a status (Proposed, Confirmed, Open) and a deferred table.
+`00-brief-analysis.md` covers brief sections 2 to 20: what is stated, implied and missing, with IDs (S3-12 and so on), my decisions and open questions. the assumptions log inside `00-brief-analysis.md` holds numbered assumptions (A-01 to A-138) with a status (Proposed, Confirmed, Open) and a deferred table.
 
 ### 2. AI stakeholder simulation tool
 A small LangGraph (TypeScript) project in `agents/`, using Gemini with automatic model fallback (free-tier quotas are about 20 requests per model per day). It runs moderated discussions between AI personas and saves transcripts.
-- 11 personas in `docs/01-discover/personas/`: daily commuter, occasional commuter, driver, station manager, railway controller, customer service, catering provider, security engineer, QA engineer, accessibility specialist, product owner. Plus a shared Sri Lankan context file. I edited three AI drafts.
+- 11 personas in `docs/discover/personas/`: daily commuter, occasional commuter, driver, station manager, railway controller, customer service, catering provider, security engineer, QA engineer, accessibility specialist, product owner. Plus a shared Sri Lankan context file. I edited three AI drafts.
 - The agents read only the original brief, not my analysis, because my own decisions biased the first run.
 - 22 sessions ran (pairs with real working relationships, plus three group scenarios). Transcripts are in `stakeholder-sessions/transcripts/`.
 

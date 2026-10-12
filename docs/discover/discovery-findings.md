@@ -1,6 +1,6 @@
 code .# Discovery Findings
 
-How requirement discovery was run, what it found, and what changed because of it. Companion documents: [00-brief-analysis.md](00-brief-analysis.md), [assumptions-log.md](assumptions-log.md), [conflicts-and-ambiguities.md](conflicts-and-ambiguities.md), [../ai-usage-log.md](../ai-usage-log.md).
+How requirement discovery was run, what it found, and what changed because of it. Companion documents: [00-brief-analysis.md](00-brief-analysis.md), [assumptions log](00-brief-analysis.md#assumptions-log), [conflicts-and-ambiguities.md](conflicts-and-ambiguities.md), [../ai-usage/ai-usage-log.md](../ai-usage/ai-usage-log.md).
 
 ## 1. Approach
 

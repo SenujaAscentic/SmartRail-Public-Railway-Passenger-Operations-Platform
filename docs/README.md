@@ -16,7 +16,7 @@
 | For whom, and what is their experience today and tomorrow? | `define/personas-and-journeys.md` | ✔ Final |
 | How exactly should each feature behave? | `define/user-stories.md` (40 stories, acceptance criteria) | ✔ Final |
 | What can go wrong at the edges? | `define/edge-cases.md` (E-01–E-46) | ✔ Final |
-| How is the work grouped? | Epic Breakdown page (12 epics, 52 features, apps × events matrix) | ✔ Final |
+| How is the work grouped? | `pages/smartrail-epics.html` (12 epics, 52 features, apps × events matrix) | ✔ Final |
 | Which technologies, and why? | `SmartRail – Technology Stack Decisions.md` (ADR-01–ADR-07) | ✔ Final; ADR-08, ADR-09 to add |
 | When is each thing built? | `develop/00-delivery-plan.md` (day plan, gates, risks, cut list) | ✔ Final |
 | What data and rules sit behind the features? | `develop/01-domain-model.md` (entities, state machines, rules R-01–R-22, events, 44 test names) | ✔ Agreed (D-1–D-11) |
@@ -49,7 +49,7 @@
 | Domain decisions (D-x) | `develop/01-domain-model.md` §11 |
 | Architecture decisions (Q1–Q8) | `develop/03-architecture-principles.md` |
 | API decisions (C-x) | `develop/02-api-contract.md` §9 |
-| AI usage (accepted, changed, rejected) | AI usage log section at the end of each document → collected in `ai-usage/` on 19 Oct |
+| AI usage (accepted, changed, rejected) | AI usage log section at the end of each document → collected in `ai-usage/` on 19 Oct (current log: `ai-usage/ai-usage-log.md`) |
 
 ---
 

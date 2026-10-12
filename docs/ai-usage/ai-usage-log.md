@@ -131,6 +131,7 @@ One row per AI interaction, added as it happens. Prompts are quoted verbatim.
 | 98 | 2026-10-12 | Claude (claude.ai project) | Develop phase: why not Clean Architecture (the author's own question) | Question: why not Clean Architecture? | Q6: feature slices plus pure Domain projects for the rich modules, so structure is in proportion to complexity and the compiler guards the rules. | Full Clean Architecture for every module. |
 
 **Notes on the table**
+- Older rows mention `assumptions-log.md`. That file was merged into `discover/00-brief-analysis.md` (section "Assumptions log") on 12 Oct.
 - Rows 74–98 come from the consolidated overview log. Prompts are quoted only where that log quotes them; the rest are marked "Not recorded" or give the question in plain words.
 - Row numbers 27 to 50 appear twice (rows from the brief analysis, then rows from the agent work). They are left as they are so that existing references still work. New rows continue from 74.
 - Entries from the local Claude Code (VS Code) sessions after 7 Oct and from the build phase are not yet in this log.

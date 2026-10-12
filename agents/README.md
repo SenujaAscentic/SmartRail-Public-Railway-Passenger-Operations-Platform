@@ -3,7 +3,7 @@
 LangGraph (TypeScript) agents that simulate requirement-discovery sessions.
 
 Flow: `moderator -> stakeholder -> (loop until maxTurns) -> summarize`.
-Personas come from `docs/01-discover/personas/<slug>.md`; each file is a system prompt.
+Personas come from `docs/discover/personas/<slug>.md`; each file is a system prompt.
 `personas/_shared-context.md` (Sri Lankan setting, shared by all personas; files starting with `_` are not personas) is also injected. Only the original brief (`final-assessment-scoped 2.md`) is injected, so agents are not biased by your own analysis and decisions.
 
 ## Setup
@@ -21,4 +21,4 @@ Personas come from `docs/01-discover/personas/<slug>.md`; each file is a system 
 
 Output: full transcript in `stakeholder-sessions/transcripts/`, summary appended to each role's
 `stakeholder-sessions/<role>.md`. Review and validate before copying into the assumptions log;
-record what you accepted or rejected in `docs/ai-usage-log.md`.
+record what you accepted or rejected in `docs/ai-usage/ai-usage-log.md`.
