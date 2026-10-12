@@ -12,7 +12,7 @@ export const TRANSCRIPTS_DIR = resolve(SESSIONS_DIR, "transcripts");
 
 // Context every persona must read before speaking. Only the original brief:
 // the analysis and assumptions hold the author's decisions and would bias discovery.
-export const BRIEF_FILES = [resolve(PROJECT_ROOT, "final-assessment-scoped 2.md")];
+export const BRIEF_FILES = [resolve(PROJECT_ROOT, "docs/brief/assessment-brief.md")];
 
 // Models are tried in order; the next one is used when a model is out of quota or overloaded.
 export const MODELS = (

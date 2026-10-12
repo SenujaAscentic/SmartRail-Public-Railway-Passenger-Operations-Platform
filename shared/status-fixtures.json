@@ -1,0 +1,26 @@
+{
+  "$schema": "SmartRail status fixtures v1 (12 Oct 2026). Input = what the API sends; expected = the exact text every app must show. Backend, web (Vitest) and Flutter tests all run these cases. Times in inputs are UTC; expected text is Asia/Colombo (UTC+05:30).",
+  "now": "2026-10-14T02:10:00Z",
+  "cases": [
+    { "id": "S-01", "input": { "status": { "kind": "OnTime", "delayMinutes": 0 } },  "expected": { "text": "On time",     "icon": "check-circle" } },
+    { "id": "S-02", "input": { "status": { "kind": "Late", "delayMinutes": 1 } },    "expected": { "text": "1 min late",  "icon": "clock-alert" } },
+    { "id": "S-03", "input": { "status": { "kind": "Late", "delayMinutes": 8 } },    "expected": { "text": "8 min late",  "icon": "clock-alert" } },
+    { "id": "S-04", "input": { "status": { "kind": "Early", "delayMinutes": -2 } },  "expected": { "text": "2 min early", "icon": "arrow-up-left" } },
+    { "id": "S-05", "input": { "status": { "kind": "Late", "delayMinutes": 75 } },   "expected": { "text": "75 min late", "icon": "clock-alert", "note": "no hours conversion in the MVP" } },
+    { "id": "S-06", "input": { "status": { "kind": "Cancelled" } },                   "expected": { "text": "Cancelled",   "icon": "x-circle" } },
+    { "id": "S-07", "input": { "status": { "kind": "TerminatedEarly" }, "terminatesAt": "Rambukkana" }, "expected": { "text": "Terminates at Rambukkana", "icon": "x-circle" } },
+    { "id": "S-08", "input": { "status": { "kind": "Held", "delayMinutes": 3 }, "holdSet": true },        "expected": { "text": "Held · 3 min late", "icon": "hand-stop" } },
+    { "id": "S-09", "input": { "status": { "kind": "NotStarted" } },                  "expected": { "text": "Not started", "icon": "clock" } },
+    { "id": "S-10", "input": { "platform": "5", "previousPlatform": "2" },            "expected": { "text": "Platform 5 (was 2)", "icon": "arrows-exchange" } },
+    { "id": "S-11", "input": { "platform": "3", "previousPlatform": null },           "expected": { "text": "Platform 3" } },
+    { "id": "S-12", "input": { "stopStatus": "Skipped" },                             "expected": { "text": "Does not stop" } },
+    { "id": "S-13", "input": { "stopStatus": "Added" },                               "expected": { "text": "Extra stop" } },
+    { "id": "S-14", "input": { "freshness": { "tracking": "Live", "updatedAt": "2026-10-14T02:09:30Z" } }, "expected": { "text": "Updated 30 s ago" } },
+    { "id": "S-15", "input": { "freshness": { "tracking": "Stale", "lastSeenAt": "2026-10-14T02:08:00Z", "lastStation": "Kelaniya" } }, "expected": { "text": "Last seen 07:38 near Kelaniya", "icon": "signal-weak", "note": "02:08 UTC = 07:38 Colombo" } },
+    { "id": "S-16", "input": { "freshness": { "tracking": "Lost" } },                 "expected": { "text": "Live location unavailable – scheduled times shown", "icon": "signal-off" } },
+    { "id": "S-17", "input": { "offline": true, "secondsSinceLastUpdate": 240 },      "expected": { "text": "You're offline · updated 4 min ago", "note": "counted by the app's own stopwatch, not by comparing clocks" } },
+    { "id": "S-18", "input": { "display": "platform", "nextTrainCallType": "Pass" },  "expected": { "text": "Next train does not stop here – stand back from the platform edge" } },
+    { "id": "S-19", "input": { "display": "infoScreen", "holdSet": true, "platform": "5" }, "expected": { "text": "The train will wait for passengers at Platform 5" } },
+    { "id": "S-20", "input": { "display": "infoScreen", "holdSet": false, "platform": "5" }, "expected": { "text": "Now departing from Platform 5", "note": "no promise to wait without a real hold (A-113)" } }
+  ]
+}

@@ -4,3 +4,4 @@ obj/
 *.user
 # local secrets
 .env
+node_modules/
