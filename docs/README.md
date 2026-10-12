@@ -17,7 +17,7 @@
 | How exactly should each feature behave? | `define/user-stories.md` (40 stories, acceptance criteria) | ✔ Final |
 | What can go wrong at the edges? | `define/edge-cases.md` (E-01–E-46) | ✔ Final |
 | How is the work grouped? | `pages/smartrail-epics.html` (12 epics, 52 features, apps × events matrix) | ✔ Final |
-| Which technologies, and why? | `SmartRail – Technology Stack Decisions.md` (ADR-01–ADR-07) | ✔ Final; ADR-08, ADR-09 to add |
+| Which technologies, and why? | `SmartRail – Technology Stack Decisions.md` (ADR-01–ADR-11) | ✔ Final, updated 12 Oct |
 | When is each thing built? | `develop/00-delivery-plan.md` (day plan, gates, risks, cut list) | ✔ Final |
 | What data and rules sit behind the features? | `develop/01-domain-model.md` (entities, state machines, rules R-01–R-22, events, 44 test names) | ✔ Agreed (D-1–D-11) |
 | How do the apps talk to the backend? | `develop/02-api-contract.md` (endpoints, sign-in, stream, errors) | ◐ Decisions C-1–C-8 open |
