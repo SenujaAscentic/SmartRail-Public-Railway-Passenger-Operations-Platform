@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartRail.LiveOperations.Domain\SmartRail.LiveOperations.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Disruptions.Domain\SmartRail.Disruptions.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Network\SmartRail.Network.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Disruptions\SmartRail.Disruptions.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Identity\SmartRail.Identity.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Notifications\SmartRail.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.CateringIntegration\SmartRail.CateringIntegration.csproj" />
+  </ItemGroup>
+
+</Project>

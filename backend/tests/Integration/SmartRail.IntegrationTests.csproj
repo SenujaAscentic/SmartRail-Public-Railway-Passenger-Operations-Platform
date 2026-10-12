@@ -1,0 +1,7 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartRail.Api\SmartRail.Api.csproj" />
+  </ItemGroup>
+
+</Project>

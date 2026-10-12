@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartRail.Disruptions.Domain\SmartRail.Disruptions.Domain.csproj" />
+    <ProjectReference Include="..\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
+  </ItemGroup>
+
+</Project>

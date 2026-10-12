@@ -1,0 +1,20 @@
+# Local development database. The password comes from .env (not committed); see .env.example.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: smartrail
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+      POSTGRES_DB: smartrail
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartrail-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartrail -d smartrail"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  smartrail-pgdata:

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartRail.Network\SmartRail.Network.csproj" />
+    <ProjectReference Include="..\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
+    <ProjectReference Include="..\SmartRail.Disruptions\SmartRail.Disruptions.csproj" />
+    <ProjectReference Include="..\SmartRail.Identity\SmartRail.Identity.csproj" />
+    <ProjectReference Include="..\SmartRail.Notifications\SmartRail.Notifications.csproj" />
+    <ProjectReference Include="..\SmartRail.CateringIntegration\SmartRail.CateringIntegration.csproj" />
+  </ItemGroup>
+
+</Project>
