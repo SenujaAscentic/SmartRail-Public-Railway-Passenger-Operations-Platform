@@ -143,7 +143,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 6. Driver and guard receive the instruction (US-C6); station staff are alerted at the same moment as passengers (A-114).
 7. **Platform conflict warning:** if another train is scheduled or expected at the chosen platform within 5 minutes of this train, a warning names it ("Platform 5 is expected to be occupied by 1520 at 18:04") before the controller can confirm.
 
-### US-O6 Crew incident reports
+### US-O6 Crew incident reports *(deferred 12 Oct – re-plan)*
 *As Ruwan, I want crew reports to reach me immediately, so that I don't wait for a phone chain.*
 1. A report appears as an alert with type, journey, location and the time it **occurred** (not when it arrived).
 2. The controller creates an incident from it (reason pre-filled) or dismisses it with a reason; the report stays linked (A-79).
@@ -154,7 +154,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 2. Status per recipient: sent → delivered → acknowledged.
 3. Not acknowledged after 2 minutes → highlighted on the dashboard.
 
-### US-O8 Unscheduled stop alert
+### US-O8 Unscheduled stop alert *(deferred 12 Oct – re-plan)*
 *As Ruwan, I want to know quickly when a train stops where it shouldn't, so that I can act before passengers ask.*
 1. A train stationary for ≥ 3 min outside any station zone creates an "Unscheduled stop" alert.
 2. The alert clears when the train moves again; it is never shown to passengers as a status (C-3).
@@ -204,7 +204,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 1. Large Arrived / Departed buttons for the current stop.
 2. The recorded time takes priority over GPS for that stop (source priority: controller > crew > GPS > schedule, A-28).
 
-### US-C5 Incident report
+### US-C5 Incident report *(deferred 12 Oct – re-plan)*
 *As the guard, I want to report a problem in a few taps.*
 1. Types: obstruction on line, animal on track, landslide / flooding, signal fault, technical fault, passenger incident, other.
 2. Location and time are filled in automatically; the guard can add a note (max 200 characters); the driver cannot type while moving.
