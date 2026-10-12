@@ -1,0 +1,12 @@
+sequence,code,name,distance_km,latitude,longitude,platforms,stop_types,distance_source,coords_source,verified_by
+1,FOT,Colombo Fort,0.000,6.933376,79.850352,10,origin/terminus,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+2,MDA,Maradana,1.900,6.929230,79.865791,10,all trains,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+3,KLA,Kelaniya,6.873,6.961071,79.894474,2,slow only; express passes,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+4,RGM,Ragama,15.546,7.029936,79.921444,3,slow + some express,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+5,GPH,Gampaha,27.538,7.093549,79.993555,3,all trains,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+6,VGD,Veyangoda,37.478,7.152849,80.058661,4,slow + some express,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+7,PLG,Polgahawela,73.827,7.330899,80.300376,3,all trains; catering station,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+8,RBK,Rambukkana,84.437,7.321076,80.390380,2,all trains,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+9,KGW,Kadugannawa,105.537,7.257719,80.520692,2,slow only; express passes,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+10,PDA,Peradeniya,114.851,7.257319,80.590119,3,all trains; catering station,SLR official station list,OpenStreetMap,"Senuja (coords, 12 Oct)"
+11,KDT,Kandy,119.011,7.289390,80.632235,3,origin/terminus,DERIVED – WRONG: track (4.16 km) shorter than straight line (5.86 km) from Peradeniya; replace with SLR Matale line figure,OpenStreetMap,"Senuja (coords, 12 Oct)"

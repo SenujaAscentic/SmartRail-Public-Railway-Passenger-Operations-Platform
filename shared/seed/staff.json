@@ -1,0 +1,80 @@
+{
+  "passwordSecretKey": "Seed:DemoPassword",
+  "accounts": [
+    {
+      "staffNumber": "CTRL-01",
+      "name": "Demo Controller",
+      "role": "Controller",
+      "isActive": true
+    },
+    {
+      "staffNumber": "SM-FOT",
+      "name": "Demo Station Manager FOT",
+      "role": "StationManager",
+      "stationCode": "FOT",
+      "isActive": true
+    },
+    {
+      "staffNumber": "SM-PLG",
+      "name": "Demo Station Manager PLG",
+      "role": "StationManager",
+      "stationCode": "PLG",
+      "isActive": true
+    },
+    {
+      "staffNumber": "SM-KDT",
+      "name": "Demo Station Manager KDT",
+      "role": "StationManager",
+      "stationCode": "KDT",
+      "isActive": true
+    },
+    {
+      "staffNumber": "DRV-01",
+      "name": "Demo Driver 1",
+      "role": "Driver",
+      "isActive": true
+    },
+    {
+      "staffNumber": "DRV-02",
+      "name": "Demo Driver 2",
+      "role": "Driver",
+      "isActive": true
+    },
+    {
+      "staffNumber": "DRV-03",
+      "name": "Demo Driver 3",
+      "role": "Driver",
+      "isActive": true
+    },
+    {
+      "staffNumber": "DRV-04",
+      "name": "Demo Driver 4",
+      "role": "Driver",
+      "isActive": true
+    },
+    {
+      "staffNumber": "GRD-01",
+      "name": "Demo Guard 1",
+      "role": "Guard",
+      "isActive": true
+    },
+    {
+      "staffNumber": "GRD-02",
+      "name": "Demo Guard 2",
+      "role": "Guard",
+      "isActive": true
+    },
+    {
+      "staffNumber": "GRD-03",
+      "name": "Demo Guard 3",
+      "role": "Guard",
+      "isActive": true
+    },
+    {
+      "staffNumber": "GRD-04",
+      "name": "Demo Guard 4",
+      "role": "Guard",
+      "isActive": true
+    }
+  ]
+}

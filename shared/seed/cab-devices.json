@@ -1,0 +1,16 @@
+{
+  "cabDevices": [
+    {
+      "id": "CAB-01",
+      "trainSetCode": "DPS-01",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-01:Token"
+    },
+    {
+      "id": "CAB-02",
+      "trainSetCode": "LH-01",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-02:Token"
+    }
+  ]
+}

@@ -1,0 +1,772 @@
+{
+  "services": [
+    {
+      "number": "1001",
+      "routeId": "MAIN-UP",
+      "trainType": "Express",
+      "calendarId": "WEEKDAY",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 390,
+          "plannedPlatform": "5"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 395,
+          "departureOffset": 397,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KLA",
+          "callType": "Pass",
+          "arrivalOffset": 403,
+          "departureOffset": 403,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RGM",
+          "callType": "Pass",
+          "arrivalOffset": 415,
+          "departureOffset": 415,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 430,
+          "departureOffset": 432,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Pass",
+          "arrivalOffset": 445,
+          "departureOffset": 445,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 493,
+          "departureOffset": 496,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RBK",
+          "callType": "Pass",
+          "arrivalOffset": 509,
+          "departureOffset": 509,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KGW",
+          "callType": "Pass",
+          "arrivalOffset": 536,
+          "departureOffset": 536,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 548,
+          "departureOffset": 550,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": 555,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    },
+    {
+      "number": "1002",
+      "routeId": "MAIN-DOWN",
+      "trainType": "Express",
+      "calendarId": "WEEKDAY",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 600,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 605,
+          "departureOffset": 607,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KGW",
+          "callType": "Pass",
+          "arrivalOffset": 619,
+          "departureOffset": 619,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RBK",
+          "callType": "Pass",
+          "arrivalOffset": 646,
+          "departureOffset": 646,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 659,
+          "departureOffset": 662,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Pass",
+          "arrivalOffset": 710,
+          "departureOffset": 710,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 723,
+          "departureOffset": 725,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RGM",
+          "callType": "Pass",
+          "arrivalOffset": 740,
+          "departureOffset": 740,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KLA",
+          "callType": "Pass",
+          "arrivalOffset": 752,
+          "departureOffset": 752,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 758,
+          "departureOffset": 760,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": 765,
+          "departureOffset": null,
+          "plannedPlatform": "3"
+        }
+      ]
+    },
+    {
+      "number": "1003",
+      "routeId": "MAIN-UP",
+      "trainType": "Express",
+      "calendarId": "WEEKEND",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 450,
+          "plannedPlatform": "5"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 455,
+          "departureOffset": 457,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KLA",
+          "callType": "Pass",
+          "arrivalOffset": 463,
+          "departureOffset": 463,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RGM",
+          "callType": "Pass",
+          "arrivalOffset": 475,
+          "departureOffset": 475,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 490,
+          "departureOffset": 492,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Pass",
+          "arrivalOffset": 505,
+          "departureOffset": 505,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 553,
+          "departureOffset": 556,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RBK",
+          "callType": "Pass",
+          "arrivalOffset": 569,
+          "departureOffset": 569,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KGW",
+          "callType": "Pass",
+          "arrivalOffset": 596,
+          "departureOffset": 596,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 608,
+          "departureOffset": 610,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": 615,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    },
+    {
+      "number": "1004",
+      "routeId": "MAIN-DOWN",
+      "trainType": "Express",
+      "calendarId": "WEEKEND",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 660,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 665,
+          "departureOffset": 667,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KGW",
+          "callType": "Pass",
+          "arrivalOffset": 679,
+          "departureOffset": 679,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RBK",
+          "callType": "Pass",
+          "arrivalOffset": 706,
+          "departureOffset": 706,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 719,
+          "departureOffset": 722,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Pass",
+          "arrivalOffset": 770,
+          "departureOffset": 770,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 783,
+          "departureOffset": 785,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RGM",
+          "callType": "Pass",
+          "arrivalOffset": 800,
+          "departureOffset": 800,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KLA",
+          "callType": "Pass",
+          "arrivalOffset": 812,
+          "departureOffset": 812,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 818,
+          "departureOffset": 820,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": 825,
+          "departureOffset": null,
+          "plannedPlatform": "3"
+        }
+      ]
+    },
+    {
+      "number": "2001",
+      "routeId": "MAIN-UP",
+      "trainType": "Slow",
+      "calendarId": "WEEKDAY",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 360,
+          "plannedPlatform": "4"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 363,
+          "departureOffset": 364,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KLA",
+          "callType": "Stop",
+          "arrivalOffset": 373,
+          "departureOffset": 374,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RGM",
+          "callType": "Stop",
+          "arrivalOffset": 390,
+          "departureOffset": 391,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 413,
+          "departureOffset": 414,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Stop",
+          "arrivalOffset": 432,
+          "departureOffset": 433,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 499,
+          "departureOffset": 500,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RBK",
+          "callType": "Stop",
+          "arrivalOffset": 519,
+          "departureOffset": 520,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KGW",
+          "callType": "Stop",
+          "arrivalOffset": 558,
+          "departureOffset": 559,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 576,
+          "departureOffset": 577,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": 585,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    },
+    {
+      "number": "2002",
+      "routeId": "MAIN-DOWN",
+      "trainType": "Slow",
+      "calendarId": "WEEKDAY",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 630,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 638,
+          "departureOffset": 639,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KGW",
+          "callType": "Stop",
+          "arrivalOffset": 656,
+          "departureOffset": 657,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RBK",
+          "callType": "Stop",
+          "arrivalOffset": 695,
+          "departureOffset": 696,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 715,
+          "departureOffset": 716,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Stop",
+          "arrivalOffset": 782,
+          "departureOffset": 783,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 801,
+          "departureOffset": 802,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RGM",
+          "callType": "Stop",
+          "arrivalOffset": 824,
+          "departureOffset": 825,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KLA",
+          "callType": "Stop",
+          "arrivalOffset": 841,
+          "departureOffset": 842,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 851,
+          "departureOffset": 852,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": 855,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    },
+    {
+      "number": "2003",
+      "routeId": "MAIN-UP",
+      "trainType": "Slow",
+      "calendarId": "WEEKEND",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 480,
+          "plannedPlatform": "4"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 483,
+          "departureOffset": 484,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KLA",
+          "callType": "Stop",
+          "arrivalOffset": 493,
+          "departureOffset": 494,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RGM",
+          "callType": "Stop",
+          "arrivalOffset": 510,
+          "departureOffset": 511,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 533,
+          "departureOffset": 534,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Stop",
+          "arrivalOffset": 552,
+          "departureOffset": 553,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 619,
+          "departureOffset": 620,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RBK",
+          "callType": "Stop",
+          "arrivalOffset": 639,
+          "departureOffset": 640,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KGW",
+          "callType": "Stop",
+          "arrivalOffset": 678,
+          "departureOffset": 679,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 696,
+          "departureOffset": 697,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": 705,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    },
+    {
+      "number": "2004",
+      "routeId": "MAIN-DOWN",
+      "trainType": "Slow",
+      "calendarId": "WEEKEND",
+      "stops": [
+        {
+          "sequence": 1,
+          "stationCode": "KDT",
+          "callType": "Stop",
+          "arrivalOffset": null,
+          "departureOffset": 750,
+          "plannedPlatform": "1"
+        },
+        {
+          "sequence": 2,
+          "stationCode": "PDA",
+          "callType": "Stop",
+          "arrivalOffset": 758,
+          "departureOffset": 759,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KGW",
+          "callType": "Stop",
+          "arrivalOffset": 776,
+          "departureOffset": 777,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RBK",
+          "callType": "Stop",
+          "arrivalOffset": 815,
+          "departureOffset": 816,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 5,
+          "stationCode": "PLG",
+          "callType": "Stop",
+          "arrivalOffset": 835,
+          "departureOffset": 836,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "callType": "Stop",
+          "arrivalOffset": 902,
+          "departureOffset": 903,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 7,
+          "stationCode": "GPH",
+          "callType": "Stop",
+          "arrivalOffset": 921,
+          "departureOffset": 922,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RGM",
+          "callType": "Stop",
+          "arrivalOffset": 944,
+          "departureOffset": 945,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KLA",
+          "callType": "Stop",
+          "arrivalOffset": 961,
+          "departureOffset": 962,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 10,
+          "stationCode": "MDA",
+          "callType": "Stop",
+          "arrivalOffset": 971,
+          "departureOffset": 972,
+          "plannedPlatform": "2"
+        },
+        {
+          "sequence": 11,
+          "stationCode": "FOT",
+          "callType": "Stop",
+          "arrivalOffset": 975,
+          "departureOffset": null,
+          "plannedPlatform": "2"
+        }
+      ]
+    }
+  ]
+}
