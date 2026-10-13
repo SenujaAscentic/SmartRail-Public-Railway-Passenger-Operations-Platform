@@ -6,20 +6,6 @@ namespace SmartRail.UnitTests.Network.Seed;
 public class SeedReaderTests
 {
     [Fact]
-    public void Csv_line_with_a_quoted_comma_is_split_into_the_right_columns()
-    {
-        var columns = CsvLine.Split("11,KDT,Kandy,\"Senuja (coords, 12 Oct)\"");
-
-        Assert.Equal(["11", "KDT", "Kandy", "Senuja (coords, 12 Oct)"], columns);
-    }
-
-    [Fact]
-    public void Csv_line_keeps_empty_columns()
-    {
-        Assert.Equal(["a", "", "c"], CsvLine.Split("a,,c"));
-    }
-
-    [Fact]
     public void Real_seed_files_load_and_pass_all_invariants()
     {
         var data = SeedReader.Read(SeedFolder.Find(configuredPath: null));

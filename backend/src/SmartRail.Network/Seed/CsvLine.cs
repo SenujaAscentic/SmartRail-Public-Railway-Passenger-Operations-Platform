@@ -12,11 +12,18 @@ public static class CsvLine
         var current = new StringBuilder();
         var insideQuotes = false;
 
-        foreach (var ch in line)
+        for (var i = 0; i < line.Length; i++)
         {
-            if (ch == '"')
+            var ch = line[i];
+
+            if (ch == '"' && insideQuotes && i + 1 < line.Length && line[i + 1] == '"')
             {
-                insideQuotes = !insideQuotes;   // the quote itself is not part of the value
+                current.Append('"');   // two quotes inside a quoted field are one quote character
+                i++;
+            }
+            else if (ch == '"')
+            {
+                insideQuotes = !insideQuotes;   // an opening or closing quote is not part of the value
             }
             else if (ch == ',' && !insideQuotes)
             {

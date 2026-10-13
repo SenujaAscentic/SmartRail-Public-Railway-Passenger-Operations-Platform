@@ -179,8 +179,9 @@ public class SeedValidatorTests
         AssertError(data, SeedRule.StopTimesMissing);
     }
 
+    // Convention agreed 13 Oct: a Pass stop has arrival = departure = the passing time.
     [Fact]
-    public void Pass_stop_with_the_same_arrival_and_departure_minute_is_accepted()
+    public void Pass_stop_with_the_same_arrival_and_departure_is_accepted()
     {
         var data = SeedTestData.Valid().WithStops(
             new(1, "AAA", "Stop", null, 360, "1"),
@@ -188,6 +189,17 @@ public class SeedValidatorTests
             new(3, "CCC", "Stop", 400, null, "1"));
 
         Assert.Empty(SeedValidator.Validate(data).Errors);
+    }
+
+    [Fact]
+    public void Pass_stop_with_different_arrival_and_departure_is_rejected()
+    {
+        var data = SeedTestData.Valid().WithStops(
+            new(1, "AAA", "Stop", null, 360, "1"),
+            new(2, "BBB", "Pass", 380, 381, "2"),
+            new(3, "CCC", "Stop", 400, null, "1"));
+
+        AssertError(data, SeedRule.PassTimesDiffer);
     }
 
     [Fact]

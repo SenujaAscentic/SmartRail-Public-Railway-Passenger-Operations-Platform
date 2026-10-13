@@ -1,9 +1,15 @@
+using SmartRail.Network.Model;
+
 namespace SmartRail.Network.Seed;
 
 // One value per invariant, so a test (and a log line) can say exactly which rule broke.
 public enum SeedRule
 {
     DuplicateStationCode,
+    DuplicateKey,
+    UnknownValue,
+    UnknownLine,
+    SequenceNotContiguous,
     DistanceSourceWrong,
     DistanceSourceEstimate,
     UnknownStation,
@@ -13,6 +19,7 @@ public enum SeedRule
     StopOrder,
     StopStationNotOnRoute,
     StopTimesMissing,
+    PassTimesDiffer,
     DepartureBeforeArrival,
     TimeGoesBackwards,
     FirstStopHasArrival,
@@ -37,16 +44,109 @@ public static class SeedValidator
         var errors = new List<SeedIssue>();
         var warnings = new List<SeedIssue>();
 
+        var lineIds = CheckLines(data.Lines, errors);
         var stations = CheckStations(data.Stations, errors, warnings);
-        var routes = CheckRoutes(data.Routes, stations, errors);
-        var calendarIds = data.Calendars.Select(c => c.Id).ToHashSet();
+        var routes = CheckRoutes(data.Routes, stations, lineIds, errors);
+        var calendarIds = CheckCalendars(data.Calendars, errors);
+        CheckTrainSets(data.TrainSets, errors);
 
+        var serviceNumbers = new HashSet<string>();
         foreach (var service in data.Services)
         {
+            if (!serviceNumbers.Add(service.Number))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Service number {service.Number} appears more than once."));
+            }
+
             CheckService(service, stations, routes, calendarIds, errors);
         }
 
         return new SeedValidationResult(errors, warnings);
+    }
+
+    // The text values in the files are turned into enums by the loader, so they must be known names.
+    private static bool IsKnown<T>(string value) where T : struct, Enum => Enum.IsDefined(typeof(T), value);
+
+    // True for 1, 2, 3 ... n with no gaps and no repeats (in any order).
+    private static bool IsOneToN(IEnumerable<int> values) =>
+        values.Order().SequenceEqual(Enumerable.Range(1, values.Count()));
+
+    private static HashSet<string> CheckLines(IReadOnlyList<LineSeed> rows, List<SeedIssue> errors)
+    {
+        var ids = new HashSet<string>();
+
+        foreach (var line in rows)
+        {
+            if (!ids.Add(line.Id))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Line {line.Id} appears more than once."));
+            }
+        }
+
+        return ids;
+    }
+
+    // Returns the calendar ids.
+    private static HashSet<string> CheckCalendars(IReadOnlyList<CalendarSeed> rows, List<SeedIssue> errors)
+    {
+        var ids = new HashSet<string>();
+
+        foreach (var calendar in rows)
+        {
+            if (!ids.Add(calendar.Id))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Calendar {calendar.Id} appears more than once."));
+            }
+
+            foreach (var day in calendar.DaysOfWeek.Where(d => !SeedDays.ByName.ContainsKey(d)))
+            {
+                errors.Add(new(SeedRule.UnknownValue, $"Calendar {calendar.Id}: \"{day}\" is not a day (use Mon, Tue, Wed, Thu, Fri, Sat, Sun)."));
+            }
+
+            var dates = new HashSet<DateOnly>();
+            foreach (var exception in calendar.Exceptions.Where(e => !dates.Add(e.Date)))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Calendar {calendar.Id}: the exception date {exception.Date:yyyy-MM-dd} appears more than once."));
+            }
+        }
+
+        return ids;
+    }
+
+    private static void CheckTrainSets(IReadOnlyList<TrainSetSeed> rows, List<SeedIssue> errors)
+    {
+        var codes = new HashSet<string>();
+
+        foreach (var trainSet in rows)
+        {
+            if (!codes.Add(trainSet.Code))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Train set {trainSet.Code} appears more than once."));
+            }
+
+            if (!IsKnown<Traction>(trainSet.Traction))
+            {
+                errors.Add(new(SeedRule.UnknownValue, $"Train set {trainSet.Code}: unknown traction \"{trainSet.Traction}\"."));
+            }
+
+            if (!IsOneToN(trainSet.Coaches.Select(c => c.Position)))
+            {
+                errors.Add(new(SeedRule.SequenceNotContiguous, $"Train set {trainSet.Code}: coach positions must be 1, 2, 3 ... with no gaps or repeats."));
+            }
+
+            foreach (var coach in trainSet.Coaches)
+            {
+                if (!IsKnown<CoachClass>(coach.Class))
+                {
+                    errors.Add(new(SeedRule.UnknownValue, $"Train set {trainSet.Code}, coach {coach.Position}: unknown class \"{coach.Class}\"."));
+                }
+
+                if (!IsKnown<SeatingType>(coach.Seating))
+                {
+                    errors.Add(new(SeedRule.UnknownValue, $"Train set {trainSet.Code}, coach {coach.Position}: unknown seating \"{coach.Seating}\"."));
+                }
+            }
+        }
     }
 
     // Returns the stations by code (first one wins when a code is repeated).
@@ -80,12 +180,33 @@ public static class SeedValidator
 
     // Returns the routes by id.
     private static Dictionary<string, RouteSeed> CheckRoutes(
-        IReadOnlyList<RouteSeed> rows, Dictionary<string, StationSeed> stations, List<SeedIssue> errors)
+        IReadOnlyList<RouteSeed> rows, Dictionary<string, StationSeed> stations, HashSet<string> lineIds, List<SeedIssue> errors)
     {
-        var byId = rows.ToDictionary(r => r.Id);
+        var byId = new Dictionary<string, RouteSeed>();
 
         foreach (var route in rows)
         {
+            if (!byId.TryAdd(route.Id, route))
+            {
+                errors.Add(new(SeedRule.DuplicateKey, $"Route {route.Id} appears more than once."));
+                continue;
+            }
+
+            if (!lineIds.Contains(route.LineId))
+            {
+                errors.Add(new(SeedRule.UnknownLine, $"Route {route.Id}: line {route.LineId} does not exist."));
+            }
+
+            if (!IsKnown<Direction>(route.Direction))
+            {
+                errors.Add(new(SeedRule.UnknownValue, $"Route {route.Id}: unknown direction \"{route.Direction}\" (use Up or Down)."));
+            }
+
+            if (!IsOneToN(route.Stations.Select(s => s.Sequence)))
+            {
+                errors.Add(new(SeedRule.SequenceNotContiguous, $"Route {route.Id}: station sequence must be 1, 2, 3 ... with no gaps or repeats."));
+            }
+
             decimal? previousDistance = null;
 
             foreach (var routeStation in route.Stations.OrderBy(s => s.Sequence))
@@ -116,6 +237,16 @@ public static class SeedValidator
         HashSet<string> calendarIds,
         List<SeedIssue> errors)
     {
+        if (!IsKnown<TrainType>(service.TrainType))
+        {
+            errors.Add(new(SeedRule.UnknownValue, $"Service {service.Number}: unknown train type \"{service.TrainType}\"."));
+        }
+
+        if (!IsOneToN(service.Stops.Select(s => s.Sequence)))
+        {
+            errors.Add(new(SeedRule.SequenceNotContiguous, $"Service {service.Number}: stop sequence must be 1, 2, 3 ... with no gaps or repeats."));
+        }
+
         if (!calendarIds.Contains(service.CalendarId))
         {
             errors.Add(new(SeedRule.UnknownCalendar, $"Service {service.Number}: calendar {service.CalendarId} does not exist."));
@@ -141,6 +272,11 @@ public static class SeedValidator
         {
             var stop = stops[i];
             var where = $"Service {service.Number}, stop {stop.Sequence} ({stop.StationCode})";
+
+            if (!IsKnown<CallType>(stop.CallType))
+            {
+                errors.Add(new(SeedRule.UnknownValue, $"{where}: unknown call type \"{stop.CallType}\" (use Stop or Pass)."));
+            }
 
             // Stops must be on the route and in the route's direction of travel.
             if (!routeIndex.TryGetValue(stop.StationCode, out var index))
@@ -181,6 +317,13 @@ public static class SeedValidator
             if (!isFirst && !isLast && (stop.ArrivalOffset is null || stop.DepartureOffset is null))
             {
                 errors.Add(new(SeedRule.StopTimesMissing, $"{where}: a middle stop needs both an arrival and a departure time."));
+            }
+
+            // Convention (13 Oct): a Pass has one passing time, written as both arrival and departure.
+            if (stop.CallType == "Pass" && stop.ArrivalOffset is int passArrival && stop.DepartureOffset is int passDeparture
+                && passArrival != passDeparture)
+            {
+                errors.Add(new(SeedRule.PassTimesDiffer, $"{where}: a Pass must have the same arrival and departure time."));
             }
 
             // Times: departure is not before arrival, and time never runs backwards along the service.
