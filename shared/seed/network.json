@@ -66,7 +66,7 @@
         {
           "sequence": 11,
           "stationCode": "KDT",
-          "distanceKm": 119.011
+          "distanceKm": 121.851
         }
       ]
     },
@@ -84,52 +84,52 @@
         {
           "sequence": 2,
           "stationCode": "PDA",
-          "distanceKm": 4.16
+          "distanceKm": 7.0
         },
         {
           "sequence": 3,
           "stationCode": "KGW",
-          "distanceKm": 13.474
+          "distanceKm": 16.314
         },
         {
           "sequence": 4,
           "stationCode": "RBK",
-          "distanceKm": 34.574
+          "distanceKm": 37.414
         },
         {
           "sequence": 5,
           "stationCode": "PLG",
-          "distanceKm": 45.184
+          "distanceKm": 48.024
         },
         {
           "sequence": 6,
           "stationCode": "VGD",
-          "distanceKm": 81.533
+          "distanceKm": 84.373
         },
         {
           "sequence": 7,
           "stationCode": "GPH",
-          "distanceKm": 91.473
+          "distanceKm": 94.313
         },
         {
           "sequence": 8,
           "stationCode": "RGM",
-          "distanceKm": 103.465
+          "distanceKm": 106.305
         },
         {
           "sequence": 9,
           "stationCode": "KLA",
-          "distanceKm": 112.138
+          "distanceKm": 114.978
         },
         {
           "sequence": 10,
           "stationCode": "MDA",
-          "distanceKm": 117.111
+          "distanceKm": 119.951
         },
         {
           "sequence": 11,
           "stationCode": "FOT",
-          "distanceKm": 119.011
+          "distanceKm": 121.851
         }
       ]
     }
