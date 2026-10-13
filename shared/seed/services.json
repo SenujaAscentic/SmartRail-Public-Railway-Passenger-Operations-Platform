@@ -474,7 +474,7 @@
           "sequence": 11,
           "stationCode": "KDT",
           "callType": "Stop",
-          "arrivalOffset": 585,
+          "arrivalOffset": 590,
           "departureOffset": null,
           "plannedPlatform": "2"
         }
@@ -498,79 +498,79 @@
           "sequence": 2,
           "stationCode": "PDA",
           "callType": "Stop",
-          "arrivalOffset": 638,
-          "departureOffset": 639,
+          "arrivalOffset": 643,
+          "departureOffset": 644,
           "plannedPlatform": "2"
         },
         {
           "sequence": 3,
           "stationCode": "KGW",
           "callType": "Stop",
-          "arrivalOffset": 656,
-          "departureOffset": 657,
+          "arrivalOffset": 661,
+          "departureOffset": 662,
           "plannedPlatform": "2"
         },
         {
           "sequence": 4,
           "stationCode": "RBK",
           "callType": "Stop",
-          "arrivalOffset": 695,
-          "departureOffset": 696,
+          "arrivalOffset": 700,
+          "departureOffset": 701,
           "plannedPlatform": "2"
         },
         {
           "sequence": 5,
           "stationCode": "PLG",
           "callType": "Stop",
-          "arrivalOffset": 715,
-          "departureOffset": 716,
+          "arrivalOffset": 720,
+          "departureOffset": 721,
           "plannedPlatform": "2"
         },
         {
           "sequence": 6,
           "stationCode": "VGD",
           "callType": "Stop",
-          "arrivalOffset": 782,
-          "departureOffset": 783,
+          "arrivalOffset": 787,
+          "departureOffset": 788,
           "plannedPlatform": "2"
         },
         {
           "sequence": 7,
           "stationCode": "GPH",
           "callType": "Stop",
-          "arrivalOffset": 801,
-          "departureOffset": 802,
+          "arrivalOffset": 806,
+          "departureOffset": 807,
           "plannedPlatform": "2"
         },
         {
           "sequence": 8,
           "stationCode": "RGM",
           "callType": "Stop",
-          "arrivalOffset": 824,
-          "departureOffset": 825,
+          "arrivalOffset": 829,
+          "departureOffset": 830,
           "plannedPlatform": "2"
         },
         {
           "sequence": 9,
           "stationCode": "KLA",
           "callType": "Stop",
-          "arrivalOffset": 841,
-          "departureOffset": 842,
+          "arrivalOffset": 846,
+          "departureOffset": 847,
           "plannedPlatform": "2"
         },
         {
           "sequence": 10,
           "stationCode": "MDA",
           "callType": "Stop",
-          "arrivalOffset": 851,
-          "departureOffset": 852,
+          "arrivalOffset": 856,
+          "departureOffset": 857,
           "plannedPlatform": "2"
         },
         {
           "sequence": 11,
           "stationCode": "FOT",
           "callType": "Stop",
-          "arrivalOffset": 855,
+          "arrivalOffset": 860,
           "departureOffset": null,
           "plannedPlatform": "2"
         }
@@ -666,7 +666,7 @@
           "sequence": 11,
           "stationCode": "KDT",
           "callType": "Stop",
-          "arrivalOffset": 705,
+          "arrivalOffset": 710,
           "departureOffset": null,
           "plannedPlatform": "2"
         }
@@ -690,79 +690,79 @@
           "sequence": 2,
           "stationCode": "PDA",
           "callType": "Stop",
-          "arrivalOffset": 758,
-          "departureOffset": 759,
+          "arrivalOffset": 763,
+          "departureOffset": 764,
           "plannedPlatform": "2"
         },
         {
           "sequence": 3,
           "stationCode": "KGW",
           "callType": "Stop",
-          "arrivalOffset": 776,
-          "departureOffset": 777,
+          "arrivalOffset": 781,
+          "departureOffset": 782,
           "plannedPlatform": "2"
         },
         {
           "sequence": 4,
           "stationCode": "RBK",
           "callType": "Stop",
-          "arrivalOffset": 815,
-          "departureOffset": 816,
+          "arrivalOffset": 820,
+          "departureOffset": 821,
           "plannedPlatform": "2"
         },
         {
           "sequence": 5,
           "stationCode": "PLG",
           "callType": "Stop",
-          "arrivalOffset": 835,
-          "departureOffset": 836,
+          "arrivalOffset": 840,
+          "departureOffset": 841,
           "plannedPlatform": "2"
         },
         {
           "sequence": 6,
           "stationCode": "VGD",
           "callType": "Stop",
-          "arrivalOffset": 902,
-          "departureOffset": 903,
+          "arrivalOffset": 907,
+          "departureOffset": 908,
           "plannedPlatform": "2"
         },
         {
           "sequence": 7,
           "stationCode": "GPH",
           "callType": "Stop",
-          "arrivalOffset": 921,
-          "departureOffset": 922,
+          "arrivalOffset": 926,
+          "departureOffset": 927,
           "plannedPlatform": "2"
         },
         {
           "sequence": 8,
           "stationCode": "RGM",
           "callType": "Stop",
-          "arrivalOffset": 944,
-          "departureOffset": 945,
+          "arrivalOffset": 949,
+          "departureOffset": 950,
           "plannedPlatform": "2"
         },
         {
           "sequence": 9,
           "stationCode": "KLA",
           "callType": "Stop",
-          "arrivalOffset": 961,
-          "departureOffset": 962,
+          "arrivalOffset": 966,
+          "departureOffset": 967,
           "plannedPlatform": "2"
         },
         {
           "sequence": 10,
           "stationCode": "MDA",
           "callType": "Stop",
-          "arrivalOffset": 971,
-          "departureOffset": 972,
+          "arrivalOffset": 976,
+          "departureOffset": 977,
           "plannedPlatform": "2"
         },
         {
           "sequence": 11,
           "stationCode": "FOT",
           "callType": "Stop",
-          "arrivalOffset": 975,
+          "arrivalOffset": 980,
           "departureOffset": null,
           "plannedPlatform": "2"
         }
