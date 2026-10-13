@@ -53,6 +53,7 @@ One line (Main Line, both directions), one **Controller** role, station managers
 7. **Small steps:** one story or rule at a time; keep each change reviewable. Explain non-obvious code in a short comment or in your summary.
 8. **Backend code guide:** after any change to backend code, update `docs/develop/04-backend-code-guide.md` in the same turn: what each new or changed file does, how, why, anything to watch out for, open points, and a change-log line. Write it for Senuja to read before a review; keep it accurate to the code, and remove text about code that no longer exists.
 9. **AI usage log:** at the end of every turn that changed files or settled a decision, append rows to the table in `docs/ai-usage/ai-usage-log.md` before your final summary: next row number, date, tool, task, Senuja's prompt quoted verbatim, what was accepted, what was rejected and why. Add to "Where AI was wrong" and "AI-generated implementation I significantly modified" when Senuja corrected or changed your output. Never edit or renumber older rows, never invent a rejection, and keep the file's line endings.
+10. **Branches:** work on `develop`; never commit to `main`. Senuja pushes `develop` and merges into `main` by pull request once a story is complete and CI is green. Do not cherry-pick into `main`, and do not push.
 
 ## 6. Security rules
 
