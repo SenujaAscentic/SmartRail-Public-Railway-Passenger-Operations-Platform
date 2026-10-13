@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,7 +17,7 @@ internal static class SearchStationsEndpoint
             .Produces<List<StationSummary>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
-    private static async Task<IResult> HandleAsync(string? query, NetworkDbContext db, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> HandleAsync([Required] string? query, NetworkDbContext db, HttpContext http, CancellationToken ct)
     {
         var problem = SearchStationsValidator.Validate(query);
         if (problem is not null)

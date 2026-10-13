@@ -38,7 +38,7 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 **What:** the first code that runs. It builds the web application and connects the modules.
 **How:**
 1. `AddNetworkModule(...)` registers the Network module's database and startup work.
-2. `AddOpenApi()` / `MapOpenApi("/openapi/{documentName}.yaml")` make the application describe its own API at `/openapi/v1.yaml` (OpenAPI, as YAML). The committed copy is `backend/openapi.yaml`; see section 4.
+2. `AddOpenApi()` / `MapOpenApi("/openapi/{documentName}.yaml")` make the application describe its own API at `/openapi/v1.yaml` (OpenAPI, as YAML). The committed copy is `backend/openapi.yaml`; see section 4. Two *transformers* adjust the description here, once for every module: one removes the `servers` entry (it would be copied from whichever request produced the file), and one adds `code`, `errors` and `requestId` to the `ProblemDetails` schema, because the framework only knows the standard fields and contract §6 says every error carries them. The error responses themselves are still built where the error happens.
 3. `app.MapGroup("/api/v1")` creates the URL prefix every endpoint lives under (contract §1); `MapNetworkEndpoints()` puts the Network endpoints in it.
 4. `public partial class Program;` at the bottom exists only so the integration tests can start the whole application in memory.
 
@@ -125,7 +125,7 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 
 | File | Role |
 |---|---|
-| `SearchStationsEndpoint.cs` | Maps the URL, calls the validator, turns a problem into a `400` Problem Details with `code: VALIDATION_FAILED`, `errors.query` and `requestId` (contract §6). `AllowAnonymous` = policy *Public*. |
+| `SearchStationsEndpoint.cs` | Maps the URL (`[Required]` on `query` only makes the description say it is required; the real check is our validator, so the error keeps the contract's shape), calls the validator, turns a problem into a `400` Problem Details with `code: VALIDATION_FAILED`, `errors.query` and `requestId` (contract §6). `AllowAnonymous` = policy *Public*. |
 | `SearchStationsValidator.cs` | The query must not be blank or longer than 50 characters. |
 | `SearchStationsHandler.cs` | The query: name or code contains the text (case-insensitive `ILIKE`); names that **start with** the text first, then alphabetical; `Take(10)`. `%`, `_` and `\` in the user's text are escaped so they match literally. EF Core parameterises the query (no string-built SQL). |
 | `StationSummary.cs` | The response row: `{ id, code, name }`. |
@@ -168,8 +168,9 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 | 3 | Which end is coach position 1 | Undefined; no story needs it |
 | 4 | Kandy distance is an ESTIMATE | Replace with the SLR Matale figure |
 | 5 | Permission matrix has only the anonymous role | Add roles when sign-in exists |
-| 6 | In `openapi.yaml` the error schema `ProblemDetails` lacks the fields our errors really carry (`code`, `errors`, `requestId`; contract §6), so generated TypeScript types would not see `code` | Fix before client types are generated (C-8) |
-| 7 | `openapi.yaml` has `servers: http://localhost/` and marks `query` as optional (the endpoint answers `400` when it is missing) | Harmless for now; decide whether to describe `query` as required |
+| 6 | The error schema in `openapi.yaml` must include `code`, `errors`, `requestId` (contract §6) | **Done (13 Oct)**; a test checks it |
+| 7 | `openapi.yaml`: no `servers` entry, `query` required | **Done (13 Oct)**; tests check both |
+| 8 | The `ProblemDetails` description says `code` and `requestId` are always present; that is true for our own errors, not for framework errors (for example a malformed request) | Watch when more endpoints exist |
 
 ---
 
@@ -178,4 +179,5 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 | Date | Change |
 |---|---|
 | 13 Oct 2026 | First version: scaffold, Network module (model, migration, seed loader, `GET /stations`), tests |
+| 13 Oct 2026 | OpenAPI: `ProblemDetails` gets `code`, `errors`, `requestId`; `query` required; no `servers` entry (three tests) |
 | 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |

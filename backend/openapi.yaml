@@ -2,8 +2,6 @@ openapi: '3.1.1'
 info:
   title: SmartRail.Api | v1
   version: 1.0.0
-servers:
-  - url: http://localhost/
 paths:
   /api/v1/stations:
     get:
@@ -13,6 +11,7 @@ paths:
       parameters:
         - name: query
           in: query
+          required: true
           schema:
             type: string
       responses:
@@ -33,6 +32,9 @@ paths:
 components:
   schemas:
     ProblemDetails:
+      required:
+        - code
+        - requestId
       type: object
       properties:
         type:
@@ -58,6 +60,16 @@ components:
           type:
             - 'null'
             - string
+        code:
+          type: string
+        requestId:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
     StationSummary:
       required:
         - id

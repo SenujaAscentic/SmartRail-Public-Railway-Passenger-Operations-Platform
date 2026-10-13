@@ -26,6 +26,41 @@ public class OpenApiDocumentTests(ApiFixture api)
         Assert.Equal(Normalise(await File.ReadAllTextAsync(file, Ct)), served);
     }
 
+    private async Task<string> ServedYaml() => await api.Factory.CreateClient().GetStringAsync("/openapi/v1.yaml", Ct);
+
+    // Contract section 6: every error is Problem Details with a stable code, and field errors and a request id.
+    [Fact]
+    public async Task The_error_schema_describes_code_errors_and_requestId()
+    {
+        var yaml = await ServedYaml();
+        var start = yaml.IndexOf("    ProblemDetails:", StringComparison.Ordinal);
+        Assert.True(start >= 0, "The description has no ProblemDetails schema.");
+        var end = yaml.IndexOf("\n    StationSummary:", start, StringComparison.Ordinal);
+        var schema = yaml[start..(end < 0 ? yaml.Length : end)];
+
+        Assert.Contains("        code:", schema);
+        Assert.Contains("        errors:", schema);
+        Assert.Contains("        requestId:", schema);
+    }
+
+    [Fact]
+    public async Task The_query_parameter_is_described_as_required()
+    {
+        var yaml = await ServedYaml();
+        var at = yaml.IndexOf("name: query", StringComparison.Ordinal);
+        Assert.True(at >= 0, "The description has no query parameter.");
+
+        // The parameter block is "name, in, required, schema": required comes right after "in: query".
+        Assert.Contains("required: true", yaml[at..Math.Min(yaml.Length, at + 80)]);
+    }
+
+    [Fact]
+    public async Task The_description_has_no_servers_entry()
+    {
+        // The server URL would be copied from whichever request produced the file; clients choose their own.
+        Assert.DoesNotContain("servers:", await ServedYaml());
+    }
+
     // Line endings must not matter (Windows and Linux), and the file ends with exactly one newline.
     private static string Normalise(string text) => text.Replace("\r\n", "\n").TrimEnd('\n') + "\n";
 
