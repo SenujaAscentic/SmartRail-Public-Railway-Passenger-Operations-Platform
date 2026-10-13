@@ -2,7 +2,7 @@
 
 **Written for:** Senuja, to read before a review (§28) and to explain the code without the AI.
 **Kept up to date by:** the coding agent, after every change to backend code (CLAUDE.md §5, step 9).
-**Last updated:** 13 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`), Api host, tests.
+**Last updated:** 13 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`), Api host, API description (`openapi.yaml`), tests.
 
 For *what* the system must do, read the specs (`docs/define/`, `01-domain-model.md`, `02-api-contract.md`). This guide explains *how the code does it* and *why it is written that way*.
 
@@ -38,7 +38,7 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 **What:** the first code that runs. It builds the web application and connects the modules.
 **How:**
 1. `AddNetworkModule(...)` registers the Network module's database and startup work.
-2. `AddOpenApi()` / `MapOpenApi()` produce the machine-readable API description.
+2. `AddOpenApi()` / `MapOpenApi("/openapi/{documentName}.yaml")` make the application describe its own API at `/openapi/v1.yaml` (OpenAPI, as YAML). The committed copy is `backend/openapi.yaml`; see section 4.
 3. `app.MapGroup("/api/v1")` creates the URL prefix every endpoint lives under (contract §1); `MapNetworkEndpoints()` puts the Network endpoints in it.
 4. `public partial class Program;` at the bottom exists only so the integration tests can start the whole application in memory.
 
@@ -61,7 +61,6 @@ Network is **read-only** in the MVP: everything comes from the seed files. It ho
 | `NetworkStartupService` | Runs once at start, **before** the server accepts requests (that is how a hosted service behaves). Development: applies pending migrations automatically. Any other environment: refuses to start if migrations are pending. Then loads the seed. An exception here stops the whole application. |
 
 **Why:** migrations apply automatically only in Development so a production database is never changed by simply starting the program (decision 7, 13 Oct).
-**Watch out:** the startup service is *not* registered while the OpenAPI build step runs (`IsGeneratingApiDocument`). That step starts the application only to read its endpoints and has no database.
 
 ### 3.2 `Model/` — the tables as C# classes
 Plain classes, one per table, no behaviour (domain model §3). Files: `Stations.cs`, `Routes.cs`, `Timetable.cs`, `TrainSets.cs`.
@@ -143,9 +142,11 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 | `tests/Unit` | Seed rules (`Network/Seed/SeedValidator*Tests`), CSV splitting, and that the **real** `shared/seed` files pass every rule | Nothing |
 | `tests/Integration` | The real application on a real PostgreSQL: seed counts, `network` schema, restart does not duplicate, WRONG data stops startup, the ESTIMATE warning, the endpoint, the permission matrix | **Docker running** |
 | `tests/Architecture` | Domain projects reference only `System.*`; no module depends on another except Disruptions → LiveOperations | Nothing |
+| `tests/Integration` → `OpenApiDocumentTests` | The running application's `/openapi/v1.yaml` equals the committed `backend/openapi.yaml`. An API change that is not reflected in the file fails the build (and CI). | Docker |
 | `tests/Contract` | (empty so far) | |
 
 `ApiFixture` starts one PostgreSQL container and one copy of the application for all integration tests. Run everything: `dotnet test backend/SmartRail.sln`.
+**After changing an endpoint:** run the tests once with `UPDATE_OPENAPI=1` (PowerShell: `$env:UPDATE_OPENAPI="1"; dotnet test backend/SmartRail.sln; Remove-Item Env:UPDATE_OPENAPI`) to rewrite `backend/openapi.yaml`, then read `git diff backend/openapi.yaml` and compare it with the contract (CLAUDE.md §5.3).
 `PermissionMatrixTests` holds one row per endpoint and role; only the anonymous role exists until sign-in is built.
 
 ---
@@ -162,11 +163,13 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 
 | # | Point | Status |
 |---|---|---|
-| 1 | `backend/openapi.yaml`: the build-time generator writes JSON only | Waiting for your choice (JSON file, or YAML served by the app and compared in a test) |
+| 1 | `backend/openapi.yaml` | **Done (13 Oct):** YAML served by the app and compared in a test (the build-time generator can only write JSON, so that package was removed) |
 | 2 | `MapOpenApi()` is public in all environments | Decide before release |
 | 3 | Which end is coach position 1 | Undefined; no story needs it |
 | 4 | Kandy distance is an ESTIMATE | Replace with the SLR Matale figure |
 | 5 | Permission matrix has only the anonymous role | Add roles when sign-in exists |
+| 6 | In `openapi.yaml` the error schema `ProblemDetails` lacks the fields our errors really carry (`code`, `errors`, `requestId`; contract §6), so generated TypeScript types would not see `code` | Fix before client types are generated (C-8) |
+| 7 | `openapi.yaml` has `servers: http://localhost/` and marks `query` as optional (the endpoint answers `400` when it is missing) | Harmless for now; decide whether to describe `query` as required |
 
 ---
 
@@ -175,3 +178,4 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 | Date | Change |
 |---|---|
 | 13 Oct 2026 | First version: scaffold, Network module (model, migration, seed loader, `GET /stations`), tests |
+| 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |

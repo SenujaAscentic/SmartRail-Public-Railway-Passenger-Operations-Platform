@@ -26,18 +26,10 @@ public static class NetworkModule
         });
 
         services.AddScoped<NetworkSeeder>();
-        // The OpenAPI build step starts the application only to read its endpoints; it has no database,
-        // so the migration and seeding must not run then.
-        if (!IsGeneratingApiDocument)
-        {
-            services.AddHostedService<NetworkStartupService>();
-        }
+        services.AddHostedService<NetworkStartupService>();
 
         return services;
     }
-
-    private static bool IsGeneratingApiDocument =>
-        System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
     // The host decides the URL prefix (/api/v1) and passes the group in.
     public static IEndpointRouteBuilder MapNetworkEndpoints(this IEndpointRouteBuilder routes)

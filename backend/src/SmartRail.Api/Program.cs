@@ -7,7 +7,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-app.MapOpenApi();
+// The API description, as YAML (ADR-09). backend/openapi.yaml is a committed copy of this; a test compares them.
+app.MapOpenApi("/openapi/{documentName}.yaml");
 
 // Every endpoint lives under /api/v1 (contract section 1).
 var api = app.MapGroup("/api/v1");
