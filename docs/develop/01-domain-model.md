@@ -228,7 +228,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 
 | ID | Rule | Source |
 |---|---|---|
-| **R-01** | **Delay** = actual time − scheduled time at the most recent stop event, in **whole minutes, rounded down** (59 s late = on time; 1 min 59 s late = 1 min late). Negative = early. Shown as "On time", "3 min late", "2 min early". | S5-09, S5-10, D-1 |
+| **R-01** | **Delay** = actual time − scheduled time at the most recent stop event, in **whole minutes, rounded toward zero** (59 s late = on time; 1 min 59 s late = 1 min late). Negative = early. Shown as "On time", "3 min late", "2 min early". | S5-09, S5-10, D-1 |
 | **R-02** | **Expected arrival** at each remaining stop = scheduled arrival + current delay. Early running carries forward for arrivals. | S5-12 |
 | **R-03** | **Expected departure** = max(scheduled departure, scheduled departure + current delay). A predicted departure is never earlier than scheduled; an actual early departure is recorded as it happened. | S5-11 |
 | **R-04** | **Station zone detection** (radius 300 m): entered the zone and speed < 5 km/h for 20 s → Arrived; left the zone after Arrived → Departed; entered and left without meeting the stop condition → Passed. | S5-07, D-2 |

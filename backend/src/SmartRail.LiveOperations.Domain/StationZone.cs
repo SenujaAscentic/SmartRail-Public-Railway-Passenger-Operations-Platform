@@ -15,7 +15,8 @@ public sealed record ZoneState(ZonePhase Phase, DateTime? SlowSince)
 // (R-07 / R-08 bring the geometry); keeping it out of here keeps this rule free of maps.
 public readonly record struct ZoneSample(DateTime Time, double DistanceMetres, double SpeedKmh);
 
-public readonly record struct ZoneStep(ZoneState State, ZoneEvent Event);
+// EventTime is when the thing happened: for Arrived, when the train stopped; for Departed and Passed, the sample that left the zone.
+public readonly record struct ZoneStep(ZoneState State, ZoneEvent Event, DateTime? EventTime = null);
 
 public static class StationZone
 {
@@ -38,19 +39,19 @@ public static class StationZone
             case ZonePhase.Inside:
                 if (!inside)
                 {
-                    return new ZoneStep(new ZoneState(ZonePhase.Finished, null), ZoneEvent.Passed);   // never stopped
+                    return new ZoneStep(new ZoneState(ZonePhase.Finished, null), ZoneEvent.Passed, sample.Time);   // never stopped
                 }
 
                 // The slow spell starts at the first slow sample and breaks as soon as the train is not slow.
                 var slowSince = sample.SpeedKmh < SlowSpeedKmh ? state.SlowSince ?? sample.Time : (DateTime?)null;
                 if (slowSince is not null && sample.Time - slowSince.Value >= SlowFor)
                 {
-                    return new ZoneStep(new ZoneState(ZonePhase.Arrived, null), ZoneEvent.Arrived);
+                    return new ZoneStep(new ZoneState(ZonePhase.Arrived, null), ZoneEvent.Arrived, slowSince);   // when it stopped
                 }
                 return new ZoneStep(new ZoneState(ZonePhase.Inside, slowSince), ZoneEvent.None);
 
             case ZonePhase.Arrived when !inside:
-                return new ZoneStep(new ZoneState(ZonePhase.Finished, null), ZoneEvent.Departed);
+                return new ZoneStep(new ZoneState(ZonePhase.Finished, null), ZoneEvent.Departed, sample.Time);
 
             default:   // Arrived and still inside, or Finished: nothing new to report
                 return new ZoneStep(state, ZoneEvent.None);

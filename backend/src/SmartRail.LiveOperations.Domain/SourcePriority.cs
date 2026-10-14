@@ -22,7 +22,9 @@ public sealed record SourcedDelay(Delay Value, Source Source)
     public SourcedDelay Apply(Delay delay, Source source) =>
         source > Source ? this : new SourcedDelay(delay, source);
 
-    // Only a controller delay is cleared. Back to "on schedule" until the next GPS or crew value arrives, which then applies.
-    public SourcedDelay ClearController() =>
-        Source == Source.Controller ? FromSchedule : this;
+    // Only a controller delay is cleared. It is replaced by the delay recalculated from the latest recorded stop time
+    // (FromSchedule if there is none), never blindly by 0: a reset would show a false "On time" (US-P4) and could send
+    // a wrong push (R-16). The caller works out `recalculated`; this type does not know the stops.
+    public SourcedDelay ClearController(SourcedDelay recalculated) =>
+        Source == Source.Controller ? recalculated : this;
 }
