@@ -44,6 +44,10 @@ One line (Main Line, both directions), one **Controller** role, station managers
 
 ## 5. How to work
 
+### Principle: simple, within the agreed concepts
+
+The concepts in the docs are fixed: modular monolith, module schemas and public interfaces, direct call vs outbox events, pure Domain projects, feature slices, TDD for rules, `TimeProvider` / UTC, security rules. Within them, choose the simplest implementation that meets the acceptance criteria and standard best practice. Add nothing a current story, rule or test doesn't need. Give every design decision a one-line reason. If the simplest option would bend a concept, stop and ask.
+
 1. **Domain rules: test first.** Use the approved test names in the domain model §10. Write the failing test, then the code. Use `FakeTimeProvider` for anything time-based.
 2. **Endpoints:** implement exactly as in the contract (paths, fields, policies, error `code`s); add integration tests with Testcontainers (real PostgreSQL). Every new endpoint gets rows in the **permission matrix test** (every role, expected allow / deny).
 3. **After API changes:** regenerate `backend/openapi.yaml` and show the diff. Any difference from `02-api-contract.md` must be pointed out, not silently kept.
