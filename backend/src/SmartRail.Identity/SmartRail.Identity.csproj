@@ -1,3 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Part of the SDK, not a package: gives the module the ASP.NET Core types for its endpoints, policies and startup. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Network is allowed (architecture test): staff seeding asks its public IStationDirectory for station IDs. -->
+    <ProjectReference Include="..\SmartRail.Network\SmartRail.Network.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- All three are Microsoft's official packages (ADR-10). -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tests check token claims, the seed rules and the tables the sign-in writes. No other project may. -->
+    <InternalsVisibleTo Include="SmartRail.UnitTests" />
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
 
 </Project>

@@ -61,6 +61,31 @@ public class OpenApiDocumentTests(ApiFixture api)
         Assert.DoesNotContain("servers:", await ServedYaml());
     }
 
+    // Clients generated from the file must know that a bearer access token exists and which operations need it.
+    [Fact]
+    public async Task The_description_declares_the_bearer_scheme_and_secures_staff_me_but_not_sign_in()
+    {
+        var yaml = await ServedYaml();
+        Assert.Contains("securitySchemes:", yaml);
+        Assert.Contains("scheme: bearer", yaml);
+
+        Assert.Contains("Bearer", OperationBlock(yaml, "/api/v1/staff/me"));
+        Assert.DoesNotContain("Bearer", OperationBlock(yaml, "/api/v1/auth/staff/sign-in"));
+        Assert.DoesNotContain("Bearer", OperationBlock(yaml, "/api/v1/auth/refresh"));
+        Assert.DoesNotContain("Bearer", OperationBlock(yaml, "/api/v1/stations"));
+    }
+
+    // The text of one path in the YAML, from its heading up to the next path or the components section.
+    private static string OperationBlock(string yaml, string path)
+    {
+        var start = yaml.IndexOf("\n  " + path + ":", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"The description has no path {path}.");
+        var next = yaml.IndexOf("\n  /", start + 1, StringComparison.Ordinal);
+        var components = yaml.IndexOf("\ncomponents:", start, StringComparison.Ordinal);
+        var end = new[] { next, components }.Where(i => i > 0).DefaultIfEmpty(yaml.Length).Min();
+        return yaml[start..end];
+    }
+
     // Line endings must not matter (Windows and Linux), and the file ends with exactly one newline.
     private static string Normalise(string text) => text.Replace("\r\n", "\n").TrimEnd('\n') + "\n";
 

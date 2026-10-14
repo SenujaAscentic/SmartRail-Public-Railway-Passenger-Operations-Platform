@@ -46,18 +46,18 @@
 | O-9 | Station manager posts announcements to the large information screen |
 | O-10 | Audit log of every operational action (who, when, why) |
 
-### 3. Crew app (native, driver and guard) – priority 3
+### 3. Crew app (native, driver; guard deferred 14 Oct) – priority 3
 | ID | Capability |
 |---|---|
-| C-1 | **Phone mode** (driver's / guard's own phone): staff sign-in, read-only list of today's assigned journeys with train set, time, route and departure platform (seed data) |
+| C-1 | **Phone mode** (driver's own phone): staff sign-in, read-only list of today's assigned journeys with train set, time, route and departure platform (seed data) |
 | C-2 | **Cab mode** (registered Android tablet in the cab, kiosk, train-powered): driver signs in, starts journey (GPS on) / ends journey (GPS off); assigned journey only; one active cab session per driver; the driver cannot start a journey from a phone (ADR-05) |
 | C-3 | Glance view: next stop, scheduled vs actual, delay; dark, landscape, large targets |
 | C-4 | Arrived / Departed buttons as fallback |
-| C-5 | Incident report from fixed types (guard can add a note) **→ deferred 12 Oct (re-plan)** |
+| C-5 | Incident report from fixed types (free-text note was for the guard, deferred 14 Oct) **→ deferred 12 Oct (re-plan)** |
 | C-6 | Controller messages and instructions (incl. "hold at Platform 5") with acknowledgement |
 | C-7 | Offline queue: actions saved with timestamps, sent on reconnect |
 
-Built with Flutter like the passenger app (ADR-04), sharing sign-in, API client, live updates and UI components. One app, two modes chosen by the device (ADR-05); the demo uses an emulator in tablet landscape as the cab device. Guard uses phone mode for taps, reports and messages.
+Built with Flutter like the passenger app (ADR-04), sharing sign-in, API client, live updates and UI components. One app, two modes chosen by the device (ADR-05); the demo uses an emulator in tablet landscape as the cab device. The guard role is deferred (14 Oct): the driver is the only crew role.
 
 ### 4. Station displays (one web app, several screens) – priority 4
 | ID | Capability |
@@ -122,7 +122,7 @@ No passenger data is shared with the provider in this release.
 | S-11 | Train set mismatch warning: journey's assigned train set ≠ tablet's train set → driver warned, controller alerted |
 
 ## COULD
-Seat reservation prices (P-10) · season ticket prices (P-11) · station terminal · full connection planner with combined journeys and "connection at risk" alerts · platform occupancy view per station with free-platform suggestions · waiting-area display · "add cancelled train's stops to next train" shortcut · guard's phone taking over tracking when the cab tablet fails · automatic End journey at the terminus · phone notifications for changes to later journeys · shift handover note · metrics dashboard incl. ETA accuracy · SMS fallback · user / role management screen · system administrator role · scheduler screens · timetable editor.
+Seat reservation prices (P-10) · season ticket prices (P-11) · station terminal · full connection planner with combined journeys and "connection at risk" alerts · platform occupancy view per station with free-platform suggestions · waiting-area display · "add cancelled train's stops to next train" shortcut · guard role and the guard's phone taking over tracking when the cab tablet fails (deferred 14 Oct) · automatic End journey at the terminus · phone notifications for changes to later journeys · shift handover note · metrics dashboard incl. ETA accuracy · SMS fallback · user / role management screen · system administrator role · scheduler screens · timetable editor.
 
 ## WON'T (next release – reasons in the deferred list)
 In-app food ordering, payment and collection · **second line, regions, chief / regional controllers and "change at" guidance (P-12)** · ticket sales and seat booking · refunds · map view · multilingual boards · PA system integration · planned engineering works · customer service and reporting roles · on-train GPS unit · staff-first delay window · step-free routing and escorts · crew device management · masked phone calls.
@@ -135,3 +135,4 @@ In-app food ordering, payment and collection · **second line, regions, chief / 
 |---|---|---|
 | 9 Oct | MVP reduced to **one line** (Main Line, both directions) and **one controller role** for the whole line. Regions, chief / regional controllers and interchanges deferred; **P-12 "Change at" moved from Should to Won't** (no second line to change to). Station manager role unchanged. `Line` stays in the data model so a second line is new data, not new code. | Scope management: saves seed verification, permission-matrix and filter work in a 7-day build; no Must or E2E flow lost |
 | 12 Oct | **Re-plan:** no code existed on 12 Oct, leaving 6 build days (12–17 Oct) instead of 7, with QA reduced to one day. Deferred: **O-8** unscheduled stop alert; **O-6 + C-5** crew incident reports and incident workflow (the controller's delay reason covers the cause; none of the 5 E2E flows needs them); **all Shoulds**; station manager limited to announcements (O-9). Never cut: 5 E2E flows, auth with role + scope, audit log, catering (light), AI log | Deliberate scope management instead of running out of time on 16 Oct |
+| 14 Oct | **Guard role deferred** (scope decision by Senuja). The roles are now Controller, StationManager and Driver. Journeys have a driver only; the guard accounts are removed from the seed data; crew phone mode is the driver only. The guard stays a discovered actor for future work (second crew member, backup tracking from the guard's phone). Affects C-1, C-5, US-C1/C3/C4/C6, A-59, A-60. | The brief only requires the driver; no E2E flow needs the guard; it removes a role from sign-in, the seed data and every permission-matrix row. |
