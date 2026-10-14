@@ -2,7 +2,7 @@
 
 **Written for:** Senuja, to read before a review (§28) and to explain the code without the AI.
 **Kept up to date by:** the coding agent, after every change to backend code (CLAUDE.md §5, step 9).
-**Last updated:** 14 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface), LiveOperations (daily journey generation, US-B2), Api host, API description (`openapi.yaml`), tests.
+**Last updated:** 14 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface, `IStationDirectory`), LiveOperations (daily journey generation, US-B2), **Identity (staff sign-in, refresh, policies, staff and cab-device seed; US-O1, US-B7)**, Api host, API description (`openapi.yaml`), tests.
 
 For *what* the system must do, read the specs (`docs/define/`, `01-domain-model.md`, `02-api-contract.md`). This guide explains *how the code does it* and *why it is written that way*.
 
@@ -23,11 +23,12 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 
 | Project (backend/src) | What it is | State |
 |---|---|---|
-| `SmartRail.Api` | The host: starts the program, connects the modules, serves HTTP | Network and LiveOperations wired in |
+| `SmartRail.Api` | The host: starts the program, connects the modules, serves HTTP | Network, LiveOperations and Identity wired in; authentication and authorisation in the pipeline |
 | `SmartRail.Network` | The timetable data: stations, routes, services, train sets | **Built** (this guide) |
 | `SmartRail.LiveOperations` / `.Domain` | Today's journeys and the delay/ETA rules | **Daily journey generation built** (section 4); no delay/ETA yet |
 | `SmartRail.Disruptions` / `.Domain` | Incidents | Empty |
-| `SmartRail.Identity`, `.Notifications`, `.CateringIntegration` | Accounts, push, catering | Empty |
+| `SmartRail.Identity` | Who is calling and may they do this: staff sign-in, tokens, policies | **Staff sign-in built** (section 5); cab-device sign-in, passengers, display devices, provider not yet |
+| `SmartRail.Notifications`, `.CateringIntegration` | Push, catering | Empty |
 | `SmartRail.Simulator` | Replays GPS through the API | Empty |
 
 ---
@@ -38,10 +39,11 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 **What:** the first code that runs. It builds the web application and connects the modules.
 **How:**
 1. `AddNetworkModule(...)` registers the Network module's database and startup work.
-2. `AddOpenApi()` / `MapOpenApi("/openapi/{documentName}.yaml")` make the application describe its own API at `/openapi/v1.yaml` (OpenAPI, as YAML). The committed copy is `backend/openapi.yaml`; see section 5. Two *transformers* adjust the description here, once for every module: one removes the `servers` entry (it would be copied from whichever request produced the file), and one adds `code`, `errors` and `requestId` to the `ProblemDetails` schema, because the framework only knows the standard fields and contract §6 says every error carries them. The error responses themselves are still built where the error happens.
+2. `AddOpenApi()` / `MapOpenApi("/openapi/{documentName}.yaml")` make the application describe its own API at `/openapi/v1.yaml` (OpenAPI, as YAML). The committed copy is `backend/openapi.yaml`; see section 6. Two *transformers* adjust the description here, once for every module: one removes the `servers` entry (it would be copied from whichever request produced the file), and one adds `code`, `errors` and `requestId` to the `ProblemDetails` schema, because the framework only knows the standard fields and contract §6 says every error carries them. The error responses themselves are still built where the error happens.
 3. `app.MapGroup("/api/v1")` creates the URL prefix every endpoint lives under (contract §1); `MapNetworkEndpoints()` puts the Network endpoints in it.
-4. `AddSingleton(TimeProvider.System)` registers the one clock of the whole application; tests replace it with a fixed one. `AddNetworkModule` is called **before** `AddLiveOperationsModule` because hosted services start in the order they are registered and LiveOperations' start-up check needs the network data that Network loads first.
-5. `public partial class Program;` at the bottom exists only so the integration tests can start the whole application in memory.
+4. `AddIdentityModule(...)` (after Network) registers staff sign-in and the authentication / authorisation services; `UseAuthentication()` then `UseAuthorization()` put them in the request pipeline (who is calling, then may they), and `MapIdentityEndpoints()` maps the three auth endpoints. Two more transformers describe the **Bearer** scheme in `openapi.yaml` and mark every operation whose endpoint names a policy as needing it. The API description itself is `AllowAnonymous()`.
+5. `AddSingleton(TimeProvider.System)` registers the one clock of the whole application; tests replace it with a fixed one. `AddNetworkModule` is called **before** `AddLiveOperationsModule` because hosted services start in the order they are registered and LiveOperations' start-up check needs the network data that Network loads first.
+6. `public partial class Program;` at the bottom exists only so the integration tests can start the whole application in memory.
 
 **Why:** the host knows about *all* modules but modules do not know about each other. The URL prefix is decided here, not in the module.
 **Watch out:** `MapOpenApi()` currently runs in every environment, so the API description is public in production too. Decide before release whether it should be Development only.
@@ -142,6 +144,10 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 **Why internal:** `NetworkDbContext`, every class in `Model/` and `NetworkSeeder` are `internal`. A module that tries to read `network.Stations` simply does not compile (architecture Q3/Q5). `InternalsVisibleTo` gives the **integration tests only** a view of the internals, so they can check what the seed loader wrote.
 **Watch out:** Network has its own call type in the model and a public `ScheduledCallType` in the interface; LiveOperations.Domain has a third. They are copied across the boundary on purpose, so no module depends on another's types.
 
+### 3.8 `IStationDirectory.cs` and `StationDirectory.cs` — the second door into Network
+**What:** a public interface with one method, `GetStationIdsAsync(codes)`, that answers a station code ("FOT") with the station's ID. Codes that do not exist are left out of the answer so the caller can report them.
+**Why:** Identity needs it once, while seeding station managers (their token carries a station UUID). It is kept apart from `INetworkSchedule` (the whole plan) so the door stays small. The IDs stay the same across restarts because the network seed finds each station by its code and updates it. Tested in `tests/Integration/Network/StationDirectoryTests`.
+
 ## 4. The LiveOperations module (`SmartRail.LiveOperations` and `.Domain`)
 
 Only **daily journey generation (US-B2)** exists so far: for today and the next 2 days, every service that runs on a date gets one *operational journey*, stored with all its stops. Delay, hold, tracking and the other statuses will come with their own rules.
@@ -185,31 +191,119 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | Planner and `ServiceAssignments` are `public` | They are pure, and the unit tests need them. Everything touching tables is `internal` |
 | `Guid.CreateVersion7(now)` with the injected clock | Time-ordered ids without reading the system clock |
 
-## 5. Tests
+## 5. The Identity module (`SmartRail.Identity`)
+
+Identity answers two questions: **who is calling?** (sign-in, tokens) and **may they do this?** (policies). Today it covers **staff** only (Controller, StationManager, Driver); passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
+
+```
+POST /auth/staff/sign-in {staffNumber, password}
+   ► validate fields (400) ► find account ► locked? (429) ► password wrong? count it (401, or 429 on the 5th)
+   ► right password but Driver / deactivated? same 401 ► reset count
+   ► issue ACCESS token (JWT, 15 min, in the body)  +  REFRESH token (random secret, 30 min idle, in an HttpOnly cookie)
+
+every later request:  Authorization: Bearer <access token> ► JwtBearer checks signature + expiry ► the endpoint's policy checks the role
+
+POST /auth/refresh (cookie only) ► look up the hash ► used/revoked before? => copied: revoke the whole session (401)
+   ► expired (idle > 30 min)? 401 ► mark used (one atomic statement) ► new access token + new refresh cookie
+```
+
+### 5.1 `Model/` — the tables as C# classes (all `internal` except `StaffRole`)
+| File | What it holds |
+|---|---|
+| `StaffRole.cs` | `Controller`, `StationManager`, `Driver`. Stored as its name. One role per person, so it is a column and Identity's role tables are not used. |
+| `StaffAccount.cs` | A staff member: extends Identity's `IdentityUser<Guid>` (which gives the password hash, lockout counters and security stamp). `UserName` is the **staff number**. Adds `Name`, `Role`, `StationId` (station managers only) and `IsActive`. `MaySignInToOpsWeb` = active and Controller or StationManager; it is computed, so EF Core ignores it. |
+| `CabDevice.cs` | A registered cab tablet: `Code` ("CAB-01"), `TrainSetCode` (text, the train set belongs to Network), `CredentialHash`, `Active`. **Identity owns this** (domain model D-13); only the hash of the secret is stored. Nothing uses it yet: cab sign-in is the next task. |
+| `RefreshToken.cs` | One refresh token: `TokenHash` (never the secret), `FamilyId` (= one sign-in session), `ExpiresAt`, `UsedAt`, `RevokedAt`; `IsUsableAt(now)`. |
+
+### 5.2 `Persistence/IdentityModuleDbContext.cs` and the `InitialIdentity` migration
+**What:** the module's database access; all tables are in the PostgreSQL schema `identity`. It extends Identity's `IdentityUserContext`, which maps the user table (here `StaffAccounts`) and three tables this module never uses (`AspNetUserClaims`, `…Logins`, `…Tokens`); they stay empty.
+**How/why:** a **check constraint** makes the database enforce "a station manager has a station, nobody else does" (domain model D-9). `CabDevice.Code` and `RefreshToken.TokenHash` have unique indexes (the seed finds devices by code; refresh finds tokens by hash). `Role` is stored as text like every enum.
+**Watch out:** like the other modules, the migration applies automatically in Development only.
+
+### 5.3 `Tokens/`
+| File | What it does |
+|---|---|
+| `JwtSettings.cs` | Reads `Jwt:SigningKey` from configuration (user-secrets / environment, never the repo). Must be at least 32 characters, else the application will not start and the message gives the exact `dotnet user-secrets set` command. Issuer `smartrail` and audience `smartrail-api` are fixed names. |
+| `AccessTokenIssuer.cs` | Creates the signed JWT (HS256). Claims: `sub` (account id), `role`, `stationId` (only for a station manager), plus `iss`, `aud`, `iat`, `nbf`, `exp`. **No name or other personal data.** Lifetime 15 minutes. Time comes from `TimeProvider`. |
+| `RefreshTokens.cs` | `Create` makes 256 random bits as the secret and the row to store (only its SHA-256 hash). `IdleLifetime` = 30 minutes. A plain SHA-256 is right here because the secret is random; passwords and the cab-device secret use Identity's `PasswordHasher` instead. |
+| `SessionCookie.cs` | Writes/reads the cookie `smartrail_refresh`: `HttpOnly` (scripts cannot read it), `Secure`, `SameSite=Strict`, path `/api/v1/auth` (only sent to the auth endpoints). |
+| `AccessTokenResponse.cs` | The body of sign-in and refresh: `accessToken`, `expiresAt`. The refresh token is **never** in the body. |
+
+### 5.4 `Features/` — one folder per endpoint
+| Folder | Endpoint | Notes |
+|---|---|---|
+| `StaffSignIn/` | `POST /auth/staff/sign-in` (Public) | `StaffSignInValidator` (required fields, max 200 characters so nobody makes the server hash a huge password) ► `StaffSignInHandler`. **Every failure is the same `401 UNAUTHENTICATED` message** (unknown number, wrong password, a driver, a deactivated account). Five wrong passwords lock the account for 15 minutes (`429 SIGN_IN_LOCKED` with `Retry-After`); Identity's `UserManager` counts the failures. A successful sign-in resets the count. A new sign-in starts a new session family. |
+| `RefreshSession/` | `POST /auth/refresh` (Public, cookie is the credential) | Rotation: each refresh token works **once**. A token that comes back after use or revoke means a copy exists (threat T-14), so the whole session is revoked. The "use it up" step is one SQL `UPDATE … WHERE UsedAt IS NULL`, so two refreshes at the same instant cannot both succeed. A deactivated account is refused here too (so within about 15 minutes of deactivation). Each refresh gives a fresh 30 minutes ("sliding"), so an active user stays signed in and an idle one is out after 30 minutes (US-O1). |
+| `GetStaffMe/` | `GET /staff/me` (policy `Staff`) | Returns `{name, role, stationId}` for the caller; the account comes from the token's `sub`, never from the URL. `stationId` null = whole line. |
+
+### 5.5 `Authorization/` and `Problems.cs`
+| File | What it does |
+|---|---|
+| `Policies.cs` | The policy names of contract §2: `Controller`, `StationManager`, `Staff` (either of those two), `CrewPhone` (Driver). Also sets the **fallback policy**: an endpoint that names no policy still needs a signed-in caller, so a forgotten policy fails closed. Public endpoints say `AllowAnonymous()` explicitly. Other modules write the same names as text, because they may not reference Identity's code. |
+| `ProblemAuthorizationResultHandler.cs` | Makes a refused request answer as Problem Details with a code: `401 UNAUTHENTICATED` (not signed in / token expired) or `403 FORBIDDEN` (wrong role). The framework's default sends an empty body. |
+| `Problems.cs` | The module's error responses in the contract §6 shape (`type`, `title`, `code`, `requestId`, `errors`). |
+
+### 5.6 `Seed/` — staff accounts and cab devices from `shared/seed`
+| File | What it does |
+|---|---|
+| `StaffSeedData.cs` | The shapes of `staff.json` and `cab-devices.json`. The files hold **no secrets**, only the *name* of the configuration key where each secret lives. |
+| `IdentitySeedValidator.cs` | **Pure code.** Collects all problems (duplicate staff number, unknown role, station manager without station, station code the network does not know, missing secret, …). Messages never contain a secret value; a missing secret's message gives the exact `dotnet user-secrets set` command. Tested in `tests/Unit/Identity`. |
+| `IdentitySeeder.cs` | Validates, then writes in **one transaction**, finding each row by its natural key (staff number / device code), so a restart changes nothing unless the files or secrets changed. Station codes become **station IDs here, once**, via Network's public `IStationDirectory`. Passwords and device secrets are hashed with Identity's `PasswordHasher` and re-hashed only when the stored hash no longer matches the secret (so changing the demo-password secret takes effect at the next start). |
+| `IdentitySeedFolder.cs` | Finds `shared/seed` (a small copy of Network's finder: using Network's class would reach into its internals). |
+
+### 5.7 `IdentityModule.cs`
+`AddIdentityModule` registers: the `identity` DbContext; **ASP.NET Core Identity** (`AddIdentityCore`, lockout 5 failures / 15 min); `JwtSettings` and `AccessTokenIssuer`; **JWT bearer authentication** (signature, issuer, audience, only HS256, **no clock skew** so 15 minutes means 15 minutes, and expiry judged on `TimeProvider`); the policies; the seeder and the startup service. `MapIdentityEndpoints` maps the three endpoints. `IdentityStartupService` checks the signing key, migrates (Development only), then seeds. **Call `AddIdentityModule` after `AddNetworkModule`**: the seed needs the stations.
+The host (`Program.cs`) adds `UseAuthentication()` then `UseAuthorization()`; the order matters (who, then may they).
+Network gained one public door for this: `IStationDirectory` (station codes → IDs). The architecture test now allows `Identity → Network` (approved 14 Oct).
+
+### 5.8 Design decisions (one line each)
+| Decision | Reason |
+|---|---|
+| Identity's `UserManager` + `PasswordHasher`; JWT issued by the backend | The risky parts (hashing, lockout) stay in the framework (ADR-10, CLAUDE.md §6) |
+| Role as a column, not Identity role tables | One role per person; fewer tables to explain |
+| Refresh token = random secret, only its hash stored, rotation with reuse detection | A leaked database cannot be used to sign in; a copied cookie is noticed (T-14) |
+| Refresh token in an HttpOnly cookie, access token in the body | Scripts cannot steal the long-lived token (C-3, T-14) |
+| 30-minute sliding refresh expiry | This *is* the 30-minute idle rule (US-O1), with no extra bookkeeping |
+| One generic 401 for every sign-in failure | No account enumeration (contract §6) |
+| Station ID stored on the account at seeding | The token needs a UUID; asking Network once at seeding keeps sign-in fast and the dependency tiny |
+| Fallback policy requires sign-in | A forgotten policy fails closed |
+| HS256 with a symmetric key | Only this backend issues and checks tokens, so no key distribution is needed |
+| Device secret hashed with `PasswordHasher` | "No custom hashing"; the cost only matters at cab sign-in, not per request |
+
+---
+
+## 6. Tests
 
 | Project | What it proves | Needs |
 |---|---|---|
 | `tests/Unit` | Seed rules (`Network/Seed/SeedValidator*Tests`), CSV splitting, the **real** `shared/seed` files; the journey rules: the four B-2 tests, UTC conversion and overnight stops (`LiveOperations/OperationalJourneyTests`), `JourneyPlannerTests` (Colombo date, exceptions, train set), `ServiceAssignmentsTests` | Nothing |
 | `tests/Integration` | The real application on a real PostgreSQL: seed counts, `network` schema, restart does not duplicate, WRONG data stops startup, the ESTIMATE warning, the endpoint, the permission matrix; **journey generation** (12 journeys and 132 stops for the 3 days, UTC storage, a restart adds none, `ops` schema, the database refuses a duplicate, a wrong assignment file stops the start) | **Docker running** |
-| `tests/Architecture` | Domain projects reference only `System.*`; no module depends on another except Disruptions → LiveOperations | Nothing |
+| `tests/Architecture` | Domain projects reference only `System.*`; no module depends on another except Disruptions → LiveOperations, LiveOperations → Network and Identity → Network | Nothing |
 | `tests/Integration` → `OpenApiDocumentTests` | The running application's `/openapi/v1.yaml` equals the committed `backend/openapi.yaml`. An API change that is not reflected in the file fails the build (and CI). | Docker |
+| `tests/Unit/Identity` | The access token (15 min, claims, no personal data), the refresh token (30 min, only the hash is stored, usable once), the staff / cab-device seed rules | Nothing |
+| `tests/Integration/Identity` | Seeding (8 accounts, no guard, station IDs, hashed passwords and device secrets, restart, missing secrets stop the start); **sign-in** (generic 401, lockout after 5, driver refused, cookie flags, field errors); **refresh** (rotation, reuse revokes the session, 30 min idle, sliding, deactivated account, simultaneous refresh); **`/staff/me` and tokens** (expired, forged, unsigned, 401 / 403 bodies); `PolicyTests` (every policy × role, and every endpoint declares who may call it) | **Docker running** |
 | `tests/Contract` | (empty so far) | |
 
 `ApiFixture` starts one PostgreSQL container and one copy of the application for all integration tests. The application's clock is a `FakeTimeProvider` fixed at **Wednesday 14 Oct 2026, 10:00 in Colombo**, so "today and the next 2 days" are three weekdays and the expected counts never depend on the real date. The journey tests read the tables with plain SQL, so they do not depend on the module's internals. Run everything: `dotnet test backend/SmartRail.sln`.
 **After changing an endpoint:** run the tests once with `UPDATE_OPENAPI=1` (PowerShell: `$env:UPDATE_OPENAPI="1"; dotnet test backend/SmartRail.sln; Remove-Item Env:UPDATE_OPENAPI`) to rewrite `backend/openapi.yaml`, then read `git diff backend/openapi.yaml` and compare it with the contract (CLAUDE.md §5.3).
-`PermissionMatrixTests` holds one row per endpoint and role; only the anonymous role exists until sign-in is built.
+`PermissionMatrixTests` holds one row per endpoint and role (Anonymous, Controller, StationManager, Driver). Passenger, Display and Provider rows are added when those credentials exist. The tests make their own JWT signing key, demo password and cab-device secrets (`ApiFixture`), so nothing secret is committed and CI needs no user-secrets. A test that needs time to pass (token expiry, idle limit) starts its own copy of the application with its own `FakeTimeProvider`.
 
 ---
 
-## 6. Running it locally
+## 7. Running it locally
 
 1. Copy `.env.example` to `.env`, set `POSTGRES_PASSWORD`, then `docker compose up -d`.
 2. `dotnet user-secrets set "ConnectionStrings:SmartRail" "Host=localhost;Database=smartrail;Username=smartrail;Password=<your password>" --project backend/src/SmartRail.Api`
-3. `dotnet run --project backend/src/SmartRail.Api` — in Development it migrates and seeds, then serves `/api/v1/stations?query=kan`.
+3. Set the secrets for staff sign-in (any values you like; the key needs 32+ characters; the demo password is the password of every seeded staff account):
+   `dotnet user-secrets set "Jwt:SigningKey" "<32+ random characters>" --project backend/src/SmartRail.Api`
+   `dotnet user-secrets set "Seed:DemoPassword" "<demo password>" --project backend/src/SmartRail.Api`
+   `dotnet user-secrets set "Seed:CabDevice:CAB-01:Token" "<secret>" --project backend/src/SmartRail.Api` (and the same for `CAB-02`, `CAB-03`, `CAB-04`)
+   Without them the application refuses to start and prints the exact command for the missing one.
+4. `dotnet run --project backend/src/SmartRail.Api` — in Development it migrates and seeds, then serves `/api/v1/stations?query=kan`. Sign in as `CTRL-01` (controller) or `SM-FOT`, `SM-PLG`, `SM-KDT` (station managers) with the demo password; drivers `DRV-01` to `DRV-04` cannot sign in on the staff endpoint.
 
 ---
 
-## 7. Open points
+## 8. Open points
 
 | # | Point | Status |
 |---|---|---|
@@ -217,7 +311,7 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | 2 | `MapOpenApi()` is public in all environments | Decide before release |
 | 3 | Which end is coach position 1 | Undefined; no story needs it |
 | 4 | Kandy distance is an ESTIMATE | Replace with the SLR Matale figure |
-| 5 | Permission matrix has only the anonymous role | Add roles when sign-in exists |
+| 5 | Permission matrix has only the anonymous role | **Done (14 Oct)** for Anonymous, Controller, StationManager, Driver; add Passenger, Display, Provider with their credentials |
 | 6 | The error schema in `openapi.yaml` must include `code`, `errors`, `requestId` (contract §6) | **Done (13 Oct)**; a test checks it |
 | 7 | `openapi.yaml`: no `servers` entry, `query` required | **Done (13 Oct)**; tests check both |
 | 8 | The `ProblemDetails` description says `code` and `requestId` are always present; that is true for our own errors, not for framework errors (for example a malformed request) | Watch when more endpoints exist |
@@ -226,15 +320,24 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | 11 | `TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")` needs the time-zone database: present on Windows and on `ubuntu-latest`; a minimal container image would need `tzdata` | Check when a Docker image is built |
 | 12 | Network's seed loader still creates ids with `Guid.CreateVersion7()`, which reads the system clock inside the call | Harmless (ids only); switch to the injected clock if a rule ever needs it |
 | 13 | The domain model §10 does not list the four B-2 test names; the names were taken from the task | Add them to §10 if you want the document complete |
+| 14 | **Unknown URLs answer 401 (not 404) to a caller who is not signed in**, because the default-deny policy applies to every request. Reveals nothing | Fine for the MVP; say if you prefer 404 |
+| 15 | **Sign-out** (`POST /auth/sign-out`, contract §3.2) is not built, so a session ends only by 30 min idle, refresh reuse or deactivation | Add with the ops web sign-out button |
+| 16 | Two **simultaneous refreshes** from one browser (two tabs) look like a copied token and end the session; the winner's new token may survive a revoke that runs a moment later | Acceptable for the MVP; the web app should refresh from one place |
+| 17 | An **unknown staff number answers faster** than a wrong password (no hashing happens), which could reveal that a number exists | Low risk with seeded accounts; equalise later if wanted |
+| 18 | Identity's `UserManager` reads the **system clock** for lock times, not our `TimeProvider`; `Retry-After` is therefore clamped to the lock length (15 min) | Tests cannot move lock expiry; harmless in production |
+| 19 | Contract §3.3 says `/staff/me` returns "scope" without a shape; it returns `{name, role, stationId}` (`stationId` null = whole line). `openapi.yaml` cannot describe the refresh `Set-Cookie` header | Confirm the shape with the ops web |
+| 20 | The contract does not say the cab-device `trainSetCode` is checked against the network; the seed does not check it | Decide with cab sign-in (next task) |
+| 21 | `IdentityUserContext` creates three empty tables (`AspNetUserClaims`, `…Logins`, `…Tokens`) | Leave: they are part of the documented setup |
 
 ---
 
-## 8. Change log
+## 9. Change log
 
 | Date | Change |
 |---|---|
 | 13 Oct 2026 | First version: scaffold, Network module (model, migration, seed loader, `GET /stations`), tests |
 | 13 Oct 2026 | OpenAPI: `ProblemDetails` gets `code`, `errors`, `requestId`; `query` required; no `servers` entry (three tests) |
 | 14 Oct 2026 | US-B2: Network made internal with the public `INetworkSchedule`; LiveOperations gets `OperationalJourney` (Domain), the `ops` schema and migration, the journey planner, handler and hourly background service, the service-assignments check; architecture test allows LiveOperations → Network; FakeTimeProvider in the tests |
+| 14 Oct 2026 | **Staff sign-in (US-O1, US-B7):** Identity module (`StaffAccount`, `CabDevice`, `RefreshToken`, `identity` schema and `InitialIdentity` migration, staff and cab-device seed with `IdentitySeedValidator`, `AccessTokenIssuer`, `RefreshTokens`, `POST /auth/staff/sign-in`, `POST /auth/refresh`, `GET /staff/me`, policies `Controller` / `StationManager` / `Staff` / `CrewPhone`, JWT bearer authentication, 401 / 403 as Problem Details); Network gains `IStationDirectory`; architecture test allows Identity → Network; `openapi.yaml` gets the Bearer scheme and three operations; test fixture generates its own secrets; permission matrix has roles |
 | 14 Oct 2026 | Scope change, guard role deferred: guard accounts removed from `staff.json`, `guardStaffNumber` removed from `service-assignments.json` (the loader ignores that field, so no code change except a comment in `ServiceAssignments.cs`) |
 | 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |

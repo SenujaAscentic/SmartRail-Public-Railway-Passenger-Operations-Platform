@@ -1,11 +1,13 @@
 using System.Net;
+using System.Text;
+using SmartRail.IntegrationTests.Identity;
 using Xunit;
 
 namespace SmartRail.IntegrationTests;
 
-// Every endpoint, every role, expected allow / deny (CLAUDE.md section 5).
-// Sign-in and tokens do not exist yet, so only the anonymous caller can be tested. When sign-in is built,
-// add one row per role (Passenger, Controller, StationManager, Driver, Display, Provider) to each endpoint below.
+// Every endpoint, every role, expected allow / deny (CLAUDE.md section 5, threat T-04).
+// Roles that exist so far: Anonymous, Controller, StationManager, Driver.
+// Add Passenger, Display and Provider rows when their credentials exist. The policies themselves are checked in PolicyTests.
 [Collection("Api")]
 public class PermissionMatrixTests(ApiFixture api)
 {
@@ -14,17 +16,49 @@ public class PermissionMatrixTests(ApiFixture api)
     // role, method, path, expected status
     public static TheoryData<string, string, string, HttpStatusCode> Rows => new()
     {
-        { "Anonymous", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },   // Public
+        // GET /stations: Public.
+        { "Anonymous", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
+        { "Controller", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
+        { "StationManager", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
+        { "Driver", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
+
+        // The API description: Public.
+        { "Anonymous", "GET", "/openapi/v1.yaml", HttpStatusCode.OK },
+
+        // POST /auth/staff/sign-in: Public. An empty body is answered 400, which shows the request got past the policy.
+        { "Anonymous", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
+        { "Controller", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
+        { "Driver", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
+
+        // POST /auth/refresh: Public in the policy sense; the refresh cookie is the credential, so a bearer token changes nothing.
+        { "Anonymous", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
+        { "Driver", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
+
+        // GET /staff/me: policy Staff (Controller, StationManager).
+        { "Anonymous", "GET", "/api/v1/staff/me", HttpStatusCode.Unauthorized },
+        { "Controller", "GET", "/api/v1/staff/me", HttpStatusCode.OK },
+        { "StationManager", "GET", "/api/v1/staff/me", HttpStatusCode.OK },
+        { "Driver", "GET", "/api/v1/staff/me", HttpStatusCode.Forbidden },
     };
 
     [Theory]
     [MemberData(nameof(Rows))]
     public async Task Endpoint_answers_each_role_as_the_contract_says(string role, string method, string path, HttpStatusCode expected)
     {
-        Assert.Equal("Anonymous", role);   // fails loudly if someone adds a signed-in role row before sign-in can be sent
+        var client = api.Factory.NewClient();
+        var request = new HttpRequestMessage(new HttpMethod(method), path);
+        if (role != "Anonymous")
+        {
+            request.Headers.Add("Authorization", "Bearer " + await api.TokenForAsync(role, Ct));
+        }
 
-        var client = api.Factory.CreateClient();
-        var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path), Ct);
+        if (method == "POST")
+        {
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+
+        var response = await client.SendAsync(request, Ct);
 
         Assert.Equal(expected, response.StatusCode);
     }
