@@ -1,7 +1,7 @@
 namespace SmartRail.Network.Model;
 
 // Real, verified data (names, order, distances, coordinates): see shared/seed/README.md.
-public class Station
+internal class Station
 {
     public Guid Id { get; set; }
     public string Code { get; set; } = "";              // "KDT"; unique, used to find the row again when the seed is reloaded
@@ -12,7 +12,7 @@ public class Station
     public List<Platform> Platforms { get; set; } = [];
 }
 
-public class Platform
+internal class Platform
 {
     public Guid Id { get; set; }
     public Guid StationId { get; set; }

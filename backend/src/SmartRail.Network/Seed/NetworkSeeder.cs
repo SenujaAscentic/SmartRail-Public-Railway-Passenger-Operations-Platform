@@ -12,7 +12,7 @@ namespace SmartRail.Network.Seed;
 //  - the child rows (platforms, route stations, stops, calendar exceptions, coaches) have no identity of their own
 //    that anything refers to, so they are deleted and written again, all inside one transaction.
 // A row that is removed from the seed files stays in the database: other modules may already refer to it.
-public sealed class NetworkSeeder(NetworkDbContext db, ILogger<NetworkSeeder> logger)
+internal sealed class NetworkSeeder(NetworkDbContext db, ILogger<NetworkSeeder> logger)
 {
     public async Task SeedAsync(string seedFolder, CancellationToken ct = default)
     {

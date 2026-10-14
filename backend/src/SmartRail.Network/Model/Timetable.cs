@@ -1,10 +1,10 @@
 namespace SmartRail.Network.Model;
 
-public enum TrainType { Express, Intercity, Slow }
+internal enum TrainType { Express, Intercity, Slow }
 
-public enum CallType { Stop, Pass }
+internal enum CallType { Stop, Pass }
 
-public class ServiceCalendar
+internal class ServiceCalendar
 {
     public Guid Id { get; set; }
     public string Code { get; set; } = "";              // "WEEKDAY"
@@ -13,7 +13,7 @@ public class ServiceCalendar
 }
 
 // A date that differs from the weekly pattern, for example a Poya day.
-public class CalendarException
+internal class CalendarException
 {
     public Guid Id { get; set; }
     public Guid CalendarId { get; set; }
@@ -22,7 +22,7 @@ public class CalendarException
     public string Name { get; set; } = "";
 }
 
-public class Service
+internal class Service
 {
     public Guid Id { get; set; }
     public string Number { get; set; } = "";            // text ("1001"), unique; never used as an ID in URLs
@@ -32,7 +32,7 @@ public class Service
     public List<ScheduledStop> Stops { get; set; } = [];
 }
 
-public class ScheduledStop
+internal class ScheduledStop
 {
     public Guid Id { get; set; }
     public Guid ServiceId { get; set; }

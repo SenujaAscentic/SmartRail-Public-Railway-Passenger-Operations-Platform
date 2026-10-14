@@ -1,12 +1,12 @@
 namespace SmartRail.Network.Model;
 
-public enum Traction { DieselPowerSet, DieselLocoHauled }
+internal enum Traction { DieselPowerSet, DieselLocoHauled }
 
-public enum CoachClass { First, Second, Third }
+internal enum CoachClass { First, Second, Third }
 
-public enum SeatingType { Reserved, Unreserved }
+internal enum SeatingType { Reserved, Unreserved }
 
-public class TrainSet
+internal class TrainSet
 {
     public Guid Id { get; set; }
     public string Code { get; set; } = "";              // "DPS-01"
@@ -14,7 +14,7 @@ public class TrainSet
     public List<Coach> Coaches { get; set; } = [];
 }
 
-public class Coach
+internal class Coach
 {
     public Guid Id { get; set; }
     public Guid TrainSetId { get; set; }

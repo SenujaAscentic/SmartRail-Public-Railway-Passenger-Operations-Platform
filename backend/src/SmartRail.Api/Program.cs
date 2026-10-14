@@ -1,10 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
+using SmartRail.LiveOperations;
 using SmartRail.Network;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// One clock for the whole application; tests replace it with a fixed one.
+builder.Services.AddSingleton(TimeProvider.System);
+
+// Order matters: LiveOperations' start-up check needs the network data that Network loads first.
 builder.Services.AddNetworkModule(builder.Configuration);
+builder.Services.AddLiveOperationsModule(builder.Configuration);
 builder.Services.AddOpenApi(options =>
 {
     // The server URL would be copied from whichever request produced the file; clients choose their own.

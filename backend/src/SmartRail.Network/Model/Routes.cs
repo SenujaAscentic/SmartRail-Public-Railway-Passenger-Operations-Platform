@@ -1,9 +1,9 @@
 namespace SmartRail.Network.Model;
 
-public enum Direction { Up, Down }   // Up = Fort to Kandy, Down = Kandy to Fort
+internal enum Direction { Up, Down }   // Up = Fort to Kandy, Down = Kandy to Fort
 
 // One line in the MVP (Main Line). Kept as an entity so a second line is new data, not new code.
-public class Line
+internal class Line
 {
     public Guid Id { get; set; }
     public string Code { get; set; } = "";              // "MAIN"
@@ -12,7 +12,7 @@ public class Line
 }
 
 // One route per direction.
-public class Route
+internal class Route
 {
     public Guid Id { get; set; }
     public Guid LineId { get; set; }
@@ -23,7 +23,7 @@ public class Route
 }
 
 // The ordered list of stations on a route, with the distance from the route's start.
-public class RouteStation
+internal class RouteStation
 {
     public Guid Id { get; set; }
     public Guid RouteId { get; set; }

@@ -6,4 +6,8 @@
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The integration tests read the module's tables to check what the seed loader wrote. No other project may. -->
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
 </Project>

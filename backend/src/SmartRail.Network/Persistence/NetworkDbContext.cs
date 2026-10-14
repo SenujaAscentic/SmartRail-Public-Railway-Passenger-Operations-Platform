@@ -5,7 +5,7 @@ namespace SmartRail.Network.Persistence;
 
 // The Network module's database access. All tables live in the PostgreSQL schema "network";
 // no other module reads or writes them (CLAUDE.md section 3).
-public class NetworkDbContext(DbContextOptions<NetworkDbContext> options) : DbContext(options)
+internal class NetworkDbContext(DbContextOptions<NetworkDbContext> options) : DbContext(options)
 {
     public const string Schema = "network";
 

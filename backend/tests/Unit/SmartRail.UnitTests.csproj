@@ -4,9 +4,11 @@
     <ProjectReference Include="..\..\src\SmartRail.LiveOperations.Domain\SmartRail.LiveOperations.Domain.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.Disruptions.Domain\SmartRail.Disruptions.Domain.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.Network\SmartRail.Network.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

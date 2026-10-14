@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -12,6 +14,12 @@ namespace SmartRail.IntegrationTests;
 public sealed class ApiFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:17").Build();
+
+    // Every application started by the tests runs on this clock: Wednesday 14 Oct 2026, 10:00 in Colombo (04:30 UTC).
+    // Fixed, so the number of journeys the tests expect does not depend on the real date. Time stands still unless a test moves it.
+    public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 14, 4, 30, 0, TimeSpan.Zero));
+
+    public string ConnectionString => _database.GetConnectionString();
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
@@ -27,6 +35,7 @@ public sealed class ApiFixture : IAsyncLifetime
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
+            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Clock));
             builder.ConfigureAppConfiguration((_, config) =>
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {

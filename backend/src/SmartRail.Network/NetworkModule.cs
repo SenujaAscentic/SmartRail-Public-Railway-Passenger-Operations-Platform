@@ -26,6 +26,7 @@ public static class NetworkModule
         });
 
         services.AddScoped<NetworkSeeder>();
+        services.AddScoped<INetworkSchedule, NetworkScheduleReader>();   // the one door other modules use
         services.AddHostedService<NetworkStartupService>();
 
         return services;
