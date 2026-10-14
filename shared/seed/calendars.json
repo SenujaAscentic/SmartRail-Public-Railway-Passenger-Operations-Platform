@@ -1,0 +1,29 @@
+{
+  "calendars": [
+    {
+      "id": "WEEKDAY",
+      "daysOfWeek": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "exceptions": []
+    },
+    {
+      "id": "WEEKEND",
+      "daysOfWeek": [
+        "Sat",
+        "Sun"
+      ],
+      "exceptions": [
+        {
+          "date": "2026-10-25",
+          "runs": false,
+          "name": "Vap Poya"
+        }
+      ]
+    }
+  ]
+}

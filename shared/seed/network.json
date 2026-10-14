@@ -1,0 +1,137 @@
+{
+  "lines": [
+    {
+      "id": "MAIN",
+      "name": "Main Line"
+    }
+  ],
+  "zoneRadiusM": 300,
+  "routes": [
+    {
+      "id": "MAIN-UP",
+      "lineId": "MAIN",
+      "direction": "Up",
+      "name": "Fort to Kandy",
+      "stations": [
+        {
+          "sequence": 1,
+          "stationCode": "FOT",
+          "distanceKm": 0.0
+        },
+        {
+          "sequence": 2,
+          "stationCode": "MDA",
+          "distanceKm": 1.9
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KLA",
+          "distanceKm": 6.873
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RGM",
+          "distanceKm": 15.546
+        },
+        {
+          "sequence": 5,
+          "stationCode": "GPH",
+          "distanceKm": 27.538
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "distanceKm": 37.478
+        },
+        {
+          "sequence": 7,
+          "stationCode": "PLG",
+          "distanceKm": 73.827
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RBK",
+          "distanceKm": 84.437
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KGW",
+          "distanceKm": 105.537
+        },
+        {
+          "sequence": 10,
+          "stationCode": "PDA",
+          "distanceKm": 114.851
+        },
+        {
+          "sequence": 11,
+          "stationCode": "KDT",
+          "distanceKm": 121.851
+        }
+      ]
+    },
+    {
+      "id": "MAIN-DOWN",
+      "lineId": "MAIN",
+      "direction": "Down",
+      "name": "Kandy to Fort",
+      "stations": [
+        {
+          "sequence": 1,
+          "stationCode": "KDT",
+          "distanceKm": 0.0
+        },
+        {
+          "sequence": 2,
+          "stationCode": "PDA",
+          "distanceKm": 7.0
+        },
+        {
+          "sequence": 3,
+          "stationCode": "KGW",
+          "distanceKm": 16.314
+        },
+        {
+          "sequence": 4,
+          "stationCode": "RBK",
+          "distanceKm": 37.414
+        },
+        {
+          "sequence": 5,
+          "stationCode": "PLG",
+          "distanceKm": 48.024
+        },
+        {
+          "sequence": 6,
+          "stationCode": "VGD",
+          "distanceKm": 84.373
+        },
+        {
+          "sequence": 7,
+          "stationCode": "GPH",
+          "distanceKm": 94.313
+        },
+        {
+          "sequence": 8,
+          "stationCode": "RGM",
+          "distanceKm": 106.305
+        },
+        {
+          "sequence": 9,
+          "stationCode": "KLA",
+          "distanceKm": 114.978
+        },
+        {
+          "sequence": 10,
+          "stationCode": "MDA",
+          "distanceKm": 119.951
+        },
+        {
+          "sequence": 11,
+          "stationCode": "FOT",
+          "distanceKm": 121.851
+        }
+      ]
+    }
+  ]
+}

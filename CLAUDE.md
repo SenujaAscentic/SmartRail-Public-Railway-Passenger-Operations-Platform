@@ -44,6 +44,10 @@ One line (Main Line, both directions), one **Controller** role, station managers
 
 ## 5. How to work
 
+### Principle: simple, within the agreed concepts
+
+The concepts in the docs are fixed: modular monolith, module schemas and public interfaces, direct call vs outbox events, pure Domain projects, feature slices, TDD for rules, `TimeProvider` / UTC, security rules. Within them, choose the simplest implementation that meets the acceptance criteria and standard best practice. Add nothing a current story, rule or test doesn't need. Give every design decision a one-line reason. If the simplest option would bend a concept, stop and ask.
+
 1. **Domain rules: test first.** Use the approved test names in the domain model §10. Write the failing test, then the code. Use `FakeTimeProvider` for anything time-based.
 2. **Endpoints:** implement exactly as in the contract (paths, fields, policies, error `code`s); add integration tests with Testcontainers (real PostgreSQL). Every new endpoint gets rows in the **permission matrix test** (every role, expected allow / deny).
 3. **After API changes:** regenerate `backend/openapi.yaml` and show the diff. Any difference from `02-api-contract.md` must be pointed out, not silently kept.
@@ -51,6 +55,9 @@ One line (Main Line, both directions), one **Controller** role, station managers
 5. **Events:** every SSE event type has one example JSON in `shared/events/`. Backend, web and Flutter tests parse these files. Change the example in the same commit as the event.
 6. **Status text** ("3 min late", "Platform 5 (was 2)") comes only from `shared/status-fixtures.json`; every app's tests run those fixtures.
 7. **Small steps:** one story or rule at a time; keep each change reviewable. Explain non-obvious code in a short comment or in your summary.
+8. **Backend code guide:** after any change to backend code, update `docs/develop/04-backend-code-guide.md` in the same turn: what each new or changed file does, how, why, anything to watch out for, open points, and a change-log line. Write it for Senuja to read before a review; keep it accurate to the code, and remove text about code that no longer exists.
+9. **AI usage log:** at the end of every turn that changed files or settled a decision, append rows to the table in `docs/ai-usage/ai-usage-log.md` before your final summary: next row number, date, tool, task, Senuja's prompt quoted verbatim, what was accepted, what was rejected and why. Add to "Where AI was wrong" and "AI-generated implementation I significantly modified" when Senuja corrected or changed your output. Never edit or renumber older rows, never invent a rejection, and keep the file's line endings.
+10. **Branches:** work on `develop`; never commit to `main`. Senuja pushes `develop` and merges into `main` by pull request once a story is complete and CI is green. Do not cherry-pick into `main`, and do not push.
 
 ## 6. Security rules
 
@@ -75,6 +82,8 @@ One line (Main Line, both directions), one **Controller** role, station managers
 - [ ] Unit + integration tests pass; permission matrix updated
 - [ ] `openapi.yaml` regenerated and matches the contract
 - [ ] No personal data in logs / events; status never shown by colour alone
+- [ ] Backend code guide updated (section 5, step 8)
+- [ ] AI usage log rows added (section 5, step 9)
 - [ ] Summary written for Senuja: what changed, why, anything uncertain
 
 ## 9. Repository layout

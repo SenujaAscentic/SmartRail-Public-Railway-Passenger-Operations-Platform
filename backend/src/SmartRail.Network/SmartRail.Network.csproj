@@ -1,3 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- Part of the SDK, not a package: gives the module the ASP.NET Core types for its endpoints and startup. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The integration tests read the module's tables to check what the seed loader wrote. No other project may. -->
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
 </Project>

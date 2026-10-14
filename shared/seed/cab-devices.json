@@ -1,0 +1,28 @@
+{
+  "cabDevices": [
+    {
+      "id": "CAB-01",
+      "trainSetCode": "DPS-01",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-01:Token"
+    },
+    {
+      "id": "CAB-02",
+      "trainSetCode": "LH-01",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-02:Token"
+    },
+    {
+      "id": "CAB-03",
+      "trainSetCode": "DPS-02",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-03:Token"
+    },
+    {
+      "id": "CAB-04",
+      "trainSetCode": "LH-02",
+      "active": true,
+      "credentialSecretKey": "Seed:CabDevice:CAB-04:Token"
+    }
+  ]
+}

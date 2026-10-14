@@ -22,6 +22,7 @@
 | What data and rules sit behind the features? | `develop/01-domain-model.md` (entities, state machines, rules R-01–R-22, events, 48 test names) | ✔ Agreed (D-1–D-11) |
 | How do the apps talk to the backend? | `develop/02-api-contract.md` (endpoints, sign-in, stream, errors) | ✔ Agreed (C-1–C-8) |
 | How is the system structured, and why? | `develop/03-architecture-principles.md` (quality goals, modular monolith, communication, logic, data, code structure) | ✔ Agreed (Q1–Q6); Q7–Q8 proposed |
+| How does the backend code work? | `develop/04-backend-code-guide.md` (file by file: what, how, why; kept up to date with the code) | ◐ Updated with each change |
 | How do we keep it safe? | `security/threat-model.md` (trust boundaries, 20 threats, controls by build day) | ◐ v1; evidence 17–18 Oct |
 | How do we prove it works? | `qa/strategy.md` (test levels, 5 E2E flows, defects) | ◐ v1; K-2 open |
 | How was AI used? | `ai-usage/ai-usage-log.md` | ◐ Updated daily |

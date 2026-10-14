@@ -1,0 +1,158 @@
+{
+  "trainSets": [
+    {
+      "code": "DPS-01",
+      "traction": "DieselPowerSet",
+      "coaches": [
+        {
+          "position": 1,
+          "class": "First",
+          "seating": "Reserved"
+        },
+        {
+          "position": 2,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 3,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 4,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 5,
+          "class": "Third",
+          "seating": "Unreserved"
+        }
+      ]
+    },
+    {
+      "code": "DPS-02",
+      "traction": "DieselPowerSet",
+      "coaches": [
+        {
+          "position": 1,
+          "class": "First",
+          "seating": "Reserved"
+        },
+        {
+          "position": 2,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 3,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 4,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 5,
+          "class": "Third",
+          "seating": "Unreserved"
+        }
+      ]
+    },
+    {
+      "code": "LH-01",
+      "traction": "DieselLocoHauled",
+      "coaches": [
+        {
+          "position": 1,
+          "class": "First",
+          "seating": "Reserved"
+        },
+        {
+          "position": 2,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 3,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 4,
+          "class": "Second",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 5,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 6,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 7,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 8,
+          "class": "Third",
+          "seating": "Unreserved"
+        }
+      ]
+    },
+    {
+      "code": "LH-02",
+      "traction": "DieselLocoHauled",
+      "coaches": [
+        {
+          "position": 1,
+          "class": "First",
+          "seating": "Reserved"
+        },
+        {
+          "position": 2,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 3,
+          "class": "Second",
+          "seating": "Reserved"
+        },
+        {
+          "position": 4,
+          "class": "Second",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 5,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 6,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 7,
+          "class": "Third",
+          "seating": "Unreserved"
+        },
+        {
+          "position": 8,
+          "class": "Third",
+          "seating": "Unreserved"
+        }
+      ]
+    }
+  ]
+}
