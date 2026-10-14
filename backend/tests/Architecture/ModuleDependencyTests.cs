@@ -19,6 +19,16 @@ public class ModuleDependencyTests
         "SmartRail.CateringIntegration",
     ];
 
+    // The only module-to-module dependencies the architecture allows (03-architecture-principles Q3):
+    //  - Disruptions calls LiveOperations (a decision that must succeed or fail together).
+    //  - LiveOperations reads Network through its public interface (for example the schedule).
+    // Neither the reverse directions nor any other pair are allowed.
+    private static readonly (string From, string To)[] AllowedDependencies =
+    [
+        ("Disruptions", "LiveOperations"),
+        ("LiveOperations", "Network"),
+    ];
+
     private static IEnumerable<string> ReferencedAssemblies(string assemblyName) =>
         Assembly.Load(assemblyName).GetReferencedAssemblies().Select(a => a.Name!);
 
@@ -53,7 +63,7 @@ public class ModuleDependencyTests
     }
 
     [Fact]
-    public void No_module_depends_on_another_module_except_Disruptions_on_LiveOperations()
+    public void No_module_depends_on_another_module_except_the_allowed_ones()
     {
         var violations = new List<string>();
 
@@ -65,7 +75,7 @@ public class ModuleDependencyTests
                 var from = ModuleOf(assembly);
                 var to = ModuleOf(reference);
                 var sameModule = from == to;
-                var allowed = from == "Disruptions" && to == "LiveOperations";
+                var allowed = AllowedDependencies.Contains((from, to));
 
                 if (!sameModule && !allowed)
                 {
@@ -75,6 +85,6 @@ public class ModuleDependencyTests
         }
 
         Assert.True(violations.Count == 0,
-            $"Modules may only depend on other modules as Disruptions -> LiveOperations. Violations: {string.Join("; ", violations)}");
+            $"Modules may only depend on other modules as Disruptions -> LiveOperations and LiveOperations -> Network. Violations: {string.Join("; ", violations)}");
     }
 }
