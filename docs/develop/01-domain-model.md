@@ -120,7 +120,6 @@ erDiagram
   OPERATIONAL_JOURNEY ||--|{ JOURNEY_STOP : "ordered stops"
   OPERATIONAL_JOURNEY }o--|| TRAIN_SET : "assigned"
   OPERATIONAL_JOURNEY }o--o| STAFF_ACCOUNT : "driver"
-  OPERATIONAL_JOURNEY }o--o| STAFF_ACCOUNT : "guard"
   OPERATIONAL_JOURNEY ||--o| HOLD : "current hold"
   TRAIN_SET ||--o{ CAB_DEVICE : "registered to"
   CAB_DEVICE ||--o{ CREW_SESSION : "used in"
@@ -135,7 +134,7 @@ erDiagram
 |---|---|---|
 | id | uuid | |
 | serviceId, serviceDate | ref, date | Unique together. Created by daily generation, 3 days ahead (US-B2). |
-| trainSetId, driverId, guardId | refs | From seed crew assignments. |
+| trainSetId, driverId | refs | From seed crew assignments. A journey has a driver only; the guard role is deferred (D-12). |
 | status | `JourneyStatus` | State machine 4.2. |
 | tracking | `TrackingStatus` | State machine 4.4. |
 | currentDelay | `Delay` | Signed whole minutes; negative = early. |
@@ -273,7 +272,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | Module | Entity | Key fields | Notes |
 |---|---|---|---|
 | Identity | PassengerAccount | id, name, email, phone, passwordHash, failedSignIns, lockedUntil?, createdAt, deletedAt? | Name used only for greeting, never sent to the provider (M-3, 12 Oct). Delete = anonymise (US-P5). |
-| Identity | StaffAccount | id, staffNumber (unique, sign-in name), name, role, stationId?, passwordHash, isActive, failedSignIns, lockedUntil? · Should: pinHash (S-10) | Roles: Controller, StationManager, Driver, Guard. Check constraint: StationManager ⇒ stationId set; other roles ⇒ stationId empty. The controller covers the whole line; drivers and guards are limited by their journey assignments, not a place. Never deleted: leavers get `isActive = false` so the audit history keeps its reference. `name` is shown on screens but never put in events or logs (D-9). Provisioned by the organisation, never self-registered (D-10). *(9 Oct: regionId and chief / regional roles removed with the one-line scope.)* |
+| Identity | StaffAccount | id, staffNumber (unique, sign-in name), name, role, stationId?, passwordHash, isActive, failedSignIns, lockedUntil? · Should: pinHash (S-10) | Roles: Controller, StationManager, Driver (Guard deferred 14 Oct, D-12). Check constraint: StationManager ⇒ stationId set; other roles ⇒ stationId empty. The controller covers the whole line; drivers are limited by their journey assignments, not a place. Never deleted: leavers get `isActive = false` so the audit history keeps its reference. `name` is shown on screens but never put in events or logs (D-9). Provisioned by the organisation, never self-registered (D-10). *(9 Oct: regionId and chief / regional roles removed with the one-line scope.)* |
 | Identity | DisplayDevice | id, stationId, kind (MainBoard / Platform / InfoScreen), platform?, credentialHash | Read-only credential (Q-2). |
 | Identity | ProviderClient | id, name, signingSecretRef, apiKeyHash | Separate credential type (B-7). |
 | Identity | AuditEntry | id, at, actorId, actorRole, action, targetType, targetId, reason?, summary, requestId | Append-only; the app's database user has insert-only rights (O-10). |
@@ -433,6 +432,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 | D-9 ✔ | Staff account fields and scope | **Agreed 8 Oct:** fields as in section 7; one role per person; scope in an optional `stationId` column guarded by a check constraint per role (regionId removed 9 Oct) | Simplest option that the database can enforce. A `RoleAssignment` table (several roles, history) is deferred until a user management screen exists (Could). |
 | D-10 ✔ | Who creates staff accounts? | **Agreed 8 Oct:** the organisation, never the staff member. MVP: seed data (O-1). Later: a system administrator or an HR directory feed (single sign-on) handles joiners, movers and leavers; staff can only set and change their own password or PIN | A staff account grants operational power; identity, role and scope must come from the organisation. Seed passwords are demo values kept in development configuration only. |
 | D-11 ✔ | Should skipping a stop reduce later times, and how does a hold add time? | **Agreed 8 Oct:** skip → subtract the stop's scheduled dwell from the delay, never below on time (R-21); hold → expected departure follows the clock until the train leaves (R-22) | Raised by me: the model ignored time saved by skips. Mirrors added stops (D-5), which add time. Conservative: only known timetable dwell is subtracted, never a guessed braking time, and no early prediction from a skip. |
+| D-12 ✔ | Is the guard a role in the MVP? | **Agreed 14 Oct (Senuja):** no. Roles are Controller, StationManager, Driver; a journey references a driver only; `CrewPhone` = Driver | The brief only requires the driver; no E2E flow needs the guard; one role fewer in sign-in, seed data and the permission matrix. The guard stays a discovered actor for later (`moscow.md` change log). |
 
 ---
 
@@ -440,7 +440,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 
 | Change | Reason |
 |---|---|
-| `Driver` became `StaffAccount` with a role (Driver, Guard, …) and the journey references a driver and a guard. | Guards use the app too (Section 8); roles drive authorisation. |
+| `Driver` became `StaffAccount` with a role (Controller, StationManager, Driver) and the journey references a driver. *(A guard was planned until 14 Oct, D-12.)* | Roles drive authorisation. |
 | `StaffAccount` gained credentials, `isActive`, lockout fields and a role-to-scope check constraint. | D-9, D-10; Q-2 lockout. |
 | Added `CabDevice` and `CrewSession`. | ADR-05 (cab tablet, one active session). |
 | Added `Hold` as a value object on the journey, not a status. | D-4. |

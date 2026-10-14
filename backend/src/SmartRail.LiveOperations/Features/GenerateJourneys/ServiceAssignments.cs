@@ -4,7 +4,7 @@ using SmartRail.Network;
 namespace SmartRail.LiveOperations.Features.GenerateJourneys;
 
 // Which train set runs each service, from shared/seed/service-assignments.json.
-// The file also names a driver and a guard per service; they stay unused until Identity seeds the staff accounts.
+// The file also names a driver per service; it stays unused until journeys get their crew (the guard role is deferred, 14 Oct).
 public static class ServiceAssignments
 {
     private sealed record File(List<Row> Assignments);

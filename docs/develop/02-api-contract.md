@@ -33,7 +33,7 @@ Decisions are collected in section 9.
 | **Public** (anyone) | – | – | – | `Public` |
 | **Passenger** (app) | email + password | Access token (JWT) + refresh token in the phone's secure storage | Access 15 min; refresh 30 days **sliding**: every refresh issues a new token with a fresh 30 days, so only 30 days of inactivity requires signing in again; "stay signed in" (US-P5). All sessions end on sign-out, password change, account deletion or refresh-token reuse (T-14) | `Passenger` |
 | **Staff** (ops web) | staff number + password | Access token held in memory; refresh token in an `HttpOnly; Secure; SameSite=Strict` cookie (C-3) | Access 15 min; session ends after **30 min idle** (US-O1) | `Controller` (whole line), `StationManager` (own station) |
-| **Crew, phone mode** | staff number + password | Access + refresh token | Shift-length refresh (12 h) | `CrewPhone` (Driver, Guard) |
+| **Crew, phone mode** | staff number + password | Access + refresh token | Shift-length refresh (12 h) | `CrewPhone` (Driver; guard deferred 14 Oct, D-12) |
 | **Crew, cab mode** | **device credential** (seeded per tablet) **+** staff sign-in | Cab session token bound to device + staff + session; carries the measured clock offset | Until End journey / sign-out / new cab sign-in elsewhere (R-19) | `CrewCab` (Driver) |
 | **Display device** | device credential (seeded) | Read-only token, `stationId` claim | 24 h, renewed automatically | `Display` |
 | **Catering provider** (calling SmartRail) | API key | – | Rotatable | `Provider` |
@@ -114,7 +114,7 @@ Notation: **Who** = policy; **Story** = main story served.
 | `GET /crew/roster?date=` | CrewPhone, CrewCab | Today's assigned journeys in order: train set, times, route, departure platform | US-C1 |
 | `POST /crew/journeys/{id}/start` · `POST …/end` | **CrewCab only** | Start from 60 min before departure, assigned driver only; train set mismatch → warning in response + controller alert (Should S-11) | US-C2 |
 | `POST /crew/journeys/{id}/positions` | **CrewCab only** | Batch `[{lat, lng, speedKmh, accuracyM, gpsTime?, deviceTime}]` + `clientActionId`; plausibility rules R-07, R-08 | US-B3 |
-| `POST /crew/journeys/{id}/stops/{stationId}/arrived` · `…/departed` | CrewCab, CrewPhone (guard) | `{occurredAt, clientActionId}`; source = Crew (R-05, R-20) | US-C4, C-7 |
+| `POST /crew/journeys/{id}/stops/{stationId}/arrived` · `…/departed` | CrewCab (CrewPhone was for the guard, deferred 14 Oct) | `{occurredAt, clientActionId}`; source = Crew (R-05, R-20) | US-C4, C-7 |
 | `POST /crew/journeys/{id}/reports` | CrewCab, CrewPhone | `{type, note? ≤ 200, occurredAt, location?, clientActionId}` | US-C5 |
 | `GET /crew/journeys/{id}/messages` · `POST /crew/messages/{id}/acknowledge` | CrewCab, CrewPhone | Acknowledge `{clientActionId}`; marks delivered on fetch | US-C6 |
 | `GET /crew/stream` | CrewCab, CrewPhone | Crew stream: own journeys' public events + instructions | US-C6 |

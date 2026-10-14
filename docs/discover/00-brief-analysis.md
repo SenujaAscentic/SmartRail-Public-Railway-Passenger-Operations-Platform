@@ -877,8 +877,8 @@ Rules: logs contain IDs, never email, phone, passwords or tokens; the provider g
 | A-56 | Every crew action is audit-logged. | Proposed |
 | A-57 | A dedicated tablet is mounted in the driver's cab (landscape, dark theme, large touch targets), registered to a train set, and runs the crew app full-screen. Decided 7 Oct. | Confirmed |
 | A-58 | The crew app is a mobile app built with the same technology as the passenger app. | Proposed |
-| A-59 | MVP crew app users: driver and guard. Other operational roles deferred. | Confirmed |
-| A-60 | One tracking device per journey: the cab tablet. The guard's phone takes over (Could) when the tablet's data goes stale. | Proposed |
+| A-59 | MVP crew app users: driver and guard. Other operational roles deferred. | Revised 14 Oct: the guard is deferred too; the driver is the only crew role |
+| A-60 | One tracking device per journey: the cab tablet. The guard's phone takes over (Could) when the tablet's data goes stale. | Deferred 14 Oct (guard role deferred) |
 | A-61 | Operations roles: chief controller, regional controller, station manager, scheduler, system administrator (MVP). | Confirmed |
 | A-62 | Station manager permissions are limited to their own station(s); regional controller permissions to their region. | Confirmed |
 | A-63 | The system administrator manages accounts and devices but cannot take operational actions. | Proposed |

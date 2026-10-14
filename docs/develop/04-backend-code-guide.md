@@ -154,7 +154,7 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 ```
 
 ### 4.1 `LiveOperations.Domain/OperationalJourney.cs`
-**What:** the aggregate: `Id`, `ServiceId`, `ServiceDate`, `TrainSetId`, `Status` (only `Planned`) and its `Stops` (sequence, station, Stop/Pass, scheduled arrival and departure in **UTC**, planned platform). Driver and guard are not here yet (see open points).
+**What:** the aggregate: `Id`, `ServiceId`, `ServiceDate`, `TrainSetId`, `Status` (only `Planned`) and its `Stops` (sequence, station, Stop/Pass, scheduled arrival and departure in **UTC**, planned platform). The driver is not here yet (see open points); a journey will have a driver only, the guard role is deferred.
 **How:** `OperationalJourney.Plan(...)` is the only way to create one. It takes the timetable's offsets (minutes after *local* midnight of the service date) and a `TimeZoneInfo`, and converts each to UTC once: local midnight + offset, then `TimeZoneInfo.ConvertTimeToUtc`. An offset above 1440 (an overnight run) lands on the next calendar day but stays in this journey (E-12).
 **Why in Domain:** it is a rule of how a journey gets its times. The project references nothing but `System`, reads no clock and is checked by the architecture test. The private constructors exist only so EF Core can fill the objects.
 
@@ -221,7 +221,7 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | 6 | The error schema in `openapi.yaml` must include `code`, `errors`, `requestId` (contract §6) | **Done (13 Oct)**; a test checks it |
 | 7 | `openapi.yaml`: no `servers` entry, `query` required | **Done (13 Oct)**; tests check both |
 | 8 | The `ProblemDetails` description says `code` and `requestId` are always present; that is true for our own errors, not for framework errors (for example a malformed request) | Watch when more endpoints exist |
-| 9 | Journeys have **no driver and no guard yet**. `service-assignments.json` names them, but staff accounts do not exist until Identity seeds them (decision 8, 14 Oct). Add them when Identity exists; until then nothing is invented | Open |
+| 9 | Journeys have **no driver yet**. `service-assignments.json` names one per service, but the journey does not carry it. Fill it after the sign-in branch is merged; until then nothing is invented. (The guard is deferred: 14 Oct, no guard in the seed files or the model) | Open |
 | 10 | Generation reads **all** stored journey keys every hour | Fine for the MVP; revisit when journeys are archived |
 | 11 | `TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")` needs the time-zone database: present on Windows and on `ubuntu-latest`; a minimal container image would need `tzdata` | Check when a Docker image is built |
 | 12 | Network's seed loader still creates ids with `Guid.CreateVersion7()`, which reads the system clock inside the call | Harmless (ids only); switch to the injected clock if a rule ever needs it |
@@ -236,4 +236,5 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | 13 Oct 2026 | First version: scaffold, Network module (model, migration, seed loader, `GET /stations`), tests |
 | 13 Oct 2026 | OpenAPI: `ProblemDetails` gets `code`, `errors`, `requestId`; `query` required; no `servers` entry (three tests) |
 | 14 Oct 2026 | US-B2: Network made internal with the public `INetworkSchedule`; LiveOperations gets `OperationalJourney` (Domain), the `ops` schema and migration, the journey planner, handler and hourly background service, the service-assignments check; architecture test allows LiveOperations → Network; FakeTimeProvider in the tests |
+| 14 Oct 2026 | Scope change, guard role deferred: guard accounts removed from `staff.json`, `guardStaffNumber` removed from `service-assignments.json` (the loader ignores that field, so no code change except a comment in `ServiceAssignments.cs`) |
 | 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |

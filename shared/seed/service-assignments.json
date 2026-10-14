@@ -3,50 +3,42 @@
     {
       "serviceNumber": "1001",
       "trainSetCode": "DPS-01",
-      "driverStaffNumber": "DRV-01",
-      "guardStaffNumber": "GRD-01"
+      "driverStaffNumber": "DRV-01"
     },
     {
       "serviceNumber": "1002",
       "trainSetCode": "DPS-01",
-      "driverStaffNumber": "DRV-01",
-      "guardStaffNumber": "GRD-01"
+      "driverStaffNumber": "DRV-01"
     },
     {
       "serviceNumber": "1003",
       "trainSetCode": "DPS-02",
-      "driverStaffNumber": "DRV-02",
-      "guardStaffNumber": "GRD-02"
+      "driverStaffNumber": "DRV-02"
     },
     {
       "serviceNumber": "1004",
       "trainSetCode": "DPS-02",
-      "driverStaffNumber": "DRV-02",
-      "guardStaffNumber": "GRD-02"
+      "driverStaffNumber": "DRV-02"
     },
     {
       "serviceNumber": "2001",
       "trainSetCode": "LH-01",
-      "driverStaffNumber": "DRV-03",
-      "guardStaffNumber": "GRD-03"
+      "driverStaffNumber": "DRV-03"
     },
     {
       "serviceNumber": "2002",
       "trainSetCode": "LH-01",
-      "driverStaffNumber": "DRV-03",
-      "guardStaffNumber": "GRD-03"
+      "driverStaffNumber": "DRV-03"
     },
     {
       "serviceNumber": "2003",
       "trainSetCode": "LH-02",
-      "driverStaffNumber": "DRV-04",
-      "guardStaffNumber": "GRD-04"
+      "driverStaffNumber": "DRV-04"
     },
     {
       "serviceNumber": "2004",
       "trainSetCode": "LH-02",
-      "driverStaffNumber": "DRV-04",
-      "guardStaffNumber": "GRD-04"
+      "driverStaffNumber": "DRV-04"
     }
   ]
 }

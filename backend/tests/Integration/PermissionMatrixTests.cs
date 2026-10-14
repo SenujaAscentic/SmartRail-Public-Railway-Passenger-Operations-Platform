@@ -5,7 +5,7 @@ namespace SmartRail.IntegrationTests;
 
 // Every endpoint, every role, expected allow / deny (CLAUDE.md section 5).
 // Sign-in and tokens do not exist yet, so only the anonymous caller can be tested. When sign-in is built,
-// add one row per role (Passenger, Controller, StationManager, Driver, Guard, Display, Provider) to each endpoint below.
+// add one row per role (Passenger, Controller, StationManager, Driver, Display, Provider) to each endpoint below.
 [Collection("Api")]
 public class PermissionMatrixTests(ApiFixture api)
 {
