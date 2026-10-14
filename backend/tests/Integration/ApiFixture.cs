@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -19,6 +20,13 @@ public sealed class ApiFixture : IAsyncLifetime
     // Fixed, so the number of journeys the tests expect does not depend on the real date. Time stands still unless a test moves it.
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 14, 4, 30, 0, TimeSpan.Zero));
 
+    // Secrets for this test run only: generated here, never committed. They stand in for the user-secrets a developer sets,
+    // so CI passes without any secret store.
+    public string DemoPassword { get; } = "Demo-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12));
+    public string JwtSigningKey { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    public IReadOnlyDictionary<string, string> CabDeviceSecrets { get; } =
+        new[] { "CAB-01", "CAB-02", "CAB-03", "CAB-04" }.ToDictionary(id => id, _ => Convert.ToHexString(RandomNumberGenerator.GetBytes(16)));
+
     public string ConnectionString => _database.GetConnectionString();
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
@@ -37,10 +45,20 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseEnvironment("Development");
             builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Clock));
             builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                var settings = new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:SmartRail"] = _database.GetConnectionString(),
-                }));
+                    ["Jwt:SigningKey"] = JwtSigningKey,
+                    ["Seed:DemoPassword"] = DemoPassword,
+                };
+                foreach (var (id, secret) in CabDeviceSecrets)
+                {
+                    settings[$"Seed:CabDevice:{id}:Token"] = secret;
+                }
+
+                config.AddInMemoryCollection(settings);
+            });
             configure?.Invoke(builder);
         });
 

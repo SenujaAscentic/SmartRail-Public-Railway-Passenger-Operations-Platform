@@ -5,6 +5,7 @@
     <ProjectReference Include="..\..\src\SmartRail.Disruptions.Domain\SmartRail.Disruptions.Domain.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.Network\SmartRail.Network.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Identity\SmartRail.Identity.csproj" />
   </ItemGroup>
 
   <ItemGroup>

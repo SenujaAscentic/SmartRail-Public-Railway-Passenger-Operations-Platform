@@ -51,30 +51,6 @@
       "name": "Demo Driver 4",
       "role": "Driver",
       "isActive": true
-    },
-    {
-      "staffNumber": "GRD-01",
-      "name": "Demo Guard 1",
-      "role": "Guard",
-      "isActive": true
-    },
-    {
-      "staffNumber": "GRD-02",
-      "name": "Demo Guard 2",
-      "role": "Guard",
-      "isActive": true
-    },
-    {
-      "staffNumber": "GRD-03",
-      "name": "Demo Guard 3",
-      "role": "Guard",
-      "isActive": true
-    },
-    {
-      "staffNumber": "GRD-04",
-      "name": "Demo Guard 4",
-      "role": "Guard",
-      "isActive": true
     }
   ]
 }

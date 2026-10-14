@@ -27,6 +27,7 @@ public static class NetworkModule
 
         services.AddScoped<NetworkSeeder>();
         services.AddScoped<INetworkSchedule, NetworkScheduleReader>();   // the one door other modules use
+        services.AddScoped<IStationDirectory, StationDirectory>();   // the door Identity uses to find station IDs
         services.AddHostedService<NetworkStartupService>();
 
         return services;

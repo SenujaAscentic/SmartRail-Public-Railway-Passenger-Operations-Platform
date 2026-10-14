@@ -22,11 +22,13 @@ public class ModuleDependencyTests
     // The only module-to-module dependencies the architecture allows (03-architecture-principles Q3):
     //  - Disruptions calls LiveOperations (a decision that must succeed or fail together).
     //  - LiveOperations reads Network through its public interface (for example the schedule).
+    //  - Identity asks Network's public IStationDirectory for station IDs, once, while seeding staff (approved 14 Oct).
     // Neither the reverse directions nor any other pair are allowed.
     private static readonly (string From, string To)[] AllowedDependencies =
     [
         ("Disruptions", "LiveOperations"),
         ("LiveOperations", "Network"),
+        ("Identity", "Network"),
     ];
 
     private static IEnumerable<string> ReferencedAssemblies(string assemblyName) =>
@@ -85,6 +87,6 @@ public class ModuleDependencyTests
         }
 
         Assert.True(violations.Count == 0,
-            $"Modules may only depend on other modules as Disruptions -> LiveOperations and LiveOperations -> Network. Violations: {string.Join("; ", violations)}");
+            $"Modules may only depend on other modules as Disruptions -> LiveOperations, LiveOperations -> Network and Identity -> Network. Violations: {string.Join("; ", violations)}");
     }
 }

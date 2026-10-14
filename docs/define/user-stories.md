@@ -140,7 +140,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 3. **> 15 min:** normal update everywhere.
 4. **5–15 min:** also high-priority station staff alert, repeated announcement, old platform display redirects.
 5. ★ MoT **< 5 min:** warning before confirming; the controller can set a hold at the new platform. With a hold, displays and announcements say "The train will wait for passengers"; without a hold, the wording makes no promise (A-113).
-6. Driver and guard receive the instruction (US-C6); station staff are alerted at the same moment as passengers (A-114).
+6. The driver receives the instruction (US-C6; guard deferred 14 Oct); station staff are alerted at the same moment as passengers (A-114).
 7. **Platform conflict warning:** if another train is scheduled or expected at the chosen platform within 5 minutes of this train, a warning names it ("Platform 5 is expected to be occupied by 1520 at 18:04") before the controller can confirm.
 
 ### US-O6 Crew incident reports *(deferred 12 Oct – re-plan)*
@@ -150,7 +150,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 
 ### US-O7 Messages to crew
 *As Ruwan, I want to send instructions to a train's crew and know they received them.*
-1. Send to the driver and guard of a journey: templates (e.g. "Hold at Platform 5") or short text.
+1. Send to the driver of a journey (guard deferred 14 Oct): templates (e.g. "Hold at Platform 5") or short text.
 2. Status per recipient: sent → delivered → acknowledged.
 3. Not acknowledged after 2 minutes → highlighted on the dashboard.
 
@@ -174,12 +174,14 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 
 ---
 
-## 3. Crew app (native, driver and guard)
+## 3. Crew app (native, driver; guard deferred 14 Oct)
+
+*The guard role is deferred (scope decision, 14 Oct, see `moscow.md` change log): guard wording below is kept and marked, not deleted, so the stories can be revived. The driver is the only crew role.*
 
 ### US-C1 Phone mode: today's journeys
 *As Sunil, I want to see my assigned journeys for today on my own phone, so that I know which train to walk to.*
-1. On a phone, the app runs in **phone mode**: staff sign-in; only journeys assigned to this person (driver or guard) are listed, in order, with train set, time, route and departure platform (seed data).
-2. Phone mode collects no location and offers no journey actions for the driver; the guard uses it for Arrived / Departed, incident reports and messages (US-C4–C6).
+1. On a phone, the app runs in **phone mode**: staff sign-in; only journeys assigned to this driver are listed (guard deferred 14 Oct), in order, with train set, time, route and departure platform (seed data).
+2. Phone mode collects no location and offers no journey actions for the driver. *(Deferred 14 Oct: the guard using it for Arrived / Departed, incident reports and messages, US-C4–C6.)*
 3. The list is available offline once loaded.
 4. Changes to later journeys (e.g. a new platform) appear on the phone; instructions for the running journey go to the cab tablet.
 
@@ -189,23 +191,23 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 2. "Start journey" is allowed only for a journey assigned to this driver, from 60 min before scheduled departure; it cannot be started from a phone.
 3. One active cab session per driver: signing in on another tablet ends the previous session.
 4. Starting begins GPS tracking every 10 s (positions batched); ending stops it. Location belongs to the train during the journey and is not collected outside it (A-29 revised).
-5. The cab tablet is the tracking device; if it fails, the guard's phone is the backup (A-60 revised; automatic takeover is a Could).
+5. The cab tablet is the tracking device. *(Deferred 14 Oct: the guard's phone as backup if the tablet fails, A-60.)*
 6. At the final stop the app prompts "End journey".
 7. *(Should, S-11)* If the journey's assigned train set differs from the tablet's train set, the driver is warned and the controller alerted.
 
 ### US-C3 Glance view ★
 *As Sunil, I want only what I need while driving, so that I keep my eyes on the track.*
 1. ★ MoT: shows next stop, scheduled vs expected time and delay in large text; dark theme; landscape.
-2. For the **driver**, input controls are disabled while the train is moving (speed > 5 km/h); the **guard** can use them while moving (A-51).
+2. For the **driver**, input controls are disabled while the train is moving (speed > 5 km/h). *(Deferred 14 Oct: the **guard** can use them while moving, A-51.)*
 3. Touch targets are at least 64 px.
 
 ### US-C4 Arrived / Departed
-*As the guard or driver, I want to record arrival and departure when GPS fails.*
+*As the driver (guard deferred 14 Oct), I want to record arrival and departure when GPS fails.*
 1. Large Arrived / Departed buttons for the current stop.
 2. The recorded time takes priority over GPS for that stop (source priority: controller > crew > GPS > schedule, A-28).
 
 ### US-C5 Incident report *(deferred 12 Oct – re-plan)*
-*As the guard, I want to report a problem in a few taps.*
+*As the guard (role deferred 14 Oct), I want to report a problem in a few taps.*
 1. Types: obstruction on line, animal on track, landslide / flooding, signal fault, technical fault, passenger incident, other.
 2. Location and time are filled in automatically; the guard can add a note (max 200 characters); the driver cannot type while moving.
 3. Reaches the controller within 5 s when online (US-O6).
@@ -213,7 +215,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 ### US-C6 Controller messages and instructions
 *As Sunil, I want instructions to reach me clearly and to confirm them simply.*
 1. New messages arrive with sound and vibration.
-2. The driver acknowledges with one tap when stopped; the guard can acknowledge at any time.
+2. The driver acknowledges with one tap when stopped. *(Deferred 14 Oct: the guard can acknowledge at any time.)*
 3. A hold instruction shows platform and duration ("Hold at Platform 5 for 3 min for passengers").
 4. Safety-critical instructions continue to be given by radio (A-50).
 
