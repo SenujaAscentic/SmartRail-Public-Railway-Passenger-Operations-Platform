@@ -62,4 +62,39 @@ public class RefreshTokensTests
         Assert.False(used.IsUsableAt(Now.AddMinutes(2)));
         Assert.False(revoked.IsUsableAt(Now.AddMinutes(2)));
     }
+
+    // Grace window: two browser tabs may send the same refresh token a moment apart. The token just replaced
+    // may be used ONCE more within 10 seconds; after that, or a third time, it counts as copied (threat T-14).
+    [Fact]
+    public void A_token_that_was_just_replaced_can_be_used_once_more_within_10_seconds()
+    {
+        var (_, row) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now);
+        row.UsedAt = Now.AddMinutes(1);
+
+        Assert.True(row.CanBeReplayedAt(Now.AddMinutes(1).AddSeconds(5)));
+        Assert.True(row.CanBeReplayedAt(Now.AddMinutes(1).AddSeconds(10)));    // the limit itself still counts
+        Assert.False(row.CanBeReplayedAt(Now.AddMinutes(1).AddSeconds(11)));
+    }
+
+    [Fact]
+    public void A_replay_is_allowed_only_once()
+    {
+        var (_, row) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now);
+        row.UsedAt = Now.AddMinutes(1);
+        row.ReplayedAt = Now.AddMinutes(1).AddSeconds(2);
+
+        Assert.False(row.CanBeReplayedAt(Now.AddMinutes(1).AddSeconds(3)));
+    }
+
+    [Fact]
+    public void A_token_that_was_never_used_or_that_is_revoked_is_not_a_replay()
+    {
+        var (_, fresh) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now);
+        var (_, revoked) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now);
+        revoked.UsedAt = Now.AddMinutes(1);
+        revoked.RevokedAt = Now.AddMinutes(1).AddSeconds(1);
+
+        Assert.False(fresh.CanBeReplayedAt(Now.AddMinutes(1)));   // unused: it is simply usable, not a replay
+        Assert.False(revoked.CanBeReplayedAt(Now.AddMinutes(1).AddSeconds(2)));
+    }
 }

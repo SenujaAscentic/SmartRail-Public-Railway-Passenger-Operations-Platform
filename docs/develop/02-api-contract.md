@@ -40,6 +40,8 @@ Decisions are collected in section 9.
 
 **Token claims (JWT):** `sub`, `aud`, `role`, `stationId?`, `deviceId?`, `crewSessionId?`, `exp`. Signed by the backend; no personal data inside.
 
+**Refresh cookie (staff):** sign-in and refresh answer with `Set-Cookie: smartrail_refresh=<secret>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Expires=…`; the secret is never in the body. `openapi.yaml` cannot describe response cookies, so this paragraph is the authority. Each refresh token works once and gives a new one (30 min idle, sliding). A token that was just replaced may be used **once more within 10 s** (two browser tabs); any later reuse ends the whole session (T-14). `POST /auth/sign-out` revokes the session and clears the cookie, answering `204` even when there is no cookie. A deactivated account is refused at its next refresh, so within the 15-minute access-token life.
+
 **Scope checks** happen in the handler, not only by role: a station manager posting to another station, or a driver acting on a journey not assigned to them, gets `403 OUT_OF_SCOPE` (R-17), and the refusal is logged (US-O1).
 
 **SSE and tokens:** the browser's built-in `EventSource` cannot send an `Authorization` header, and putting tokens in the URL would leak them into logs. Web apps therefore read the stream with a fetch-based SSE client (e.g. `@microsoft/fetch-event-source`) that sends the header; Flutter sends it directly.
@@ -83,7 +85,7 @@ Notation: **Who** = policy; **Story** = main story served.
 | Method · Path | Who | Purpose | Story |
 |---|---|---|---|
 | `POST /auth/staff/sign-in` | Public | `{staffNumber, password}` | US-O1 |
-| `GET /staff/me` | Staff | Name, role, scope (for UI defaults) | US-O1 |
+| `GET /staff/me` | Staff | `{name, role, stationId}` for UI defaults; `stationId` is the station manager's station, `null` for the controller (whole line). Agreed 15 Oct | US-O1 |
 | `GET /ops/dashboard?stationId=&fromStationId=&toStationId=` | Controller | Alerts (severity, newest first), disrupted journeys by lateness, running journeys for line view, provider health | US-O2, O-3, F-4 |
 | `GET /ops/journeys/{journeyId}` | Controller | Journey detail **plus** staff-only fields: source per value, override flags, GPS-contradicts-override warning, crew, messages | US-O3, O-4 |
 | `POST /ops/journeys/{id}/delay` | Controller | `{minutes, reasonCode, note?, expectedVersion}` → sets a controller delay (R-05) | US-O4 |
@@ -279,6 +281,7 @@ Error messages shown to users come from the apps; `detail` is for logs and devel
 | C-5 ✔ | Platform change in two steps (preview, then confirm) | Yes | The warning, lead-time level and conflicts appear **before** the controller commits (US-O5.5, .7) |
 | C-6 ✔ | Stream in web apps | Fetch-based SSE client with the `Authorization` header | Built-in `EventSource` can't send headers; tokens in URLs leak into logs |
 | C-7 ✔ | M-1 to M-4 above | As proposed | — |
+| C-9 ✔ | Arrived / Departed endpoints in the contract (3.4) | **CrewCab only** (was CrewCab and CrewPhone for the guard). Changed on 14 Oct together with the guard deferral (D-12) without asking first (CLAUDE.md §7); **accepted by Senuja on 15 Oct** | The phone has no journey actions for the driver (US-C1.2) and the guard role is deferred |
 | C-8 ✔ | How clients get API types | **Agreed 12 Oct:** TypeScript types generated (`openapi-typescript` + `openapi-fetch`); Dart via a generator only if its output is clean, otherwise hand-written models + contract tests; SSE event examples in `shared/events/` parsed by every app's tests. Written into the agent instructions (`CLAUDE.md`) | With agentic development, a decision only exists for the agent if it is written where the agent reads it |
 
 ---

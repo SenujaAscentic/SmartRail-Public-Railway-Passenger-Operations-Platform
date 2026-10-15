@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using SmartRail.Identity.Authorization;
 using SmartRail.Identity.Features.GetStaffMe;
 using SmartRail.Identity.Features.RefreshSession;
+using SmartRail.Identity.Features.SignOut;
 using SmartRail.Identity.Features.StaffSignIn;
 using SmartRail.Identity.Model;
 using SmartRail.Identity.Persistence;
@@ -86,6 +87,7 @@ public static class IdentityModule
     {
         StaffSignInEndpoint.Map(routes);
         RefreshSessionEndpoint.Map(routes);
+        SignOutEndpoint.Map(routes);
         GetStaffMeEndpoint.Map(routes);
         return routes;
     }
@@ -100,6 +102,7 @@ internal sealed class IdentityStartupService(IServiceProvider services, IHostEnv
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _ = services.GetRequiredService<JwtSettings>();   // throws with the exact command when the signing key is missing
+        DummyPasswordCheck.Prepare();
 
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityModuleDbContext>();

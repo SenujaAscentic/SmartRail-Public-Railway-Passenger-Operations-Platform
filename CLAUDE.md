@@ -20,7 +20,7 @@ If code and spec disagree, **stop and report the difference**. Do not "fix" the 
 
 ## 2. Scope (MVP)
 
-One line (Main Line, both directions), one **Controller** role, station managers per station, drivers and guards. No regions, no chief / regional controllers, no interchanges, no in-app food ordering, no ticketing.
+One line (Main Line, both directions), one **Controller** role, station managers per station, drivers (the guard role is deferred). No regions, no chief / regional controllers, no interchanges, no in-app food ordering, no ticketing.
 
 ## 3. Architecture rules (hard)
 

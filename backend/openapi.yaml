@@ -83,6 +83,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/auth/sign-out:
+    post:
+      tags:
+        - Identity
+      operationId: SignOut
+      responses:
+        '204':
+          description: No Content
   /api/v1/staff/me:
     get:
       tags:

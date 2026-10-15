@@ -14,7 +14,18 @@ internal class RefreshToken
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
     public DateTimeOffset? UsedAt { get; set; }
+
+    // Set when the token was used a second time inside the grace window (see CanBeReplayedAt).
+    public DateTimeOffset? ReplayedAt { get; set; }
+
     public DateTimeOffset? RevokedAt { get; set; }
 
+    // Two browser tabs can send the same refresh token a moment apart. A token that was just replaced may be used
+    // ONCE more within this time; any later or further use looks like a copy (threat T-14).
+    public static readonly TimeSpan GraceWindow = TimeSpan.FromSeconds(10);
+
     public bool IsUsableAt(DateTimeOffset now) => UsedAt is null && RevokedAt is null && now < ExpiresAt;
+
+    public bool CanBeReplayedAt(DateTimeOffset now) =>
+        UsedAt is not null && ReplayedAt is null && RevokedAt is null && now - UsedAt.Value <= GraceWindow;
 }

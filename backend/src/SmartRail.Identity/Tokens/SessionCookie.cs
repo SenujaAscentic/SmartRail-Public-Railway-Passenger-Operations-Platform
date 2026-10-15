@@ -21,5 +21,9 @@ internal static class SessionCookie
             IsEssential = true,
         });
 
+    // Tells the browser to delete the cookie. It must name the same path and attributes, or the browser keeps the old one.
+    public static void Clear(HttpContext http) =>
+        http.Response.Cookies.Delete(Name, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, Path = Path });
+
     public static string? Read(HttpContext http) => http.Request.Cookies.TryGetValue(Name, out var value) ? value : null;
 }

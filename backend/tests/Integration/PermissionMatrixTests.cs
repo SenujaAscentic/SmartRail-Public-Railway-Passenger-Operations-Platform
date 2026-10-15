@@ -35,6 +35,12 @@ public class PermissionMatrixTests(ApiFixture api)
         { "Controller", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
         { "Driver", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
 
+        // POST /auth/sign-out: Public in the policy sense, like refresh: the cookie is the credential. Always 204, even with no session.
+        { "Anonymous", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
+        { "Controller", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
+        { "StationManager", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
+        { "Driver", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
+
         // GET /staff/me: policy Staff (Controller, StationManager).
         { "Anonymous", "GET", "/api/v1/staff/me", HttpStatusCode.Unauthorized },
         { "Controller", "GET", "/api/v1/staff/me", HttpStatusCode.OK },

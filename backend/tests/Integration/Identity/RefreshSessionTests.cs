@@ -59,16 +59,60 @@ public class RefreshSessionTests(ApiFixture api)
         Assert.Equal(before.Subject, after.Subject);
     }
 
-    [Fact]
-    public async Task Using_a_refresh_token_a_second_time_is_refused_and_ends_the_whole_session()
-    {
-        var first = await SignInAndGetCookie(_client);
-        var firstRefresh = await _client.RefreshAsync(first, Ct);                      // the legitimate refresh
-        Assert.Equal(HttpStatusCode.OK, firstRefresh.StatusCode);
-        var second = firstRefresh.RefreshCookieValue()!;
+    // ---- the 10-second grace window: two browser tabs may send the same token a moment apart ----
 
-        var replay = await _client.RefreshAsync(first, Ct);                            // a copied token is used again
-        var legitimateNext = await _client.RefreshAsync(second, Ct);                   // so the genuine, newer token is dead too
+    [Fact]
+    public async Task The_token_just_replaced_can_be_used_once_more_within_10_seconds_and_both_tabs_carry_on()
+    {
+        var (factory, clock) = StartWithOwnClock();
+        using var _ = factory;
+        var client = factory.NewClient();
+        var first = await SignInAndGetCookie(client);
+
+        var tabOne = await client.RefreshAsync(first, Ct);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        var tabTwo = await client.RefreshAsync(first, Ct);   // the same, already replaced token, 5 s later
+
+        Assert.Equal(HttpStatusCode.OK, tabOne.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, tabTwo.StatusCode);
+        Assert.NotEqual(tabOne.RefreshCookieValue(), tabTwo.RefreshCookieValue());
+        Assert.Equal(HttpStatusCode.OK, (await client.RefreshAsync(tabOne.RefreshCookieValue(), Ct)).StatusCode);   // each tab continues
+        Assert.Equal(HttpStatusCode.OK, (await client.RefreshAsync(tabTwo.RefreshCookieValue(), Ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_third_use_of_the_same_token_ends_the_whole_session_even_inside_the_window()
+    {
+        var (factory, clock) = StartWithOwnClock();
+        using var _ = factory;
+        var client = factory.NewClient();
+        var first = await SignInAndGetCookie(client);
+        var tabOne = await client.RefreshAsync(first, Ct);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        var tabTwo = await client.RefreshAsync(first, Ct);
+        clock.Advance(TimeSpan.FromSeconds(2));
+
+        var third = await client.RefreshAsync(first, Ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, third.StatusCode);
+        Assert.Equal("UNAUTHENTICATED", await third.ProblemCodeAsync(Ct));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(tabOne.RefreshCookieValue(), Ct)).StatusCode);   // the session is over
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(tabTwo.RefreshCookieValue(), Ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Using_a_replaced_token_after_the_10_seconds_is_refused_and_ends_the_whole_session()
+    {
+        var (factory, clock) = StartWithOwnClock();
+        using var _ = factory;
+        var client = factory.NewClient();
+        var first = await SignInAndGetCookie(client);
+        var firstRefresh = await client.RefreshAsync(first, Ct);
+        Assert.Equal(HttpStatusCode.OK, firstRefresh.StatusCode);   // the legitimate refresh
+        clock.Advance(TimeSpan.FromSeconds(11));
+
+        var replay = await client.RefreshAsync(first, Ct);                                   // a copied token is used 11 s later
+        var legitimateNext = await client.RefreshAsync(firstRefresh.RefreshCookieValue(), Ct);   // so the genuine, newer token is dead too
 
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
         Assert.Equal("UNAUTHENTICATED", await replay.ProblemCodeAsync(Ct));
@@ -76,14 +120,15 @@ public class RefreshSessionTests(ApiFixture api)
     }
 
     [Fact]
-    public async Task Two_refreshes_at_the_same_moment_with_one_token_let_exactly_one_through()
+    public async Task Three_refreshes_at_the_same_moment_with_one_token_let_two_through_and_refuse_the_third()
     {
         var cookie = await SignInAndGetCookie(_client);
 
-        var results = await Task.WhenAll(_client.RefreshAsync(cookie, Ct), _client.RefreshAsync(cookie, Ct));
+        var results = await Task.WhenAll(
+            _client.RefreshAsync(cookie, Ct), _client.RefreshAsync(cookie, Ct), _client.RefreshAsync(cookie, Ct));
 
-        Assert.Single(results, r => r.StatusCode == HttpStatusCode.OK);
-        Assert.Single(results, r => r.StatusCode == HttpStatusCode.Unauthorized);
+        Assert.Equal(2, results.Count(r => r.StatusCode == HttpStatusCode.OK));   // the use and the one allowed replay
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.Unauthorized));
     }
 
     [Fact]

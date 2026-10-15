@@ -20,6 +20,11 @@ public class StaffMeTests(ApiFixture api)
 
     private readonly HttpClient _client = api.Factory.NewClient();
 
+    // A forged token must claim a REAL account. With a made-up id the endpoint would answer 401 anyway ("no such account"),
+    // and these tests could not tell a refused token from an accepted one.
+    private async Task<string> RealControllerIdAsync() =>
+        AuthTestHelpers.Read(await api.TokenForAsync("Controller", Ct)).Subject;
+
     [Fact]
     public async Task The_controller_sees_their_name_and_role_and_no_station()
     {
@@ -84,32 +89,72 @@ public class StaffMeTests(ApiFixture api)
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(MePath, token, Ct)).StatusCode);
     }
 
+    // Builds a token the way the application does, with every part overridable, so a test can change exactly one thing.
+    // key = null leaves the token unsigned.
+    private async Task<string> ForgeAsync(string issuer = "smartrail", string audience = "smartrail-api", string? key = "real")
+    {
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Issuer = issuer,
+            Audience = audience,
+            // Set explicitly: left empty, the handler stamps the REAL clock, which is a day ahead of the fixture's fake one,
+            // and the token would be refused as "not valid yet" whatever the check under test does.
+            IssuedAt = api.Clock.GetUtcNow().UtcDateTime,
+            NotBefore = api.Clock.GetUtcNow().UtcDateTime,
+            Expires = api.Clock.GetUtcNow().AddMinutes(10).UtcDateTime,
+            Claims = new Dictionary<string, object> { ["sub"] = await RealControllerIdAsync(), ["role"] = "Controller" },
+        };
+        if (key is not null)
+        {
+            var secret = key == "real" ? api.JwtSigningKey : key;
+            descriptor.SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)), SecurityAlgorithms.HmacSha256);
+        }
+
+        return new JsonWebTokenHandler().CreateToken(descriptor);
+    }
+
+    // The control for the four tests below: the same forged-token recipe, changed in nothing, IS accepted.
+    // Without it a "refused" result could come from a mistake in the recipe instead of from the check under test.
+    [Fact]
+    public async Task Control_a_token_built_with_the_real_key_issuer_and_audience_is_accepted()
+    {
+        var response = await _client.GetAsync(MePath, await ForgeAsync(), Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task A_token_signed_with_some_other_key_is_refused()
     {
-        var forged = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
-        {
-            Issuer = "smartrail",
-            Audience = "smartrail-api",
-            Expires = api.Clock.GetUtcNow().AddMinutes(10).UtcDateTime,
-            Claims = new Dictionary<string, object> { ["sub"] = Guid.NewGuid().ToString(), ["role"] = "Controller" },
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes("an-attackers-own-key-of-32-chars!!")), SecurityAlgorithms.HmacSha256),
-        });
+        var forged = await ForgeAsync(key: "an-attackers-own-key-of-32-chars!!");
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync(MePath, forged, Ct)).StatusCode);
+    }
+
+    // Properly signed with the real key, but made for someone else: still refused.
+    [Theory]
+    [InlineData("someone-else", "smartrail-api")]
+    [InlineData("smartrail", "some-other-api")]
+    public async Task A_token_for_another_issuer_or_audience_is_refused(string issuer, string audience)
+    {
+        var token = await ForgeAsync(issuer, audience);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync(MePath, token, Ct)).StatusCode);
+    }
+
+    // Secure by default: a route that names no policy (here one that does not exist at all) still needs a signed-in caller.
+    [Fact]
+    public async Task A_request_to_an_unlisted_route_without_a_token_is_refused_by_the_fallback_policy()
+    {
+        var response = await _client.GetAsync("/api/v1/no-such-endpoint", bearer: null, Ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task A_token_with_no_signature_at_all_is_refused()
     {
-        var unsigned = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
-        {
-            Issuer = "smartrail",
-            Audience = "smartrail-api",
-            Expires = api.Clock.GetUtcNow().AddMinutes(10).UtcDateTime,
-            Claims = new Dictionary<string, object> { ["sub"] = Guid.NewGuid().ToString(), ["role"] = "Controller" },
-        });
+        var unsigned = await ForgeAsync(key: null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync(MePath, unsigned, Ct)).StatusCode);
     }

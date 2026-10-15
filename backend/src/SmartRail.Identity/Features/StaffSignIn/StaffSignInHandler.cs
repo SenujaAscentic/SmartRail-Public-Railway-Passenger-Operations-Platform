@@ -12,6 +12,7 @@ internal static class StaffSignInHandler
         StaffSignInRequest request,
         HttpContext http,
         UserManager<StaffAccount> users,
+        IPasswordHasher<StaffAccount> passwordHasher,
         IdentityModuleDbContext db,
         AccessTokenIssuer issuer,
         TimeProvider clock,
@@ -20,6 +21,7 @@ internal static class StaffSignInHandler
         var account = await users.FindByNameAsync(request.StaffNumber!.Trim());
         if (account is null)
         {
+            DummyPasswordCheck.Run(passwordHasher, request.Password!);   // same work as a wrong password (open point 17)
             return Problems.SignInFailed(http);
         }
 

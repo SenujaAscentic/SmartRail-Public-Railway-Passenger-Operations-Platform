@@ -25,6 +25,7 @@ internal static class StaffSignInEndpoint
         StaffSignInRequest request,
         HttpContext http,
         UserManager<StaffAccount> users,
+        IPasswordHasher<StaffAccount> passwordHasher,
         IdentityModuleDbContext db,
         AccessTokenIssuer issuer,
         TimeProvider clock,
@@ -36,6 +37,6 @@ internal static class StaffSignInEndpoint
             return Problems.Validation(http, errors);
         }
 
-        return await StaffSignInHandler.HandleAsync(request, http, users, db, issuer, clock, ct);
+        return await StaffSignInHandler.HandleAsync(request, http, users, passwordHasher, db, issuer, clock, ct);
     }
 }

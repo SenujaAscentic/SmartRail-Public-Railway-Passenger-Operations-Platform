@@ -174,7 +174,7 @@ The catering provider is reached only through its API and signed events; SmartRa
 
 - **Phone mode** (driver's own phone): shows today's assigned journeys in order, with train set, time, route and departure platform, so the driver knows which train to walk to. No GPS, no journey actions.
 - **Cab mode** (registered Android tablet mounted in the cab, kiosk mode, train-powered): the driver signs in, starts the journey, and the tablet sends GPS positions only while the journey runs.
-- **Guard:** uses the same app on a phone for taps and messages; becomes the backup position source if the tablet fails (A-60).
+- **Guard:** *(deferred 14 Oct, domain model D-12; kept as a discovered actor)* would use the same app on a phone for taps and messages and become the backup position source if the tablet fails (A-60). Not built in the MVP.
 
 **Why:** a driver works several journeys a day on different trains, which the phone roster solves. GPS on a personal phone drains its battery, can be killed in the background and makes the driver's location personal data (§20). A full telematics GPS unit needs hardware installation and a vendor integration, which is out of MVP scope.
 
