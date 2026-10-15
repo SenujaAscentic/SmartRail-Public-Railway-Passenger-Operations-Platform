@@ -17,6 +17,7 @@ internal sealed class IdentitySeeder(
     UserManager<StaffAccount> users,
     IPasswordHasher<StaffAccount> passwordHasher,
     IStationDirectory stations,
+    INetworkSchedule schedule,
     IConfiguration configuration,
     ILogger<IdentitySeeder> log)
 {
@@ -31,7 +32,10 @@ internal sealed class IdentitySeeder(
         var codes = staff.Accounts.Where(a => !string.IsNullOrWhiteSpace(a.StationCode)).Select(a => a.StationCode!).Distinct().ToList();
         var stationIds = await stations.GetStationIdsAsync(codes, cancellationToken);
 
-        var errors = IdentitySeedValidator.Validate(staff, devices, stationIds, key => configuration[key]);
+        // A cab device registered to a train set the network does not have would never match a journey: fail the start now.
+        var trainSetCodes = (await schedule.GetScheduleAsync(cancellationToken)).TrainSets.Select(t => t.Code).ToHashSet();
+
+        var errors = IdentitySeedValidator.Validate(staff, devices, stationIds, trainSetCodes, key => configuration[key]);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(

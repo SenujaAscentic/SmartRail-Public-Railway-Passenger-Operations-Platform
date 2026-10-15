@@ -63,6 +63,46 @@ public class RefreshTokensTests
         Assert.False(revoked.IsUsableAt(Now.AddMinutes(2)));
     }
 
+    // ---- crew sessions: an absolute 12 hours from sign-in, bound to a cab session when there is one ----
+
+    [Fact]
+    public void A_crew_token_expires_at_the_absolute_time_it_is_given_and_not_30_minutes_later()
+    {
+        var absolute = Now.AddHours(12);
+        var cabSession = Guid.NewGuid();
+
+        var (_, row) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now, absolute, cabSession);
+
+        Assert.Equal(absolute, row.ExpiresAt);
+        Assert.Equal(absolute, row.AbsoluteExpiresAt);
+        Assert.Equal(cabSession, row.CabSessionId);
+    }
+
+    [Fact]
+    public void The_next_token_of_a_crew_session_keeps_the_same_absolute_end_and_cab_session()
+    {
+        var (_, first) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now, Now.AddHours(12), Guid.NewGuid());
+
+        var (_, next) = RefreshTokens.Next(first, Now.AddHours(5));
+
+        Assert.Equal(first.FamilyId, next.FamilyId);
+        Assert.Equal(first.AccountId, next.AccountId);
+        Assert.Equal(first.CabSessionId, next.CabSessionId);
+        Assert.Equal(Now.AddHours(12), next.ExpiresAt);   // refreshing does not extend the shift
+    }
+
+    [Fact]
+    public void The_next_token_of_a_staff_session_gets_a_fresh_30_minutes()
+    {
+        var (_, first) = RefreshTokens.Create(Guid.NewGuid(), Guid.NewGuid(), Now);
+
+        var (_, next) = RefreshTokens.Next(first, Now.AddMinutes(20));
+
+        Assert.Equal(Now.AddMinutes(50), next.ExpiresAt);
+        Assert.Null(next.AbsoluteExpiresAt);
+        Assert.Null(next.CabSessionId);
+    }
+
     // Grace window: two browser tabs may send the same refresh token a moment apart. The token just replaced
     // may be used ONCE more within 10 seconds; after that, or a third time, it counts as copied (threat T-14).
     [Fact]

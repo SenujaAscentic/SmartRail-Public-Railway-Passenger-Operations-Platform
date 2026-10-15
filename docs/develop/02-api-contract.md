@@ -33,12 +33,12 @@ Decisions are collected in section 9.
 | **Public** (anyone) | – | – | – | `Public` |
 | **Passenger** (app) | email + password | Access token (JWT) + refresh token in the phone's secure storage | Access 15 min; refresh 30 days **sliding**: every refresh issues a new token with a fresh 30 days, so only 30 days of inactivity requires signing in again; "stay signed in" (US-P5). All sessions end on sign-out, password change, account deletion or refresh-token reuse (T-14) | `Passenger` |
 | **Staff** (ops web) | staff number + password | Access token held in memory; refresh token in an `HttpOnly; Secure; SameSite=Strict` cookie (C-3) | Access 15 min; session ends after **30 min idle** (US-O1) | `Controller` (whole line), `StationManager` (own station) |
-| **Crew, phone mode** | staff number + password | Access + refresh token | Shift-length refresh (12 h) | `CrewPhone` (Driver; guard deferred 14 Oct, D-12) |
-| **Crew, cab mode** | **device credential** (seeded per tablet) **+** staff sign-in | Cab session token bound to device + staff + session; carries the measured clock offset | Until End journey / sign-out / new cab sign-in elsewhere (R-19) | `CrewCab` (Driver) |
+| **Crew, phone mode** | staff number + password | Access token + refresh token, **both in the response body** (the app keeps the refresh token in secure storage) | Access 15 min; the session ends **12 h after sign-in** (a shift, fixed: refreshing does not extend it). No cab session is created | `CrewPhone` (Driver; guard deferred 14 Oct, D-12) |
+| **Crew, cab mode** | **device credential** (seeded per tablet) in the headers `X-Device-Id` and `X-Device-Secret` **+** staff number and password | Cab session token (access token with `deviceId`, `crewSessionId`, `clockOffsetMs`) + refresh token in the body | Access 15 min; the session ends **12 h after sign-in** (fixed), or earlier: sign-out, a newer cab sign-in by the same driver **or on the same tablet** (R-19), or a deactivated device at its next refresh. **Checked on every request** that carries `crewSessionId`, so an ended session stops working at once | `CrewCab` (Driver with a cab session: the token carries `crewSessionId`; a phone token does not) |
 | **Display device** | device credential (seeded) | Read-only token, `stationId` claim | 24 h, renewed automatically | `Display` |
 | **Catering provider** (calling SmartRail) | API key | – | Rotatable | `Provider` |
 
-**Token claims (JWT):** `sub`, `aud`, `role`, `stationId?`, `deviceId?`, `crewSessionId?`, `exp`. Signed by the backend; no personal data inside.
+**Token claims (JWT):** `sub`, `aud`, `role`, `stationId?`, `deviceId?`, `crewSessionId?`, `clockOffsetMs?` (cab tokens only: server time minus the tablet clock at sign-in, R-09), `exp`. Signed by the backend; no personal data inside.
 
 **Refresh cookie (staff):** sign-in and refresh answer with `Set-Cookie: smartrail_refresh=<secret>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Expires=…`; the secret is never in the body. `openapi.yaml` cannot describe response cookies, so this paragraph is the authority. Each refresh token works once and gives a new one (30 min idle, sliding). A token that was just replaced may be used **once more within 10 s** (two browser tabs); any later reuse ends the whole session (T-14). `POST /auth/sign-out` revokes the session and clears the cookie, answering `204` even when there is no cookie. A deactivated account is refused at its next refresh, so within the 15-minute access-token life.
 
@@ -111,8 +111,8 @@ Notation: **Who** = policy; **Story** = main story served.
 
 | Method · Path | Who | Purpose | Story |
 |---|---|---|---|
-| `POST /auth/crew/sign-in` | Public | Phone mode: `{staffNumber, password}` | US-C1 |
-| `POST /auth/crew/cab-sign-in` | Device credential (header) | Cab mode: `{staffNumber, password, deviceTime}` → cab session token + `serverTime` (clock offset measured here, R-09); ends any previous cab session of this driver (R-19) | US-C2 |
+| `POST /auth/crew/sign-in` | Public | Phone mode: `{staffNumber, password}` → `{accessToken, expiresAt, refreshToken, refreshExpiresAt}`. Drivers only; any other account gets the same generic `401` as a wrong password. Lockout as for staff (5 failures, 15 min) | US-C1 |
+| `POST /auth/crew/cab-sign-in` | Public (the credentials are the device headers and the password) | Cab mode. Headers `X-Device-Id`, `X-Device-Secret`; body `{staffNumber, password, deviceTime}` → `{accessToken, expiresAt, refreshToken, refreshExpiresAt, crewSessionId, serverTime}`. The tablet is checked first: an unknown device, a deactivated device and a wrong secret all give the **same generic `401`** and never touch the driver's failed-password count. `deviceTime` more than 24 h from the server's time → `400` (field `deviceTime`). The clock offset (server time minus `deviceTime`) is measured here, once (R-09). Ends the driver's previous cab session **and any previous session on this tablet** (R-19); two sign-ins racing each other: the loser gets `409 INVALID_STATE` and tries again. The device headers are never logged | US-C2 |
 | `GET /crew/roster?date=` | CrewPhone, CrewCab | Today's assigned journeys in order: train set, times, route, departure platform | US-C1 |
 | `POST /crew/journeys/{id}/start` · `POST …/end` | **CrewCab only** | Start from 60 min before departure, assigned driver only; train set mismatch → warning in response + controller alert (Should S-11) | US-C2 |
 | `POST /crew/journeys/{id}/positions` | **CrewCab only** | Batch `[{lat, lng, speedKmh, accuracyM, gpsTime?, deviceTime}]` + `clientActionId`; plausibility rules R-07, R-08 | US-B3 |
@@ -225,10 +225,10 @@ Every error is Problem Details with a stable `code`:
 | HTTP | `code` | When |
 |---|---|---|
 | 400 | `VALIDATION_FAILED` | Field errors in `errors: {field: [message]}` (specific, fixable messages, US-P5) |
-| 401 | `UNAUTHENTICATED` | Missing / expired token; **sign-in failures always return one generic message** |
-| 403 | `FORBIDDEN` / `OUT_OF_SCOPE` / `CAB_SESSION_REQUIRED` / `DEVICE_NOT_REGISTERED` | Wrong role · outside own station / assigned journeys · driver action from phone · unknown device |
+| 401 | `UNAUTHENTICATED` | Missing / expired token, or a token whose cab session has ended; **sign-in failures always return one generic message**, including an unknown, deactivated or wrong-secret cab device |
+| 403 | `FORBIDDEN` / `OUT_OF_SCOPE` / `CAB_SESSION_REQUIRED` | Wrong role · outside own station / assigned journeys · driver action from phone |
 | 404 | `NOT_FOUND` | Unknown ID (also used instead of 403 where existence itself is sensitive) |
-| 409 | `VERSION_CONFLICT` · `INVALID_STATE` | Stale version · action not allowed in current state (e.g. cancel a completed journey) |
+| 409 | `VERSION_CONFLICT` · `INVALID_STATE` | Stale version · action not allowed in current state (e.g. cancel a completed journey; two cab sign-ins of one driver at the same instant) |
 | 422 | `RULE_VIOLATION` · `HOLD_REQUIRED` · `CONFLICT_NOT_ACKNOWLEDGED` | Business rule refused (platform not at station, terminate at passed station …) |
 | 429 | `RATE_LIMITED` · `SIGN_IN_LOCKED` | Too many requests · 5 failed sign-ins |
 | 503 | `PROVIDER_UNAVAILABLE` | Only on provider-specific calls; never on train information |
@@ -281,6 +281,8 @@ Error messages shown to users come from the apps; `detail` is for logs and devel
 | C-5 ✔ | Platform change in two steps (preview, then confirm) | Yes | The warning, lead-time level and conflicts appear **before** the controller commits (US-O5.5, .7) |
 | C-6 ✔ | Stream in web apps | Fetch-based SSE client with the `Authorization` header | Built-in `EventSource` can't send headers; tokens in URLs leak into logs |
 | C-7 ✔ | M-1 to M-4 above | As proposed | — |
+| C-10 ✔ | Crew phone and cab sign-in shapes (3.4, section 2) | **Agreed 15 Oct (Senuja):** crew apps get the refresh token **in the body** and send it in the body of `POST /auth/refresh` and `POST /auth/sign-out` (staff stay cookie-only; each kind of token is refused from the other place); crew sessions end a fixed 12 h after sign-in; cab headers `X-Device-Id` / `X-Device-Secret`; the cab session is checked on every request with `crewSessionId`; one cab session per driver **and per tablet**; `deviceTime` off by more than 24 h → `400`; response shapes as in 3.4 | Crew apps have no cookie jar; a fixed shift limits a lost phone; the check makes R-07 / R-19 true at once, not after 15 minutes |
+| C-11 ✔ | Error code `DEVICE_NOT_REGISTERED` | **Removed from section 6 (15 Oct, Senuja).** An unknown, deactivated or wrong-secret device gets the generic `401` | One generic message (section 6) and the T-12 test "deactivated device → 401"; a different answer for an unknown device would reveal which device ids exist |
 | C-9 ✔ | Arrived / Departed endpoints in the contract (3.4) | **CrewCab only** (was CrewCab and CrewPhone for the guard). Changed on 14 Oct together with the guard deferral (D-12) without asking first (CLAUDE.md §7); **accepted by Senuja on 15 Oct** | The phone has no journey actions for the driver (US-C1.2) and the guard role is deferred |
 | C-8 ✔ | How clients get API types | **Agreed 12 Oct:** TypeScript types generated (`openapi-typescript` + `openapi-fetch`); Dart via a generator only if its output is clean, otherwise hand-written models + contract tests; SSE event examples in `shared/events/` parsed by every app's tests. Written into the agent instructions (`CLAUDE.md`) | With agentic development, a decision only exists for the agent if it is written where the agent reads it |
 

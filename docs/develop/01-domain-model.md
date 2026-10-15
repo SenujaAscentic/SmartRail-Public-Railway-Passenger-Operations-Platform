@@ -162,7 +162,7 @@ erDiagram
 |---|---|---|
 | Position | journeyId, deviceId, location, speedKmh, gpsTime, receivedAt, correctedTime | Append-only, partitioned by day, raw data kept 30 days (ADR-03). Not part of the aggregate; only the latest accepted position is cached on the journey. |
 | CabDevice | **Owned by Identity since 14 Oct (D-13), not by this module.** Fields: id, code ("CAB-01"), trainSetCode (text), credentialHash, active | Registered in seed data (ADR-05). LiveOperations never reads Identity's table: the cab session token carries `deviceId` and the train set, and R-07 / S-11 use those. |
-| CrewSession | id, staffId, deviceId, journeyId?, mode (Phone / Cab), startedAt, endedAt, clockOffsetMs | One active **cab** session per driver. Signing in on another tablet ends the old one. |
+| CrewSession | **Owned by Identity since 15 Oct (D-14), there called `CabSession`:** id, accountId, deviceId, startedAt, endedAt?, clockOffsetMs. **Cab mode only**: a phone sign-in creates no session | One active session per driver **and per tablet**: a new sign-in ends the old one. The link to a journey (`journeyId`) will be kept by LiveOperations, keyed by the `crewSessionId` in the token. LiveOperations never reads Identity's table |
 
 **Value objects:** `Delay` (signed minutes, with `IsLate`, `IsEarly`, `IsOnTime`), `GeoPoint`, `TimeWithSource`, `Hold`, `Source` (Controller = 1, Crew = 2, Gps = 3, Schedule = 4; lower number wins), `LeadTimeLevel` (Normal, ShortNotice, Late).
 
@@ -434,6 +434,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 | D-11 ✔ | Should skipping a stop reduce later times, and how does a hold add time? | **Agreed 8 Oct:** skip → subtract the stop's scheduled dwell from the delay, never below on time (R-21); hold → expected departure follows the clock until the train leaves (R-22) | Raised by me: the model ignored time saved by skips. Mirrors added stops (D-5), which add time. Conservative: only known timetable dwell is subtracted, never a guessed braking time, and no early prediction from a skip. |
 | D-12 ✔ | Is the guard a role in the MVP? | **Agreed 14 Oct (Senuja):** no. Roles are Controller, StationManager, Driver; a journey references a driver only; `CrewPhone` = Driver | The brief only requires the driver; no E2E flow needs the guard; one role fewer in sign-in, seed data and the permission matrix. The guard stays a discovered actor for later (`moscow.md` change log). |
 | D-13 ✔ | Which module owns `CabDevice`? | **Agreed 14 Oct (Senuja), spec change:** Identity (id, code, trainSetCode as text, credentialHash, active). The cab session token carries the device and its train set to LiveOperations. A deactivated device is refused at its next sign-in or refresh (within one access-token life, 15 min) | The device credential is authentication, which Identity owns; LiveOperations needs only the answer, not the table. Section 4.1 and the architecture rule "never read another module's tables" stay intact. |
+| D-14 ✔ | Which module owns the crew session, and is there one for phones? | **Agreed 15 Oct (Senuja), spec change:** Identity owns it, as `CabSession`, for **cab mode only**; phones get no session. One active session per driver and per tablet (database-enforced). The session is checked on **every request** that carries `crewSessionId`. The session ends by sign-out (the app signs out after End journey, for now), a newer sign-in, a deactivated device at its next refresh, or the 12-hour limit. Later: a `JourneyEnded` event through the outbox ends it | Token validity depends on the session, so the session belongs where the token is made and checked; LiveOperations cannot call Identity and needs only the ids in the token |
 
 ---
 
@@ -443,7 +444,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 |---|---|
 | `Driver` became `StaffAccount` with a role (Controller, StationManager, Driver) and the journey references a driver. *(A guard was planned until 14 Oct, D-12.)* | Roles drive authorisation. |
 | `StaffAccount` gained credentials, `isActive`, lockout fields and a role-to-scope check constraint. | D-9, D-10; Q-2 lockout. |
-| Added `CabDevice` and `CrewSession`. `CabDevice` is owned by Identity (D-13, 14 Oct); `CrewSession` stays in LiveOperations. | ADR-05 (cab tablet, one active session). |
+| Added `CabDevice` and `CrewSession`. Both are owned by Identity (D-13, D-14); `CrewSession` is called `CabSession` there. | ADR-05 (cab tablet, one active session). |
 | Added `Hold` as a value object on the journey, not a status. | D-4. |
 | Added `TrackingStatus` separate from `JourneyStatus`. | A journey can be Running with Lost data; mixing them hides one of the two. |
 | Added `Position` as a time-series table outside the aggregate. | Volume (every 10 s); the aggregate keeps only the latest. |

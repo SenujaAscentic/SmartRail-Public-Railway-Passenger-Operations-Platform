@@ -20,4 +20,7 @@ internal class StaffAccount : IdentityUser<Guid>
     // The ops web app is for the controller and station managers. Drivers sign in on the crew app (a separate endpoint).
     // Computed, not stored: EF Core ignores a property that has no setter.
     public bool MaySignInToOpsWeb => IsActive && Role is StaffRole.Controller or StaffRole.StationManager;
+
+    // The crew app (phone and cab) is for drivers. The guard role is deferred (domain model D-12).
+    public bool MayUseCrewApp => IsActive && Role == StaffRole.Driver;
 }

@@ -20,6 +20,10 @@ internal static class Problems
         Build(http, StatusCodes.Status401Unauthorized, "unauthenticated", "Sign-in failed", "UNAUTHENTICATED",
             detail: "The staff number or password is not correct.");
 
+    // Contract section 6: 409 INVALID_STATE, here for two cab sign-ins racing each other.
+    public static IResult Conflict(HttpContext http, string detail) =>
+        Build(http, StatusCodes.Status409Conflict, "invalid-state", "The request conflicts with the current state", "INVALID_STATE", detail);
+
     // Signed in, but the role is not allowed to do this.
     public static IResult Forbidden(HttpContext http) =>
         Build(http, StatusCodes.Status403Forbidden, "forbidden", "Not allowed", "FORBIDDEN",

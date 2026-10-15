@@ -9,7 +9,7 @@ namespace SmartRail.Identity.Features.RefreshSession;
 
 // Swaps a refresh token for a new access token and a new refresh token ("rotation"). The token just replaced may be
 // used once more within 10 seconds (two browser tabs); any later reuse ends the session.
-// Every failure is the same 401, so a caller learns nothing about why.
+// Staff send the token in the cookie, crew apps in the body. Every failure is the same 401, so a caller learns nothing about why.
 internal static class RefreshSessionHandler
 {
     public static async Task<IResult> HandleAsync(
@@ -20,21 +20,30 @@ internal static class RefreshSessionHandler
         TimeProvider clock,
         CancellationToken ct)
     {
-        var secret = SessionCookie.Read(http);
-        if (string.IsNullOrEmpty(secret))
+        var presented = await RefreshTokenSource.ReadAsync(http, ct);
+        if (string.IsNullOrEmpty(presented.Secret))
         {
             return Problems.Unauthenticated(http);
         }
 
         var now = clock.GetUtcNow();
-        var hash = RefreshTokens.Hash(secret);
+        var hash = RefreshTokens.Hash(presented.Secret);
         var token = await db.RefreshTokens.AsNoTracking().SingleOrDefaultAsync(t => t.TokenHash == hash, ct);
         if (token is null)
         {
             return Problems.Unauthenticated(http);
         }
 
-        // Revoked: the session was ended (copied token found, or signed out).
+        var account = await users.FindByIdAsync(token.AccountId.ToString());
+
+        // Each kind of token is accepted from one place only: crew (drivers) from the body, staff from the cookie.
+        // A mismatch changes nothing: it is most likely an app that is configured wrongly.
+        if (account is not null && presented.FromBody != (account.Role == StaffRole.Driver))
+        {
+            return Problems.Unauthenticated(http);
+        }
+
+        // Revoked: the session was ended (copied token found, signed out, or a newer cab sign-in).
         if (token.RevokedAt is not null)
         {
             await SessionRevocation.RevokeAsync(db, token.FamilyId, now, ct);
@@ -43,7 +52,7 @@ internal static class RefreshSessionHandler
 
         if (now >= token.ExpiresAt)
         {
-            return Problems.Unauthenticated(http);   // idle for more than 30 minutes
+            return Problems.Unauthenticated(http);   // idle for more than 30 minutes (staff) or past the 12-hour shift (crew)
         }
 
         // Use the token (or, inside the 10-second grace window, use it once more). If neither is possible, a copy exists
@@ -55,17 +64,44 @@ internal static class RefreshSessionHandler
         }
 
         // A deactivated account loses its session at the next refresh, at most one access-token life (15 min) later.
-        var account = await users.FindByIdAsync(token.AccountId.ToString());
-        if (account is null || !account.MaySignInToOpsWeb)
+        var allowed = account is not null && (account.Role == StaffRole.Driver ? account.MayUseCrewApp : account.MaySignInToOpsWeb);
+        if (!allowed)
         {
             await SessionRevocation.RevokeAsync(db, token.FamilyId, now, ct);
             return Problems.Unauthenticated(http);
         }
 
-        var accessToken = issuer.Issue(account.Id, account.Role, account.StationId);
-        var (newSecret, newRow) = RefreshTokens.Create(account.Id, token.FamilyId, now);   // same session, next token
+        // A cab session must still be active and its tablet still registered and active (threat T-12): a deactivated
+        // device is refused at its next refresh.
+        CabSessionClaims? cab = null;
+        if (token.CabSessionId is { } sessionId)
+        {
+            var session = await db.CabSessions.SingleOrDefaultAsync(s => s.Id == sessionId, ct);
+            var deviceActive = session is not null && await db.CabDevices.AsNoTracking().AnyAsync(d => d.Id == session.DeviceId && d.Active, ct);
+            if (session is null || session.EndedAt is not null || !deviceActive)
+            {
+                if (session is { EndedAt: null })
+                {
+                    session.EndedAt = now;
+                    await db.SaveChangesAsync(ct);
+                }
+
+                await SessionRevocation.RevokeAsync(db, token.FamilyId, now, ct);
+                return Problems.Unauthenticated(http);
+            }
+
+            cab = new CabSessionClaims(session.DeviceId, session.Id, session.ClockOffsetMs);
+        }
+
+        var accessToken = issuer.Issue(account!.Id, account.Role, account.StationId, cab);
+        var (newSecret, newRow) = RefreshTokens.Next(token, now);   // same session, next token (a crew session keeps its fixed end)
         db.RefreshTokens.Add(newRow);
         await db.SaveChangesAsync(ct);
+
+        if (presented.FromBody)
+        {
+            return Results.Ok(new AccessTokenResponse(accessToken.Token, accessToken.ExpiresAt, newSecret, newRow.ExpiresAt));
+        }
 
         SessionCookie.Append(http, newSecret, newRow.ExpiresAt);
         return Results.Ok(new AccessTokenResponse(accessToken.Token, accessToken.ExpiresAt));

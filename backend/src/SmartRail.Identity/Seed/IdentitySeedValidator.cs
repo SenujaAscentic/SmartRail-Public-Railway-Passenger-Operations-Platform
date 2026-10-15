@@ -13,6 +13,7 @@ internal enum IdentitySeedRule
     MissingSecret,
     DuplicateDeviceId,
     EmptyTrainSetCode,
+    UnknownTrainSetCode,
 }
 
 internal sealed record IdentitySeedError(IdentitySeedRule Rule, string Message);
@@ -21,11 +22,12 @@ internal sealed record IdentitySeedError(IdentitySeedRule Rule, string Message);
 // Messages name the account or key, never a secret value.
 internal static class IdentitySeedValidator
 {
-    // stationIds: the codes the Network module knows. secret: looks up a configuration key (null or empty = not set).
+    // stationIds and trainSetCodes: what the Network module knows. secret: looks up a configuration key (null or empty = not set).
     public static IReadOnlyList<IdentitySeedError> Validate(
         StaffSeedFile staff,
         CabDeviceSeedFile devices,
         IReadOnlyDictionary<string, Guid> stationIds,
+        IReadOnlySet<string> trainSetCodes,
         Func<string, string?> secret)
     {
         var errors = new List<IdentitySeedError>();
@@ -80,6 +82,11 @@ internal static class IdentitySeedValidator
             if (string.IsNullOrWhiteSpace(device.TrainSetCode))
             {
                 errors.Add(new(IdentitySeedRule.EmptyTrainSetCode, $"Cab device {device.Id} has no trainSetCode."));
+            }
+            else if (!trainSetCodes.Contains(device.TrainSetCode))
+            {
+                errors.Add(new(IdentitySeedRule.UnknownTrainSetCode,
+                    $"Cab device {device.Id}: train set {device.TrainSetCode} does not exist in the network."));
             }
 
             RequireSecret(device.CredentialSecretKey, secret, errors);

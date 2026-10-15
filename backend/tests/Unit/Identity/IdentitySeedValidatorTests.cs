@@ -15,10 +15,12 @@ public class IdentitySeedValidatorTests
     private static StaffSeedAccount Manager(string number = "SM-FOT", string? station = "FOT") => new(number, "Demo Manager", "StationManager", station, true);
     private static CabDeviceSeedEntry Cab(string id = "CAB-01") => new(id, "DPS-01", true, $"Seed:CabDevice:{id}:Token");
 
+    private static readonly IReadOnlySet<string> TrainSets = new HashSet<string> { "DPS-01", "LH-01" };
+
     private static string? AllSecrets(string key) => "a-secret";
 
     private static IReadOnlyList<IdentitySeedError> Validate(StaffSeedFile staff, CabDeviceSeedFile devices, Func<string, string?>? secret = null) =>
-        IdentitySeedValidator.Validate(staff, devices, Stations, secret ?? AllSecrets);
+        IdentitySeedValidator.Validate(staff, devices, Stations, TrainSets, secret ?? AllSecrets);
 
     private static void AssertError(IdentitySeedRule rule, StaffSeedFile staff, CabDeviceSeedFile? devices = null, Func<string, string?>? secret = null) =>
         Assert.Contains(Validate(staff, devices ?? Devices(Cab()), secret), e => e.Rule == rule);
@@ -90,6 +92,16 @@ public class IdentitySeedValidatorTests
     public void A_cab_device_needs_a_train_set_code()
     {
         AssertError(IdentitySeedRule.EmptyTrainSetCode, Staff(Controller()), Devices(Cab() with { TrainSetCode = "" }));
+    }
+
+    [Fact]
+    public void A_cab_device_whose_train_set_the_network_does_not_know_is_rejected_and_named()
+    {
+        var errors = Validate(Staff(Controller()), Devices(Cab() with { TrainSetCode = "XX-99" }));
+
+        var error = Assert.Single(errors, e => e.Rule == IdentitySeedRule.UnknownTrainSetCode);
+        Assert.Contains("CAB-01", error.Message);
+        Assert.Contains("XX-99", error.Message);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
+using SmartRail.Identity.Authentication;
 using SmartRail.Identity.Model;
 using SmartRail.Identity.Persistence;
 using SmartRail.Identity.Tokens;
@@ -22,7 +23,7 @@ internal static class StaffSignInEndpoint
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
     private static async Task<IResult> HandleAsync(
-        StaffSignInRequest request,
+        PasswordSignInRequest request,
         HttpContext http,
         UserManager<StaffAccount> users,
         IPasswordHasher<StaffAccount> passwordHasher,
@@ -31,7 +32,7 @@ internal static class StaffSignInEndpoint
         TimeProvider clock,
         CancellationToken ct)
     {
-        var errors = StaffSignInValidator.Validate(request);
+        var errors = PasswordSignInValidator.Validate(request);
         if (errors.Count > 0)
         {
             return Problems.Validation(http, errors);

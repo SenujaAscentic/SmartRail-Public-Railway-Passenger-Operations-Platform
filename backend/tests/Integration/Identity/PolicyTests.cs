@@ -16,10 +16,12 @@ public class PolicyTests(ApiFixture api)
     // role, policy, allowed
     public static TheoryData<string, string, bool> Rows => new()
     {
-        { "Anonymous", "Controller", false }, { "Anonymous", "StationManager", false }, { "Anonymous", "Staff", false }, { "Anonymous", "CrewPhone", false },
-        { "Controller", "Controller", true }, { "Controller", "StationManager", false }, { "Controller", "Staff", true }, { "Controller", "CrewPhone", false },
-        { "StationManager", "Controller", false }, { "StationManager", "StationManager", true }, { "StationManager", "Staff", true }, { "StationManager", "CrewPhone", false },
-        { "Driver", "Controller", false }, { "Driver", "StationManager", false }, { "Driver", "Staff", false }, { "Driver", "CrewPhone", true },
+        // "Driver" is a crew PHONE token; "DriverCab" is a cab session token (it also carries a crewSessionId).
+        { "Anonymous", "Controller", false }, { "Anonymous", "StationManager", false }, { "Anonymous", "Staff", false }, { "Anonymous", "CrewPhone", false }, { "Anonymous", "CrewCab", false },
+        { "Controller", "Controller", true }, { "Controller", "StationManager", false }, { "Controller", "Staff", true }, { "Controller", "CrewPhone", false }, { "Controller", "CrewCab", false },
+        { "StationManager", "Controller", false }, { "StationManager", "StationManager", true }, { "StationManager", "Staff", true }, { "StationManager", "CrewPhone", false }, { "StationManager", "CrewCab", false },
+        { "Driver", "Controller", false }, { "Driver", "StationManager", false }, { "Driver", "Staff", false }, { "Driver", "CrewPhone", true }, { "Driver", "CrewCab", false },
+        { "DriverCab", "Controller", false }, { "DriverCab", "StationManager", false }, { "DriverCab", "Staff", false }, { "DriverCab", "CrewPhone", true }, { "DriverCab", "CrewCab", true },
     };
 
     [Theory]
@@ -28,13 +30,19 @@ public class PolicyTests(ApiFixture api)
     {
         var principal = role == "Anonymous"
             ? new ClaimsPrincipal(new ClaimsIdentity())
-            : new ClaimsPrincipal(new ClaimsIdentity([new Claim("role", role)], "test", nameType: "sub", roleType: "role"));
+            : new ClaimsPrincipal(new ClaimsIdentity(ClaimsFor(role), "test", nameType: "sub", roleType: "role"));
         var authorization = api.Factory.Services.GetRequiredService<IAuthorizationService>();
 
         var result = await authorization.AuthorizeAsync(principal, resource: null, policy);
 
         Assert.Equal(expected, result.Succeeded);
     }
+
+    private static Claim[] ClaimsFor(string role) => role switch
+    {
+        "DriverCab" => [new Claim("role", "Driver"), new Claim("crewSessionId", Guid.NewGuid().ToString())],
+        _ => [new Claim("role", role)],
+    };
 
     [Fact]
     public void Every_endpoint_states_who_may_call_it()

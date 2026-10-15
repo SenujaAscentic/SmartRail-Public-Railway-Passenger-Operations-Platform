@@ -15,6 +15,7 @@ internal class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext>
 
     public DbSet<CabDevice> CabDevices => Set<CabDevice>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<CabSession> CabSessions => Set<CabSession>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -38,11 +39,23 @@ internal class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext>
             e.HasIndex(x => x.Code).IsUnique();   // the seed loader finds a device by its code
         });
 
+        model.Entity<CabSession>(e =>
+        {
+            e.HasOne<StaffAccount>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<CabDevice>().WithMany().HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.Cascade);
+
+            // R-19 enforced by the database: at most ONE active session (EndedAt empty) per driver and per tablet.
+            // A new sign-in ends the old session first; this index catches two sign-ins racing each other.
+            e.HasIndex(x => x.AccountId).IsUnique().HasFilter("\"EndedAt\" IS NULL").HasDatabaseName("UX_CabSessions_ActivePerDriver");
+            e.HasIndex(x => x.DeviceId).IsUnique().HasFilter("\"EndedAt\" IS NULL").HasDatabaseName("UX_CabSessions_ActivePerDevice");
+        });
+
         model.Entity<RefreshToken>(e =>
         {
             e.Property(x => x.TokenHash).HasMaxLength(64);   // SHA-256 as base64 is 44 characters
             e.HasIndex(x => x.TokenHash).IsUnique();         // a refresh looks the token up by its hash
             e.HasIndex(x => x.FamilyId);                     // revoking a session updates every token of the family
+            e.HasIndex(x => x.CabSessionId);                 // ending a cab session revokes its tokens
             e.HasOne<StaffAccount>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
         });
     }

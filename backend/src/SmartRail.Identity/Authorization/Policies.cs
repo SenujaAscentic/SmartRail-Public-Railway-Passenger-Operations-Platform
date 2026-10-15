@@ -10,7 +10,8 @@ internal static class Policies
     public const string Controller = "Controller";
     public const string StationManager = "StationManager";
     public const string Staff = "Staff";            // ops-web staff: a controller or a station manager
-    public const string CrewPhone = "CrewPhone";    // the driver on a phone (the guard role is deferred)
+    public const string CrewPhone = "CrewPhone";    // a driver on a phone or on a tablet (the guard role is deferred)
+    public const string CrewCab = "CrewCab";        // a driver with a CAB SESSION: the token carries crewSessionId (phone tokens do not)
 
     public static void Register(AuthorizationOptions options)
     {
@@ -23,5 +24,6 @@ internal static class Policies
         options.AddPolicy(StationManager, policy => policy.RequireRole("StationManager"));
         options.AddPolicy(Staff, policy => policy.RequireRole("Controller", "StationManager"));
         options.AddPolicy(CrewPhone, policy => policy.RequireRole("Driver"));
+        options.AddPolicy(CrewCab, policy => policy.RequireRole("Driver").RequireClaim("crewSessionId"));
     }
 }

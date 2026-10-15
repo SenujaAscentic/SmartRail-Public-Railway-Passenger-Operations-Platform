@@ -6,7 +6,7 @@ using Xunit;
 namespace SmartRail.IntegrationTests;
 
 // Every endpoint, every role, expected allow / deny (CLAUDE.md section 5, threat T-04).
-// Roles that exist so far: Anonymous, Controller, StationManager, Driver.
+// Roles that exist so far: Anonymous, Controller, StationManager, Driver (a crew PHONE token), DriverCab (a cab session token).
 // Add Passenger, Display and Provider rows when their credentials exist. The policies themselves are checked in PolicyTests.
 [Collection("Api")]
 public class PermissionMatrixTests(ApiFixture api)
@@ -21,6 +21,7 @@ public class PermissionMatrixTests(ApiFixture api)
         { "Controller", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
         { "StationManager", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
         { "Driver", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
+        { "DriverCab", "GET", "/api/v1/stations?query=kan", HttpStatusCode.OK },
 
         // The API description: Public.
         { "Anonymous", "GET", "/openapi/v1.yaml", HttpStatusCode.OK },
@@ -29,23 +30,40 @@ public class PermissionMatrixTests(ApiFixture api)
         { "Anonymous", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
         { "Controller", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
         { "Driver", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
+        { "DriverCab", "POST", "/api/v1/auth/staff/sign-in", HttpStatusCode.BadRequest },
+
+        // POST /auth/crew/sign-in and /auth/crew/cab-sign-in: Public; the password (and for the tablet the device credential) is the credential.
+        // An empty body (and no device headers) is answered 400, which shows the request got past the policy.
+        { "Anonymous", "POST", "/api/v1/auth/crew/sign-in", HttpStatusCode.BadRequest },
+        { "Controller", "POST", "/api/v1/auth/crew/sign-in", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/auth/crew/sign-in", HttpStatusCode.BadRequest },
+        { "Driver", "POST", "/api/v1/auth/crew/sign-in", HttpStatusCode.BadRequest },
+        { "DriverCab", "POST", "/api/v1/auth/crew/sign-in", HttpStatusCode.BadRequest },
+        { "Anonymous", "POST", "/api/v1/auth/crew/cab-sign-in", HttpStatusCode.BadRequest },
+        { "Controller", "POST", "/api/v1/auth/crew/cab-sign-in", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/auth/crew/cab-sign-in", HttpStatusCode.BadRequest },
+        { "Driver", "POST", "/api/v1/auth/crew/cab-sign-in", HttpStatusCode.BadRequest },
+        { "DriverCab", "POST", "/api/v1/auth/crew/cab-sign-in", HttpStatusCode.BadRequest },
 
         // POST /auth/refresh: Public in the policy sense; the refresh cookie is the credential, so a bearer token changes nothing.
         { "Anonymous", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
         { "Controller", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
         { "Driver", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
+        { "DriverCab", "POST", "/api/v1/auth/refresh", HttpStatusCode.Unauthorized },
 
         // POST /auth/sign-out: Public in the policy sense, like refresh: the cookie is the credential. Always 204, even with no session.
         { "Anonymous", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
         { "Controller", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
         { "StationManager", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
         { "Driver", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
+        { "DriverCab", "POST", "/api/v1/auth/sign-out", HttpStatusCode.NoContent },
 
         // GET /staff/me: policy Staff (Controller, StationManager).
         { "Anonymous", "GET", "/api/v1/staff/me", HttpStatusCode.Unauthorized },
         { "Controller", "GET", "/api/v1/staff/me", HttpStatusCode.OK },
         { "StationManager", "GET", "/api/v1/staff/me", HttpStatusCode.OK },
         { "Driver", "GET", "/api/v1/staff/me", HttpStatusCode.Forbidden },
+        { "DriverCab", "GET", "/api/v1/staff/me", HttpStatusCode.Forbidden },
     };
 
     [Theory]
