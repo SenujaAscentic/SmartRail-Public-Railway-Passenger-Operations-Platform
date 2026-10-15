@@ -250,6 +250,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | **R-20** | **Out-of-order crew actions** from the offline queue are applied by their recorded (corrected) time, and never overwrite a newer value from the same or higher-priority source. | C-7 |
 | **R-21** | **Time saved by a skipped stop:** when a stop is skipped, the delay for every later stop is reduced by that stop's **scheduled dwell** (scheduled departure − scheduled arrival), but **never below on time** (delay ≥ 0 after the reduction; an on-time or early train is unchanged). Braking and acceleration time is not estimated; GPS corrects it at the next stop. A controller-set delay still wins (R-05). | O-4, agreed 8 Oct (D-11) |
 | **R-22** | **Time added by a hold:** while a journey is held at a station, its expected departure from that station = max(scheduled departure, now), so it moves forward with the clock, and later stops' expected times move with it (R-02). When the train departs, the delay is measured from the actual departure (R-01). Nobody enters the extra minutes by hand. | O-4, O-5, agreed 8 Oct (D-11) |
+| **R-23** | **Overdue delay:** while a tracked journey has not reached its next stop (the first remaining stop with a scheduled arrival) and now > that stop's expected arrival (R-02), the effective delay = max(recorded delay, now − scheduled arrival), whole minutes rounded toward zero (R-01). It is recomputed whenever tracking is refreshed and announced as a delay change when the minutes change. A controller override takes precedence (R-05); the overdue delay has the lowest priority, so any real report (crew, GPS, controller) replaces it. A journey whose Start was never pressed is not tracked and gets no overdue delay (4.2). | US-P4 AC1 ★, spec change 15 Oct |
 
 ---
 
@@ -364,10 +365,23 @@ Written as test names. You approve, remove or add names; then the AI implements 
 - `Expected_departure_is_never_before_scheduled_departure_when_running_early`
 - `Actual_early_departure_is_recorded_as_it_happened`
 
+**Overdue delay (R-23, added 15 Oct)**
+- `Delay_is_unchanged_until_now_passes_the_expected_arrival`
+- `Delay_grows_in_whole_minutes_once_the_expected_arrival_has_passed`
+- `Overdue_delay_never_lowers_the_recorded_delay`
+- `Overdue_delay_moves_an_early_train_back_towards_schedule`
+- `Train_stuck_between_stations_shows_growing_lateness`
+- `Overdue_delay_uses_the_next_stop_not_yet_reached`
+- `No_overdue_delay_for_a_journey_that_has_not_started`
+- `Controller_delay_takes_precedence_over_overdue_delay`
+- `Real_arrival_replaces_the_overdue_delay`
+- `Real_report_can_lower_an_overdue_delay_that_replaced_a_crew_delay`
+
 **Detection (R-04, R-10)**
 - `Arrived_when_inside_zone_and_slow_for_20_seconds`
 - `Passed_when_train_crosses_zone_without_stopping`
 - `Departed_when_train_leaves_zone_after_arriving`
+- `Passed_stop_records_gps_passing_time_and_updates_delay`
 - `Unscheduled_stop_alert_after_3_minutes_stopped_outside_any_zone`
 - `No_unscheduled_stop_alert_when_stopped_inside_a_station_zone`
 - `Only_one_unscheduled_stop_alert_per_stop`

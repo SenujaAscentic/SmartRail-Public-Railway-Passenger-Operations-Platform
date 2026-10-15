@@ -81,18 +81,48 @@ public class OperationalJourneyLiveTests
     }
 
     [Fact]
-    public void Gps_pass_marks_the_stop_passed_and_leaves_the_delay_alone()
+    public void Passed_stop_records_gps_passing_time_and_updates_delay()
     {
         var journey = NewJourney();
 
         Feed(journey, Near(At(6, 41), 80, S2, 100));
+        Feed(journey, Near(At(6, 41, 20), 80, S2, 500));   // scheduled 06:40, passed 06:41:20: 1 min late
+
+        var stop = Stop(journey, S2);
+        Assert.Equal(StopStatus.Passed, stop.Status);
+        var passedAt = new TimeWithSource(At(6, 41, 20), Source.Gps);
+        Assert.Equal(passedAt, stop.ActualArrivalTime);     // a pass has one time; it is stored as both
+        Assert.Equal(passedAt, stop.ActualDepartureTime);
+        Assert.Equal(new SourcedDelay(new Delay(1), Source.Gps), journey.CurrentDelay);
+        Assert.Contains(new StopStatusChanged(journey.Id, S2, 2, StopStatus.Scheduled, StopStatus.Passed, At(6, 41, 20), Source.Gps), journey.DomainEvents);
+        Assert.Contains(new DelayChanged(journey.Id, 1, 0, Source.Gps, At(6, 41, 20)), journey.DomainEvents);
+    }
+
+    // Express trains: the seed gives a Pass stop one time (arrival = departure) for exactly this.
+    [Fact]
+    public void Passed_stop_without_a_scheduled_arrival_uses_the_scheduled_departure()
+    {
+        var journey = OperationalJourney.Plan(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(),
+            [new PlannedStop(1, S2, CallType.Pass, null, 400, "1")], TimeZoneInfo.Utc);
+
+        Feed(journey, Near(At(6, 41), 80, S2, 100));
+        Feed(journey, Near(At(6, 42, 30), 80, S2, 500));
+
+        Assert.Equal(2, journey.DelayMinutes);
+    }
+
+    [Fact]
+    public void Gps_pass_does_not_overwrite_a_controller_delay()
+    {
+        var journey = NewJourney();
+        journey.SetControllerDelay(new Delay(10), At(6, 30));
+
+        Feed(journey, Near(At(6, 41), 80, S2, 100));
         Feed(journey, Near(At(6, 41, 20), 80, S2, 500));
 
+        Assert.Equal(new SourcedDelay(new Delay(10), Source.Controller), journey.CurrentDelay);
         Assert.Equal(StopStatus.Passed, Stop(journey, S2).Status);
-        Assert.Null(Stop(journey, S2).ActualArrivalTime);
-        Assert.Equal(0, journey.DelayMinutes);
-        Assert.Contains(new StopStatusChanged(journey.Id, S2, 2, StopStatus.Scheduled, StopStatus.Passed, At(6, 41, 20), Source.Gps), journey.DomainEvents);
-        Assert.DoesNotContain(journey.DomainEvents, e => e is DelayChanged);
     }
 
     [Fact]

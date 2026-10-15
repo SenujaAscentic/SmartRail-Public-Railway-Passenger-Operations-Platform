@@ -21,6 +21,8 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
             journey.HasKey(j => j.Id);
             journey.Property(j => j.Id).ValueGeneratedNever();
             journey.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
+            journey.Property(j => j.DelaySource).HasConversion<string>().HasMaxLength(20);
+            journey.Property(j => j.Tracking).HasConversion<string>().HasMaxLength(20);
 
             // The database itself guarantees a service runs at most once per date (A-13): no duplicates, whatever the code does.
             journey.HasIndex(j => new { j.ServiceId, j.ServiceDate }).IsUnique();
@@ -33,6 +35,10 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
                 stop.HasKey("JourneyId", nameof(JourneyStop.Sequence));
                 stop.Property(s => s.CallType).HasConversion<string>().HasMaxLength(10);
                 stop.Property(s => s.PlannedPlatform).HasMaxLength(10);
+                stop.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+                stop.Property(s => s.Zone).HasConversion<string>().HasMaxLength(20);
+                stop.Property(s => s.ActualArrivalSource).HasConversion<string>().HasMaxLength(20);
+                stop.Property(s => s.ActualDepartureSource).HasConversion<string>().HasMaxLength(20);
             });
             journey.Navigation(j => j.Stops).UsePropertyAccessMode(PropertyAccessMode.Field);
         });

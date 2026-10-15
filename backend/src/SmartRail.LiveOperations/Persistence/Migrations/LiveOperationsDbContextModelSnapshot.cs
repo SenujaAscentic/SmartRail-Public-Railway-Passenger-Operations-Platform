@@ -31,8 +31,10 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<int>("DelayMinutes")
                         .HasColumnType("integer");
 
-                    b.Property<int>("DelaySource")
-                        .HasColumnType("integer");
+                    b.Property<string>("DelaySource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<double?>("LastLatitude")
                         .HasColumnType("double precision");
@@ -54,8 +56,10 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<int>("Tracking")
-                        .HasColumnType("integer");
+                    b.Property<string>("Tracking")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<Guid>("TrainSetId")
                         .HasColumnType("uuid");
@@ -84,14 +88,16 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                             b1.Property<DateTime?>("ActualArrival")
                                 .HasColumnType("timestamp with time zone");
 
-                            b1.Property<int?>("ActualArrivalSource")
-                                .HasColumnType("integer");
+                            b1.Property<string>("ActualArrivalSource")
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)");
 
                             b1.Property<DateTime?>("ActualDeparture")
                                 .HasColumnType("timestamp with time zone");
 
-                            b1.Property<int?>("ActualDepartureSource")
-                                .HasColumnType("integer");
+                            b1.Property<string>("ActualDepartureSource")
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)");
 
                             b1.Property<string>("CallType")
                                 .IsRequired()
@@ -115,11 +121,15 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                             b1.Property<Guid>("StationId")
                                 .HasColumnType("uuid");
 
-                            b1.Property<int>("Status")
-                                .HasColumnType("integer");
+                            b1.Property<string>("Status")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)");
 
-                            b1.Property<int>("Zone")
-                                .HasColumnType("integer");
+                            b1.Property<string>("Zone")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)");
 
                             b1.HasKey("JourneyId", "Sequence");
 

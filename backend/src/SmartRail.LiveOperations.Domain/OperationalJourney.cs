@@ -160,7 +160,7 @@ public sealed class OperationalJourney
             {
                 case ZoneEvent.Arrived: RecordArrival(stop, step.EventTime!.Value, Source.Gps); break;
                 case ZoneEvent.Departed: RecordDeparture(stop, step.EventTime!.Value, Source.Gps); break;
-                case ZoneEvent.Passed: ChangeStatus(stop, StopStatus.Passed, step.EventTime!.Value, Source.Gps); break;
+                case ZoneEvent.Passed: RecordPassed(stop, step.EventTime!.Value, Source.Gps); break;
             }
         }
 
@@ -191,12 +191,52 @@ public sealed class OperationalJourney
     public void ClearControllerDelay(DateTime now) =>
         SetDelay(CurrentDelay.ClearController(DelayFromLatestStopEvent()), now);
 
-    // R-06: call periodically; positions arriving move the status to Live by themselves.
+    // R-06 and R-23: call periodically (at least every 30 s, so lateness grows within a minute); positions arriving
+    // move the status to Live by themselves. Does nothing for a journey that was never started or has ended.
     public void RefreshTracking(DateTime now)
     {
         if (Tracking is TrackingStatus.Live or TrackingStatus.Stale or TrackingStatus.Lost && LastPositionAt is { } lastSeen)
         {
             SetTracking(TrackingFreshness.Of(lastSeen, now), now);
+            ApplyOverdueDelay(now);
+        }
+    }
+
+    // R-23. The result is stored with the lowest priority (Schedule): it is a guess from the clock, so any real
+    // report from crew, GPS or controller replaces it. A controller delay is left alone (R-05).
+    private void ApplyOverdueDelay(DateTime now)
+    {
+        if (DelaySource == Source.Controller)
+        {
+            return;
+        }
+
+        var next = _stops.FirstOrDefault(s => s.Status == StopStatus.Scheduled && s.ScheduledArrival is not null);
+        if (next is null)
+        {
+            return;
+        }
+
+        var overdue = ExpectedTimes.OverdueDelay(next.ScheduledArrival!.Value, CurrentDelay.Value, now);
+        if (overdue != CurrentDelay.Value)
+        {
+            SetDelay(new SourcedDelay(overdue, Source.Schedule), now);
+        }
+    }
+
+    // A pass has one time; it is stored as both arrival and departure so the stop reads like any other. The delay is
+    // measured against the scheduled arrival, or the departure for a stop that has none (R-01).
+    private void RecordPassed(JourneyStop stop, DateTime at, Source source)
+    {
+        var incoming = new TimeWithSource(at, source);
+        var resolved = TimeWithSource.Resolve(stop.ActualArrivalTime, incoming);   // R-05
+        stop.SetActualArrival(resolved);
+        stop.SetActualDeparture(TimeWithSource.Resolve(stop.ActualDepartureTime, incoming));
+        ChangeStatus(stop, StopStatus.Passed, at, source);
+
+        if (resolved == incoming && (stop.ScheduledArrival ?? stop.ScheduledDeparture) is { } scheduled)
+        {
+            SetDelay(CurrentDelay.Apply(Delay.Between(scheduled, at), source), at);
         }
     }
 

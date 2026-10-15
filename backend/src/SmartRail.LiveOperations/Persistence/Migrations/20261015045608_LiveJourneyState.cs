@@ -18,11 +18,12 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "ActualArrivalSource",
                 schema: "ops",
                 table: "JourneyStops",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
@@ -32,11 +33,12 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "ActualDepartureSource",
                 schema: "ops",
                 table: "JourneyStops",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
@@ -46,21 +48,23 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "Status",
                 schema: "ops",
                 table: "JourneyStops",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: "Scheduled");
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "Zone",
                 schema: "ops",
                 table: "JourneyStops",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: "Outside");
 
             migrationBuilder.AddColumn<int>(
                 name: "DelayMinutes",
@@ -70,13 +74,14 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "DelaySource",
                 schema: "ops",
                 table: "Journeys",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: false,
-                defaultValue: 4);   // Source.Schedule: journeys that exist already have no delay source yet
+                defaultValue: "Schedule");   // existing journeys: no delay source yet
 
             migrationBuilder.AddColumn<double>(
                 name: "LastLatitude",
@@ -99,13 +104,14 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<string>(
                 name: "Tracking",
                 schema: "ops",
                 table: "Journeys",
-                type: "integer",
+                type: "character varying(20)",
+                maxLength: 20,
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: "NotStarted");
         }
 
         /// <inheritdoc />
