@@ -34,6 +34,37 @@ public class StationZoneTests
         Assert.Equal([ZoneEvent.None, ZoneEvent.None, ZoneEvent.None, ZoneEvent.Arrived], events);
     }
 
+    // The arrival time is when the train stopped (first slow sample inside the zone), not the sample that confirmed it.
+    [Fact]
+    public void Arrived_time_is_the_first_slow_sample_inside_the_zone()
+    {
+        var state = ZoneState.Start;
+        ZoneStep last = default;
+        foreach (var sample in new[] { At(0, 800, 60), At(5, 200, 3), At(15, 100, 2), At(25, 50, 0) })
+        {
+            last = StationZone.Observe(state, sample);
+            state = last.State;
+        }
+
+        Assert.Equal(ZoneEvent.Arrived, last.Event);
+        Assert.Equal(T0.AddSeconds(5), last.EventTime);
+    }
+
+    [Fact]
+    public void Departed_and_passed_times_are_the_sample_that_left_the_zone()
+    {
+        var arrived = StationZone.Observe(ZoneState.Start, At(0, 100, 0)).State;
+        arrived = StationZone.Observe(arrived, At(20, 100, 0)).State;
+        var departed = StationZone.Observe(arrived, At(70, 400, 30));
+        Assert.Equal(ZoneEvent.Departed, departed.Event);
+        Assert.Equal(T0.AddSeconds(70), departed.EventTime);
+
+        var inside = StationZone.Observe(ZoneState.Start, At(0, 100, 80)).State;
+        var passed = StationZone.Observe(inside, At(10, 400, 80));
+        Assert.Equal(ZoneEvent.Passed, passed.Event);
+        Assert.Equal(T0.AddSeconds(10), passed.EventTime);
+    }
+
     [Fact]
     public void Not_arrived_when_slow_for_only_19_seconds()
     {
