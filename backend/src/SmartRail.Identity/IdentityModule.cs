@@ -6,7 +6,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using SmartRail.Identity.Authentication;
 using SmartRail.Identity.Authorization;
+using SmartRail.Identity.Features.CabSignIn;
+using SmartRail.Identity.Features.CrewSignIn;
 using SmartRail.Identity.Features.GetStaffMe;
 using SmartRail.Identity.Features.RefreshSession;
 using SmartRail.Identity.Features.SignOut;
@@ -55,6 +58,8 @@ public static class IdentityModule
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtSettings, TimeProvider>((options, jwt, clock) =>
             {
+                // A cab token is only as good as its session: checked on every request that carries crewSessionId.
+                options.Events = new JwtBearerEvents { OnTokenValidated = CabSessionCheck.ValidateAsync };
                 options.MapInboundClaims = false;   // keep the claim names as issued: "sub", "role", "stationId"
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -86,6 +91,8 @@ public static class IdentityModule
     public static IEndpointRouteBuilder MapIdentityEndpoints(this IEndpointRouteBuilder routes)
     {
         StaffSignInEndpoint.Map(routes);
+        CrewSignInEndpoint.Map(routes);
+        CabSignInEndpoint.Map(routes);
         RefreshSessionEndpoint.Map(routes);
         SignOutEndpoint.Map(routes);
         GetStaffMeEndpoint.Map(routes);

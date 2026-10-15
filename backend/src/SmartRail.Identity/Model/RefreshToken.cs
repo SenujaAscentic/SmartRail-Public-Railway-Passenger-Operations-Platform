@@ -20,6 +20,13 @@ internal class RefreshToken
 
     public DateTimeOffset? RevokedAt { get; set; }
 
+    // Crew sessions (phone and cab) end at a fixed time, 12 hours after sign-in; refreshing does not extend it.
+    // Staff sessions leave this empty and slide instead (30 minutes idle).
+    public DateTimeOffset? AbsoluteExpiresAt { get; set; }
+
+    // Set for a cab session: ending the session revokes this token's family, and a refresh checks the session is still active.
+    public Guid? CabSessionId { get; set; }
+
     // Two browser tabs can send the same refresh token a moment apart. A token that was just replaced may be used
     // ONCE more within this time; any later or further use looks like a copy (threat T-14).
     public static readonly TimeSpan GraceWindow = TimeSpan.FromSeconds(10);

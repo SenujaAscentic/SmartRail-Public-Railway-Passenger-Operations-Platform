@@ -75,6 +75,19 @@ public class OpenApiDocumentTests(ApiFixture api)
         Assert.DoesNotContain("Bearer", OperationBlock(yaml, "/api/v1/stations"));
     }
 
+    // The tablet's credential travels in two headers (contract 3.4); a client generated from the file must know them.
+    [Fact]
+    public async Task The_cab_sign_in_declares_the_two_device_headers_and_the_other_sign_ins_do_not()
+    {
+        var yaml = await ServedYaml();
+
+        var cab = OperationBlock(yaml, "/api/v1/auth/crew/cab-sign-in");
+        Assert.Contains("name: X-Device-Id", cab);
+        Assert.Contains("name: X-Device-Secret", cab);
+        Assert.DoesNotContain("X-Device", OperationBlock(yaml, "/api/v1/auth/crew/sign-in"));
+        Assert.DoesNotContain("X-Device", OperationBlock(yaml, "/api/v1/auth/staff/sign-in"));
+    }
+
     // The text of one path in the YAML, from its heading up to the next path or the components section.
     private static string OperationBlock(string yaml, string path)
     {

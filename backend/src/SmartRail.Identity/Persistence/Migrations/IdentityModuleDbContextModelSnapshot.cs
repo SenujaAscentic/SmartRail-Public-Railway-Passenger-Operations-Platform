@@ -119,13 +119,55 @@ namespace SmartRail.Identity.Persistence.Migrations
                     b.ToTable("CabDevices", "identity");
                 });
 
-            modelBuilder.Entity("SmartRail.Identity.Model.RefreshToken", b =>
+            modelBuilder.Entity("SmartRail.Identity.Model.CabSession", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("ClockOffsetMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CabSessions_ActivePerDriver")
+                        .HasFilter("\"EndedAt\" IS NULL");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CabSessions_ActivePerDevice")
+                        .HasFilter("\"EndedAt\" IS NULL");
+
+                    b.ToTable("CabSessions", "identity");
+                });
+
+            modelBuilder.Entity("SmartRail.Identity.Model.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AbsoluteExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CabSessionId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -154,6 +196,8 @@ namespace SmartRail.Identity.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
+
+                    b.HasIndex("CabSessionId");
 
                     b.HasIndex("FamilyId");
 
@@ -270,6 +314,21 @@ namespace SmartRail.Identity.Persistence.Migrations
                     b.HasOne("SmartRail.Identity.Model.StaffAccount", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartRail.Identity.Model.CabSession", b =>
+                {
+                    b.HasOne("SmartRail.Identity.Model.StaffAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartRail.Identity.Model.CabDevice", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

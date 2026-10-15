@@ -135,6 +135,40 @@ public class IdentitySeedTests(ApiFixture api)
     }
 
     [Fact]
+    public void A_cab_device_registered_to_a_train_set_the_network_does_not_have_stops_the_application_and_names_both()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "smartrail-seed-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            CopyRepositorySeedTo(folder);
+            var devices = Path.Combine(folder, "cab-devices.json");
+            File.WriteAllText(devices, File.ReadAllText(devices).Replace("\"DPS-01\"", "\"XX-99\""));
+
+            using var broken = api.CreateFactory(builder =>
+                builder.ConfigureAppConfiguration((_, config) =>
+                    config.AddInMemoryCollection(new Dictionary<string, string?> { ["Seed:Path"] = folder })));
+
+            var failure = Assert.ThrowsAny<Exception>(() => broken.Server);
+
+            Assert.Contains(AllMessages(failure), m => m.Contains("UnknownTrainSetCode") && m.Contains("CAB-01") && m.Contains("XX-99"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private static void CopyRepositorySeedTo(string target)
+    {
+        var source = global::SmartRail.Network.Seed.SeedFolder.Find(configuredPath: null);   // shared/seed in the repository
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)));
+        }
+    }
+
+    [Fact]
     public void Starting_without_the_jwt_signing_key_stops_the_application_and_names_the_command()
     {
         using var broken = api.CreateFactory(builder =>

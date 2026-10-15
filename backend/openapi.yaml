@@ -38,7 +38,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StaffSignInRequest'
+              $ref: '#/components/schemas/PasswordSignInRequest'
         required: true
       responses:
         '200':
@@ -65,11 +65,103 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/auth/crew/sign-in:
+    post:
+      tags:
+        - Identity
+      operationId: CrewSignIn
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordSignInRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Too Many Requests
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/auth/crew/cab-sign-in:
+    post:
+      tags:
+        - Identity
+      operationId: CabSignIn
+      parameters:
+        - name: X-Device-Id
+          in: header
+          schema:
+            type: string
+        - name: X-Device-Secret
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CabSignInRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CabSignInResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Too Many Requests
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/refresh:
     post:
       tags:
         - Identity
       operationId: RefreshSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
           description: OK
@@ -88,6 +180,11 @@ paths:
       tags:
         - Identity
       operationId: SignOut
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '204':
           description: No Content
@@ -130,6 +227,75 @@ components:
         expiresAt:
           type: string
           format: date-time
+        refreshToken:
+          type:
+            - 'null'
+            - string
+        refreshExpiresAt:
+          type:
+            - 'null'
+            - string
+          format: date-time
+    CabSignInRequest:
+      required:
+        - staffNumber
+        - password
+        - deviceTime
+      type: object
+      properties:
+        staffNumber:
+          type:
+            - 'null'
+            - string
+        password:
+          type:
+            - 'null'
+            - string
+        deviceTime:
+          type:
+            - 'null'
+            - string
+          format: date-time
+    CabSignInResponse:
+      required:
+        - accessToken
+        - expiresAt
+        - refreshToken
+        - refreshExpiresAt
+        - crewSessionId
+        - serverTime
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshExpiresAt:
+          type: string
+          format: date-time
+        crewSessionId:
+          type: string
+          format: uuid
+        serverTime:
+          type: string
+          format: date-time
+    PasswordSignInRequest:
+      required:
+        - staffNumber
+        - password
+      type: object
+      properties:
+        staffNumber:
+          type:
+            - 'null'
+            - string
+        password:
+          type:
+            - 'null'
+            - string
     ProblemDetails:
       required:
         - code
@@ -169,6 +335,15 @@ components:
             type: array
             items:
               type: string
+    RefreshRequest:
+      required:
+        - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type:
+            - 'null'
+            - string
     StaffMeResponse:
       required:
         - name
@@ -185,20 +360,6 @@ components:
             - 'null'
             - string
           format: uuid
-    StaffSignInRequest:
-      required:
-        - staffNumber
-        - password
-      type: object
-      properties:
-        staffNumber:
-          type:
-            - 'null'
-            - string
-        password:
-          type:
-            - 'null'
-            - string
     StationSummary:
       required:
         - id

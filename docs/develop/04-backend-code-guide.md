@@ -2,7 +2,7 @@
 
 **Written for:** Senuja, to read before a review (§28) and to explain the code without the AI.
 **Kept up to date by:** the coding agent, after every change to backend code (CLAUDE.md §5, step 9).
-**Last updated:** 14 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface, `IStationDirectory`), LiveOperations (daily journey generation, US-B2), **Identity (staff sign-in, refresh with a 10 s grace window, sign-out, policies, staff and cab-device seed; US-O1, US-B7)**, **the pure rules R-01 to R-06 in `LiveOperations.Domain`**, Api host, API description (`openapi.yaml`), tests.
+**Last updated:** 14 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface, `IStationDirectory`), LiveOperations (daily journey generation, US-B2), **Identity (staff sign-in, crew phone and cab sign-in with cab sessions, refresh with a 10 s grace window, sign-out, policies, staff and cab-device seed; US-O1, US-B7, US-C1, US-C2)**, **the pure rules R-01 to R-06 in `LiveOperations.Domain`**, Api host, API description (`openapi.yaml`), tests.
 
 For *what* the system must do, read the specs (`docs/define/`, `01-domain-model.md`, `02-api-contract.md`). This guide explains *how the code does it* and *why it is written that way*.
 
@@ -27,7 +27,7 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 | `SmartRail.Network` | The timetable data: stations, routes, services, train sets | **Built** (this guide) |
 | `SmartRail.LiveOperations` / `.Domain` | Today's journeys and the delay/ETA rules | **Daily journey generation built** (section 4); **rules R-01 to R-06 exist as pure functions** (4.6) but are not wired into `OperationalJourney` yet |
 | `SmartRail.Disruptions` / `.Domain` | Incidents | Empty |
-| `SmartRail.Identity` | Who is calling and may they do this: staff sign-in, tokens, policies | **Staff sign-in built** (section 5); cab-device sign-in, passengers, display devices, provider not yet |
+| `SmartRail.Identity` | Who is calling and may they do this: staff sign-in, tokens, policies | **Staff, crew phone and cab sign-in built** (section 5); passengers, display devices, provider not yet |
 | `SmartRail.Notifications`, `.CateringIntegration` | Push, catering | Empty |
 | `SmartRail.Simulator` | Replays GPS through the API | Empty |
 
@@ -207,90 +207,117 @@ Built on `feature/live-rules` by a second agent ("agent B"), merged into `develo
 
 ## 5. The Identity module (`SmartRail.Identity`)
 
-Identity answers two questions: **who is calling?** (sign-in, tokens) and **may they do this?** (policies). Today it covers **staff** only (Controller, StationManager, Driver); passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
+Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
 
 ```
-POST /auth/staff/sign-in {staffNumber, password}
-   ► validate fields (400) ► find account ► locked? (429) ► password wrong? count it (401, or 429 on the 5th)
-   ► right password but Driver / deactivated? same 401 ► reset count
-   ► issue ACCESS token (JWT, 15 min, in the body)  +  REFRESH token (random secret, 30 min idle, in an HttpOnly cookie)
+Staff   POST /auth/staff/sign-in {staffNumber, password}  (Controller, StationManager only)
+Phone   POST /auth/crew/sign-in  {staffNumber, password}  (Driver only)
+Cab     POST /auth/crew/cab-sign-in  headers X-Device-Id + X-Device-Secret, body {staffNumber, password, deviceTime}  (Driver only)
 
-every later request:  Authorization: Bearer <access token> ► JwtBearer checks signature + expiry ► the endpoint's policy checks the role
+ each:  validate fields (400) ► [cab only: check the TABLET first: unknown / deactivated / wrong secret = generic 401, and the
+        driver's failed-password count is not touched] ► find account ► locked? (429) ► wrong password? count it (401, 429 on the 5th)
+        ► right password but the wrong kind of account? the same 401 ► reset the count
+        ► [cab only: measure the clock offset (R-09), end the driver's and the tablet's older sessions (R-19), start a CabSession]
+        ► ACCESS token (JWT, 15 min)  +  REFRESH token (random secret)
+             staff: refresh token in an HttpOnly cookie, 30 min idle, sliding
+             crew:  refresh token in the BODY, session ends a fixed 12 h after sign-in (a shift); cab tokens also carry deviceId, crewSessionId, clockOffsetMs
 
-POST /auth/refresh (cookie only) ► look up the hash ► revoked? 401 ► expired (idle > 30 min)? 401
+every request:  Authorization: Bearer <access token> ► signature + expiry ► [token has crewSessionId? the cab session must still be active] ► the endpoint's policy
+
+POST /auth/refresh   (staff: cookie only;  crew: body only) ► look up the hash ► revoked? expired? 401
    ► mark used (one atomic statement); already used? allowed ONCE more within 10 s (two tabs), else it is a copy: revoke the whole session (401)
-   ► new access token + new refresh cookie
+   ► [cab: the session must be active and the tablet still active] ► new access token + new refresh token
 
-POST /auth/sign-out (cookie only) ► revoke the whole session ► clear the cookie ► 204 (always)
+POST /auth/sign-out  (same place as refresh) ► revoke the whole session ► [cab: end the CabSession] ► clear the cookie ► 204 (always)
 ```
 
 ### 5.1 `Model/` — the tables as C# classes (all `internal` except `StaffRole`)
 | File | What it holds |
 |---|---|
 | `StaffRole.cs` | `Controller`, `StationManager`, `Driver`. Stored as its name. One role per person, so it is a column and Identity's role tables are not used. |
-| `StaffAccount.cs` | A staff member: extends Identity's `IdentityUser<Guid>` (which gives the password hash, lockout counters and security stamp). `UserName` is the **staff number**. Adds `Name`, `Role`, `StationId` (station managers only) and `IsActive`. `MaySignInToOpsWeb` = active and Controller or StationManager; it is computed, so EF Core ignores it. |
-| `CabDevice.cs` | A registered cab tablet: `Code` ("CAB-01"), `TrainSetCode` (text, the train set belongs to Network), `CredentialHash`, `Active`. **Identity owns this** (domain model D-13); only the hash of the secret is stored. Nothing uses it yet: cab sign-in is the next task. |
-| `RefreshToken.cs` | One refresh token: `TokenHash` (never the secret), `FamilyId` (= one sign-in session), `ExpiresAt`, `UsedAt`, `ReplayedAt` (the one allowed second use), `RevokedAt`; `IsUsableAt(now)`, `CanBeReplayedAt(now)` and the 10 s `GraceWindow`. |
+| `StaffAccount.cs` | A staff member: extends Identity's `IdentityUser<Guid>` (which gives the password hash, lockout counters and security stamp). `UserName` is the **staff number**. Adds `Name`, `Role`, `StationId` (station managers only) and `IsActive`. `MaySignInToOpsWeb` = active Controller or StationManager; `MayUseCrewApp` = active Driver. Both are computed, so EF Core ignores them. |
+| `CabDevice.cs` | A registered cab tablet: `Code` ("CAB-01"), `TrainSetCode` (text, the train set belongs to Network), `CredentialHash`, `Active`. **Identity owns this** (domain model D-13); only the hash of the secret is stored. |
+| `CabSession.cs` | One driver on one tablet: `AccountId`, `DeviceId`, `StartedAt`, `EndedAt` (empty while active), `ClockOffsetMs`. **Identity owns this** (domain model D-14); it is what makes a cab token valid or not. Cab mode only: a phone sign-in creates none. |
+| `RefreshToken.cs` | One refresh token: `TokenHash` (never the secret), `FamilyId` (= one sign-in session), `ExpiresAt`, `UsedAt`, `ReplayedAt` (the one allowed second use), `RevokedAt`; **`AbsoluteExpiresAt`** (crew: the fixed end of the shift; empty for staff) and **`CabSessionId`** (cab: which session this token belongs to); `IsUsableAt(now)`, `CanBeReplayedAt(now)` and the 10 s `GraceWindow`. |
 
-### 5.2 `Persistence/IdentityModuleDbContext.cs` and the `InitialIdentity` migration
+### 5.2 `Persistence/IdentityModuleDbContext.cs` and the migrations
 **What:** the module's database access; all tables are in the PostgreSQL schema `identity`. It extends Identity's `IdentityUserContext`, which maps the user table (here `StaffAccounts`) and three tables this module never uses (`AspNetUserClaims`, `…Logins`, `…Tokens`); they stay empty.
-**How/why:** a **check constraint** makes the database enforce "a station manager has a station, nobody else does" (domain model D-9). `CabDevice.Code` and `RefreshToken.TokenHash` have unique indexes (the seed finds devices by code; refresh finds tokens by hash). `Role` is stored as text like every enum.
-**Watch out:** like the other modules, the migration applies automatically in Development only.
+**How/why:**
+- A **check constraint** makes the database enforce "a station manager has a station, nobody else does" (domain model D-9).
+- **R-19 is enforced by the database too**: two *partial unique indexes* on `CabSessions` (`UX_CabSessions_ActivePerDriver`, `UX_CabSessions_ActivePerDevice`, both `WHERE "EndedAt" IS NULL`) allow at most one active session per driver and one per tablet. A new sign-in ends the old ones first; the indexes catch two sign-ins racing each other (the loser gets `409`).
+- `CabDevice.Code` and `RefreshToken.TokenHash` have unique indexes (the seed finds devices by code; refresh finds tokens by hash). `Role` is stored as text like every enum.
+**Migrations:** `InitialIdentity`, `RefreshTokenReplayedAt` (grace window), `CabSessions` (the table, `AbsoluteExpiresAt`, `CabSessionId`).
+**Watch out:** like the other modules, migrations apply automatically in Development only.
 
 ### 5.3 `Tokens/`
 | File | What it does |
 |---|---|
 | `JwtSettings.cs` | Reads `Jwt:SigningKey` from configuration (user-secrets / environment, never the repo). Must be at least 32 characters, else the application will not start and the message gives the exact `dotnet user-secrets set` command. Issuer `smartrail` and audience `smartrail-api` are fixed names. |
-| `AccessTokenIssuer.cs` | Creates the signed JWT (HS256). Claims: `sub` (account id), `role`, `stationId` (only for a station manager), plus `iss`, `aud`, `iat`, `nbf`, `exp`. **No name or other personal data.** Lifetime 15 minutes. Time comes from `TimeProvider`. |
-| `RefreshTokens.cs` | `Create` makes 256 random bits as the secret and the row to store (only its SHA-256 hash). `IdleLifetime` = 30 minutes. A plain SHA-256 is right here because the secret is random; passwords and the cab-device secret use Identity's `PasswordHasher` instead. |
-| `SessionRevocation.cs` | Ends a session: marks every token of the family revoked in one statement. Used by refresh (copy detected) and sign-out. |
-| `DummyPasswordCheck.cs` | Does a password check against a throw-away hash, so an **unknown staff number takes as long as a wrong password** and the answer time cannot reveal which numbers exist. The hash is made once, at start-up. |
-| `SessionCookie.cs` | Writes, reads and clears (`Clear`) the cookie `smartrail_refresh`: `HttpOnly` (scripts cannot read it), `Secure`, `SameSite=Strict`, path `/api/v1/auth` (only sent to the auth endpoints). |
-| `AccessTokenResponse.cs` | The body of sign-in and refresh: `accessToken`, `expiresAt`. The refresh token is **never** in the body. |
+| `AccessTokenIssuer.cs` | Creates the signed JWT (HS256). Claims: `sub` (account id), `role`, `stationId` (station managers), and for a **cab session** `deviceId`, `crewSessionId`, `clockOffsetMs` (a number), plus `iss`, `aud`, `iat`, `nbf`, `exp`. **No name or other personal data.** Lifetime 15 minutes. Time comes from `TimeProvider`. `CabSessionClaims` is the small record that carries the cab values in. |
+| `ClockOffset.cs` | **R-09, pure.** `TryMeasure(serverTime, deviceTime, out offsetMs)`: server minus device, in milliseconds (positive = the tablet runs slow); `false` when the clock is more than 24 hours off. The network delay of the one request is ignored. Event time later = device time + offset. |
+| `RefreshTokens.cs` | `Create` makes 256 random bits as the secret and the row to store (only its SHA-256 hash). Staff: `IdleLifetime` 30 minutes, sliding. Crew: pass `absoluteExpiresAt` (`CrewSessionLifetime` = 12 h) and the row never lives past it. `Next(previous)` makes the token that replaces a used one: same family, same fixed end, same cab session. A plain SHA-256 is right here because the secret is random; passwords and the cab-device secret use Identity's `PasswordHasher` instead. |
+| `RefreshTokenSource.cs` | Reads the refresh token a request presents and **where it came from**: the body (`{"refreshToken": …}`, crew apps) or the cookie (staff). Each kind is accepted from one place only. |
+| `SessionRevocation.cs` | Ends a session: marks every token of the family revoked in one statement. Used by refresh (copy detected, session over) and sign-out. |
+| `DummyPasswordCheck.cs` | Does a password check against a throw-away hash, so an **unknown staff number, and an unknown cab device, take as long as a wrong password** and the answer time cannot reveal which exist. The hashes are made once, at start-up. |
+| `SessionCookie.cs` | Writes, reads and clears (`Clear`) the cookie `smartrail_refresh`: `HttpOnly`, `Secure`, `SameSite=Strict`, path `/api/v1/auth`. Staff only. |
+| `AccessTokenResponse.cs` | The body of sign-in and refresh: `accessToken`, `expiresAt`, and **for crew only** `refreshToken` and `refreshExpiresAt` (left out of the JSON for staff, whose refresh token is never in a body). |
 
-### 5.4 `Features/` — one folder per endpoint
-| Folder | Endpoint | Notes |
-|---|---|---|
-| `StaffSignIn/` | `POST /auth/staff/sign-in` (Public) | `StaffSignInValidator` (required fields, max 200 characters so nobody makes the server hash a huge password) ► `StaffSignInHandler`. **Every failure is the same `401 UNAUTHENTICATED` message** (unknown number, wrong password, a driver, a deactivated account). Five wrong passwords lock the account for 15 minutes (`429 SIGN_IN_LOCKED` with `Retry-After`); Identity's `UserManager` counts the failures. A successful sign-in resets the count. A new sign-in starts a new session family. An unknown number runs `DummyPasswordCheck` first, so it costs the same as a wrong password (tested by counting password checks, because timing is too noisy to assert). |
-| `RefreshSession/` | `POST /auth/refresh` (Public, cookie is the credential) | Rotation: each refresh token works **once**. A token that was just replaced may be used **once more within 10 seconds** (two browser tabs; `ReplayedAt` records it); any later use, or a third use, means a copy exists (threat T-14) and the whole session is revoked. Both steps are single SQL `UPDATE … WHERE flag IS NULL` statements, so three refreshes at the same instant give exactly two successes and one refusal. Both tabs then carry on with their own new token in the same session. A deactivated account is refused here too (so within about 15 minutes of deactivation). Each refresh gives a fresh 30 minutes ("sliding"), so an active user stays signed in and an idle one is out after 30 minutes (US-O1). |
-| `SignOut/` | `POST /auth/sign-out` (Public, cookie is the credential) | Revokes the whole session (so even a token still inside the grace window cannot bring it back), clears the cookie (same path and attributes, or the browser keeps it) and answers **`204` always**, also with no or an unknown cookie, so nothing is revealed. The access token is not revoked; it expires within 15 minutes and the app discards it. |
-| `GetStaffMe/` | `GET /staff/me` (policy `Staff`) | Returns `{name, role, stationId}` for the caller; the account comes from the token's `sub`, never from the URL. `stationId` null = whole line. |
-
-### 5.5 `Authorization/` and `Problems.cs`
+### 5.4 `Authentication/` — what every password sign-in shares
 | File | What it does |
 |---|---|
-| `Policies.cs` | The policy names of contract §2: `Controller`, `StationManager`, `Staff` (either of those two), `CrewPhone` (Driver). Also sets the **fallback policy**: an endpoint that names no policy still needs a signed-in caller, so a forgotten policy fails closed. Public endpoints say `AllowAnonymous()` explicitly. Other modules write the same names as text, because they may not reference Identity's code. |
-| `ProblemAuthorizationResultHandler.cs` | Makes a refused request answer as Problem Details with a code: `401 UNAUTHENTICATED` (not signed in / token expired) or `403 FORBIDDEN` (wrong role). The framework's default sends an empty body. |
-| `Problems.cs` | The module's error responses in the contract §6 shape (`type`, `title`, `code`, `requestId`, `errors`). |
+| `PasswordSignInRequest.cs`, `PasswordSignInValidator.cs` | The body `{staffNumber, password}` of staff and crew phone sign-in, and its field checks (required, at most 200 characters so nobody makes the server hash a huge password). The cab validator reuses the same field rules. |
+| `CredentialCheck.cs` | The part that is the same for staff, phone and cab: find the account (or do the dummy check), honour the lock (`429`), check the password, count failures. It returns the account or the answer to send. **Whether this kind of account may use this endpoint is the caller's decision** (then the same generic 401). |
+| `CabSessionCheck.cs` | Runs on **every request that carries a `crewSessionId`** (JwtBearer's `OnTokenValidated`): one indexed lookup of the session. If it has ended, the token is refused at once. Without this, a tablet that was signed out or replaced would keep working for up to 15 minutes. Tokens without `crewSessionId` (staff, phone) are not affected. |
 
-### 5.6 `Seed/` — staff accounts and cab devices from `shared/seed`
+### 5.5 `Features/` — one folder per endpoint
+| Folder | Endpoint | Notes |
+|---|---|---|
+| `StaffSignIn/` | `POST /auth/staff/sign-in` (Public) | `CredentialCheck`, then Controller / StationManager only. **Every failure is the same `401 UNAUTHENTICATED` message.** Five wrong passwords lock the account for 15 minutes (`429 SIGN_IN_LOCKED`, `Retry-After`). Refresh token in the cookie. |
+| `CrewSignIn/` | `POST /auth/crew/sign-in` (Public) | Same, Driver only. Refresh token in the **body**, fixed 12 h. **No cab session**: the phone only reads the roster. |
+| `CabSignIn/` | `POST /auth/crew/cab-sign-in` (Public) | `CabSignInValidator` (headers, fields, deviceTime within 24 h: `400`). `CabSignInHandler`: **the tablet first** (an unknown, deactivated or wrong-secret device is the same generic 401 and costs the driver nothing), then the driver (`CredentialCheck`), then in **one transaction**: end the driver's and the tablet's older sessions and revoke their refresh tokens, create the `CabSession` with the measured offset, make the refresh token (bound to the session), commit. Answers `{accessToken, expiresAt, refreshToken, refreshExpiresAt, crewSessionId, serverTime}`. Two sign-ins racing: the database allows one, the other gets `409 INVALID_STATE`. **The device headers and the password are never logged** (a test captures every log line at Trace level). |
+| `RefreshSession/` | `POST /auth/refresh` (Public, the refresh token is the credential) | Rotation: each token works **once**; a replaced token may be used **once more within 10 seconds** (two tabs); any later or further use means a copy exists (threat T-14) and the whole session is revoked. Both steps are single `UPDATE … WHERE flag IS NULL` statements, so three simultaneous refreshes give two successes and one refusal. Staff: cookie, 30 min sliding. Crew: body, never past the fixed 12 h. A deactivated account is refused (within 15 min of deactivation). **A cab refresh also checks that the session is active and the tablet is still active** (a deactivated device is refused at its next refresh, threat T-12) and re-issues the same cab claims. A token presented in the wrong place (staff token in a body, crew token in a cookie) is refused without changing anything. |
+| `SignOut/` | `POST /auth/sign-out` (Public, same credential and place as refresh) | Revokes the whole session (so a token still in the grace window cannot bring it back), **ends the cab session** if there is one (its access token stops at once), clears the cookie and answers **`204` always**, also with no or an unknown token. The access token itself is not revoked; it expires within 15 minutes. **For now the app calls sign-out after "End journey"**; later the `JourneyEnded` event (through the outbox) will end the session without the app's help. |
+| `GetStaffMe/` | `GET /staff/me` (policy `Staff`) | Returns `{name, role, stationId}` for the caller; the account comes from the token's `sub`. `stationId` null = whole line. Also handy in tests: a driver is "authenticated but not Staff" (403), or "not authenticated" (401) once the session is over. |
+
+### 5.6 `Authorization/` and `Problems.cs`
+| File | What it does |
+|---|---|
+| `Policies.cs` | The policy names of contract §2: `Controller`, `StationManager`, `Staff` (either of those two), `CrewPhone` (Driver: a phone **or** a tablet), **`CrewCab`** (Driver whose token carries `crewSessionId`, so a phone token can never start a journey). Also sets the **fallback policy**: an endpoint that names no policy still needs a signed-in caller. Other modules write the same names as text, because they may not reference Identity's code. |
+| `ProblemAuthorizationResultHandler.cs` | Makes a refused request answer as Problem Details with a code: `401 UNAUTHENTICATED` or `403 FORBIDDEN`. |
+| `Problems.cs` | The module's error responses in the contract §6 shape, including `409 INVALID_STATE` for racing cab sign-ins. |
+
+### 5.7 `Seed/` — staff accounts and cab devices from `shared/seed`
 | File | What it does |
 |---|---|
 | `StaffSeedData.cs` | The shapes of `staff.json` and `cab-devices.json`. The files hold **no secrets**, only the *name* of the configuration key where each secret lives. |
-| `IdentitySeedValidator.cs` | **Pure code.** Collects all problems (duplicate staff number, unknown role, station manager without station, station code the network does not know, missing secret, …). Messages never contain a secret value; a missing secret's message gives the exact `dotnet user-secrets set` command. Tested in `tests/Unit/Identity`. |
-| `IdentitySeeder.cs` | Validates, then writes in **one transaction**, finding each row by its natural key (staff number / device code), so a restart changes nothing unless the files or secrets changed. Station codes become **station IDs here, once**, via Network's public `IStationDirectory`. Passwords and device secrets are hashed with Identity's `PasswordHasher` and re-hashed only when the stored hash no longer matches the secret (so changing the demo-password secret takes effect at the next start). |
+| `IdentitySeedValidator.cs` | **Pure code.** Collects all problems (duplicate staff number, unknown role, station manager without station, unknown station code, missing secret, … and **a cab device whose `trainSetCode` the network does not have**). Messages never contain a secret value. |
+| `IdentitySeeder.cs` | Validates, then writes in **one transaction**, finding each row by its natural key. Station codes become station IDs here, once (`IStationDirectory`); the train-set codes come from Network's `INetworkSchedule`, so a device registered to a train set that does not exist **stops the start** with a message naming both. Passwords and device secrets are hashed with Identity's `PasswordHasher` and re-hashed only when the stored hash no longer matches. |
 | `IdentitySeedFolder.cs` | Finds `shared/seed` (a small copy of Network's finder: using Network's class would reach into its internals). |
 
-### 5.7 `IdentityModule.cs`
-`AddIdentityModule` registers: the `identity` DbContext; **ASP.NET Core Identity** (`AddIdentityCore`, lockout 5 failures / 15 min); `JwtSettings` and `AccessTokenIssuer`; **JWT bearer authentication** (signature, issuer, audience, only HS256, **no clock skew** so 15 minutes means 15 minutes, and expiry judged on `TimeProvider`); the policies; the seeder and the startup service. `MapIdentityEndpoints` maps the four endpoints. `IdentityStartupService` checks the signing key, migrates (Development only), then seeds. **Call `AddIdentityModule` after `AddNetworkModule`**: the seed needs the stations.
+### 5.8 `IdentityModule.cs`
+`AddIdentityModule` registers: the `identity` DbContext; **ASP.NET Core Identity** (`AddIdentityCore`, lockout 5 failures / 15 min); `JwtSettings` and `AccessTokenIssuer`; **JWT bearer authentication** (signature, issuer, audience, only HS256, **no clock skew**, expiry judged on `TimeProvider`, and the cab-session check); the policies; the seeder and the startup service. `MapIdentityEndpoints` maps the seven endpoints. `IdentityStartupService` checks the signing key, prepares the dummy hashes, migrates (Development only), then seeds. **Call `AddIdentityModule` after `AddNetworkModule`**: the seed needs the stations and train sets.
 The host (`Program.cs`) adds `UseAuthentication()` then `UseAuthorization()`; the order matters (who, then may they).
-Network gained one public door for this: `IStationDirectory` (station codes → IDs). The architecture test now allows `Identity → Network` (approved 14 Oct).
+Network's public doors used here: `IStationDirectory` (station codes → IDs) and `INetworkSchedule` (train-set codes). The architecture test allows `Identity → Network` (approved 14 Oct).
 
-### 5.8 Design decisions (one line each)
+### 5.9 Design decisions (one line each)
 | Decision | Reason |
 |---|---|
 | Identity's `UserManager` + `PasswordHasher`; JWT issued by the backend | The risky parts (hashing, lockout) stay in the framework (ADR-10, CLAUDE.md §6) |
 | Role as a column, not Identity role tables | One role per person; fewer tables to explain |
-| Refresh token = random secret, only its hash stored, rotation with reuse detection | A leaked database cannot be used to sign in; a copied cookie is noticed (T-14) |
-| Refresh token in an HttpOnly cookie, access token in the body | Scripts cannot steal the long-lived token (C-3, T-14) |
+| Refresh token = random secret, only its hash stored, rotation with reuse detection | A leaked database cannot be used to sign in; a copy is noticed (T-14) |
+| Staff: cookie, 30 min sliding. Crew: body, fixed 12 h | Browsers hide the cookie from scripts; apps have no cookie jar. A fixed shift limits a lost phone |
+| Each refresh token is accepted from one place only | A staff token in a body, or a crew token in a cookie, can only mean a mistake or an attack |
 | 10-second grace window, once | Two tabs sharing one cookie are normal; a copy used later is still caught |
-| Dummy password check for unknown numbers | Same work as a wrong password, so timing does not reveal staff numbers |
-| 30-minute sliding refresh expiry | This *is* the 30-minute idle rule (US-O1), with no extra bookkeeping |
-| One generic 401 for every sign-in failure | No account enumeration (contract §6) |
-| Station ID stored on the account at seeding | The token needs a UUID; asking Network once at seeding keeps sign-in fast and the dependency tiny |
+| Dummy checks for unknown staff numbers and devices | Same work as a wrong password, so timing does not reveal what exists |
+| One generic 401 for every sign-in failure, including the tablet's | No enumeration (contract §6, T-12); `DEVICE_NOT_REGISTERED` was removed (C-11) |
+| The tablet is checked before the driver | A wrong tablet credential must never lock a real driver out |
+| Identity owns the cab session (D-14); no session for phones | The token is only as good as its session; LiveOperations needs only the ids in the token |
+| The cab session is checked on every request with `crewSessionId` | R-07 / R-19 must hold now, not after 15 minutes |
+| One active cab session per driver **and per tablet**, enforced by the database | Two drivers must not both be "active" on one device |
+| Clock offset measured once at sign-in, stored and carried in the token (R-09) | A wrong tablet clock must not make a train look early or late (T-17) |
+| Station ID stored on the account at seeding | The token needs a UUID; asking Network once at seeding keeps sign-in fast |
 | Fallback policy requires sign-in | A forgotten policy fails closed |
 | HS256 with a symmetric key | Only this backend issues and checks tokens, so no key distribution is needed |
-| Device secret hashed with `PasswordHasher` | "No custom hashing"; the cost only matters at cab sign-in, not per request |
 
 ---
 
@@ -302,15 +329,15 @@ Network gained one public door for this: `IStationDirectory` (station codes → 
 | `tests/Integration` | The real application on a real PostgreSQL: seed counts, `network` schema, restart does not duplicate, WRONG data stops startup, the ESTIMATE warning, the endpoint, the permission matrix; **journey generation** (12 journeys and 132 stops for the 3 days, UTC storage, a restart adds none, `ops` schema, the database refuses a duplicate, a wrong assignment file stops the start) | **Docker running** |
 | `tests/Architecture` | Domain projects reference only `System.*`; no module depends on another except Disruptions → LiveOperations, LiveOperations → Network and Identity → Network | Nothing |
 | `tests/Integration` → `OpenApiDocumentTests` | The running application's `/openapi/v1.yaml` equals the committed `backend/openapi.yaml`. An API change that is not reflected in the file fails the build (and CI). | Docker |
-| `tests/Unit/Identity` | The access token (15 min, claims, no personal data), the refresh token (30 min, only the hash is stored, usable once, the 10 s replay rule), the staff / cab-device seed rules | Nothing |
-| `tests/Integration/Identity` | Seeding (8 accounts, no guard, station IDs, hashed passwords and device secrets, restart, missing secrets stop the start); **sign-in** (generic 401, lockout after 5, driver refused, cookie flags, field errors); **refresh** (rotation, the 10 s grace window and a third use, reuse after 10 s revokes the session, 30 min idle, sliding, deactivated account, three simultaneous refreshes = two successes); **sign-out** (revokes the whole session, clears the cookie, other sessions stay, always 204); **timing** (an unknown number runs exactly one password check); **`/staff/me` and tokens** (expired, forged key, unsigned, wrong issuer, wrong audience, the fallback policy, 401 / 403 bodies, and a **positive control**: a token built the same way with the real key is accepted); `PolicyTests` (every policy × role, and every endpoint declares who may call it) | **Docker running** |
+| `tests/Unit/Identity` | The access token (15 min, claims incl. the cab claims, no personal data), the refresh token (30 min, only the hash is stored, usable once, the 10 s replay rule, the fixed 12 h crew end and `Next`), the clock offset (R-09: sign, ±24 h limit), the staff / cab-device seed rules (incl. an unknown train set) | Nothing |
+| `tests/Integration/Identity` | Seeding (8 accounts, no guard, station IDs, hashed passwords and device secrets, restart, missing secrets and an **unknown train set** stop the start); **staff sign-in**; **crew phone sign-in** (body tokens, fixed 12 h, no cab session, staff refused); **cab sign-in** (claims and stored offset, every credential problem the same generic 401, a bad tablet never locks a driver, headers and offset limit, R-19 per driver and per tablet, racing sign-ins, **no secret in any log line**); **refresh** (rotation, grace window, 30 min idle, sliding, crew body tokens, the fixed shift, each token only from its own place, cab refresh keeps its claims, deactivated device / driver); **the cab session checked on every request**; **sign-out** (cookie and body, ends the cab session); **timing** (one password check for an unknown number); **`/staff/me` and tokens** (expired, forged, unsigned, wrong issuer or audience, fallback policy, a positive control); `PolicyTests` (every policy × role incl. `CrewCab`) | **Docker running** |
 | `tests/Contract` | (empty so far) | |
 
-**Token tests must be able to fail.** On 15 Oct each check was broken on purpose (staff policy, fallback policy, signature, expiry, audience, issuer) and the matching test turned red every time, then the code was restored. Doing it exposed that the first forged-token tests could not fail: a forged token without `iat` / `nbf` gets the machine's real clock, which is a day ahead of the fixture's fake clock, so it was refused as "not valid yet" whatever the check did. The `Forge` helper now sets both, and the control test guards against it. Repeat the exercise when a check changes.
+**Token tests must be able to fail.** On 15 Oct each check was broken on purpose (staff policy, fallback policy, signature, expiry, audience, issuer) and the matching test turned red every time, then the code was restored. Doing it exposed that the first forged-token tests could not fail: a forged token without `iat` / `nbf` gets the machine's real clock, which is a day ahead of the fixture's fake clock, so it was refused as "not valid yet" whatever the check did. The `Forge` helper now sets both, and the control test guards against it. On the same day the crew and cab tests were put through it: the device secret written to the log, an older session not ended, a deactivated device accepted, the session check removed, the 12-hour shift sliding. Each turned the matching tests red. Repeat the exercise when a check changes.
 
 `ApiFixture` starts one PostgreSQL container and one copy of the application for all integration tests. The application's clock is a `FakeTimeProvider` fixed at **Wednesday 14 Oct 2026, 10:00 in Colombo**, so "today and the next 2 days" are three weekdays and the expected counts never depend on the real date. The journey tests read the tables with plain SQL, so they do not depend on the module's internals. Run everything: `dotnet test backend/SmartRail.sln`.
 **After changing an endpoint:** run the tests once with `UPDATE_OPENAPI=1` (PowerShell: `$env:UPDATE_OPENAPI="1"; dotnet test backend/SmartRail.sln; Remove-Item Env:UPDATE_OPENAPI`) to rewrite `backend/openapi.yaml`, then read `git diff backend/openapi.yaml` and compare it with the contract (CLAUDE.md §5.3).
-`PermissionMatrixTests` holds one row per endpoint and role (Anonymous, Controller, StationManager, Driver). Passenger, Display and Provider rows are added when those credentials exist. The tests make their own JWT signing key, demo password and cab-device secrets (`ApiFixture`), so nothing secret is committed and CI needs no user-secrets. A test that needs time to pass (token expiry, idle limit) starts its own copy of the application with its own `FakeTimeProvider`.
+`PermissionMatrixTests` holds one row per endpoint and role (Anonymous, Controller, StationManager, Driver = a crew **phone** token, DriverCab = a **cab session** token; every token comes from a real sign-in). Passenger, Display and Provider rows are added when those credentials exist. The tests make their own JWT signing key, demo password and cab-device secrets (`ApiFixture`), so nothing secret is committed and CI needs no user-secrets. A test that needs time to pass (token expiry, idle limit) starts its own copy of the application with its own `FakeTimeProvider`.
 
 ---
 
@@ -323,7 +350,7 @@ Network gained one public door for this: `IStationDirectory` (station codes → 
    `dotnet user-secrets set "Seed:DemoPassword" "<demo password>" --project backend/src/SmartRail.Api`
    `dotnet user-secrets set "Seed:CabDevice:CAB-01:Token" "<secret>" --project backend/src/SmartRail.Api` (and the same for `CAB-02`, `CAB-03`, `CAB-04`)
    Without them the application refuses to start and prints the exact command for the missing one.
-4. `dotnet run --project backend/src/SmartRail.Api` — in Development it migrates and seeds, then serves `/api/v1/stations?query=kan`. Sign in as `CTRL-01` (controller) or `SM-FOT`, `SM-PLG`, `SM-KDT` (station managers) with the demo password; drivers `DRV-01` to `DRV-04` cannot sign in on the staff endpoint.
+4. `dotnet run --project backend/src/SmartRail.Api` — in Development it migrates and seeds, then serves `/api/v1/stations?query=kan`. Sign in as `CTRL-01` (controller) or `SM-FOT`, `SM-PLG`, `SM-KDT` (station managers) with the demo password; drivers `DRV-01` to `DRV-04` cannot sign in on the staff endpoint: they use `POST /auth/crew/sign-in` (phone) or `POST /auth/crew/cab-sign-in` with the headers `X-Device-Id: CAB-01` and `X-Device-Secret: <the secret you set for CAB-01>` (cab). Crew apps keep the refresh token from the response body and send it as `{"refreshToken": "…"}` to `/auth/refresh` and `/auth/sign-out`.
 
 ---
 
@@ -339,7 +366,7 @@ Network gained one public door for this: `IStationDirectory` (station codes → 
 | 6 | The error schema in `openapi.yaml` must include `code`, `errors`, `requestId` (contract §6) | **Done (13 Oct)**; a test checks it |
 | 7 | `openapi.yaml`: no `servers` entry, `query` required | **Done (13 Oct)**; tests check both |
 | 8 | The `ProblemDetails` description says `code` and `requestId` are always present; that is true for our own errors, not for framework errors (for example a malformed request) | Watch when more endpoints exist |
-| 9 | Journeys have **no driver yet**. `service-assignments.json` names one per service, but the journey does not carry it. Fill it after the sign-in branch is merged; until then nothing is invented. (The guard is deferred: 14 Oct, no guard in the seed files or the model) | Open |
+| 9 | Journeys have **no driver yet**. `service-assignments.json` names one per service, but the journey does not carry it. **Deliberately not done in the crew sign-in task** (15 Oct, Senuja): another agent is changing `OperationalJourney` on `feature/live-journey`; add the driver after that branch is merged. (The guard is deferred: no guard in the seed files or the model) | Open, waiting for the merge |
 | 10 | Generation reads **all** stored journey keys every hour | Fine for the MVP; revisit when journeys are archived |
 | 11 | `TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")` needs the time-zone database: present on Windows and on `ubuntu-latest`; a minimal container image would need `tzdata` | Check when a Docker image is built |
 | 12 | Network's seed loader still creates ids with `Guid.CreateVersion7()`, which reads the system clock inside the call | Harmless (ids only); switch to the injected clock if a rule ever needs it |
@@ -350,8 +377,12 @@ Network gained one public door for this: `IStationDirectory` (station codes → 
 | 17 | An unknown staff number answered faster than a wrong password | **Done (15 Oct):** `DummyPasswordCheck`. Proven by counting password checks, not by timing. The account-lock answer (429) still reveals a locked number exists: an **accepted risk** in the threat model §5 |
 | 18 | Identity's `UserManager` reads the **system clock** for lock times, not our `TimeProvider`; `Retry-After` is therefore clamped to the lock length (15 min) | Tests cannot move lock expiry; harmless in production |
 | 19 | Contract §3.3 says `/staff/me` returns "scope" without a shape; it returns `{name, role, stationId}` (`stationId` null = whole line). `openapi.yaml` cannot describe the refresh `Set-Cookie` header | Confirm the shape with the ops web |
-| 20 | The contract does not say the cab-device `trainSetCode` is checked against the network; the seed does not check it | Decide with cab sign-in (next task) |
+| 20 | A cab device whose `trainSetCode` is not in the network | **Done (15 Oct):** the seed stops the start and names both |
 | 21 | `IdentityUserContext` creates three empty tables (`AspNetUserClaims`, `…Logins`, `…Tokens`) | Leave: they are part of the documented setup |
+| 22 | **End journey does not end the cab session yet.** The cab app calls sign-out after "End journey" for now. When LiveOperations has journeys that end, `JourneyEnded` (through the outbox) should end the session so the app's help is not needed | Later, with the outbox |
+| 23 | The clock offset ignores the network delay of the one sign-in request (milliseconds to a second or two) | Fine for minute-level delays (R-01) |
+| 24 | A **phone** sign-in has no session record, so there is no list of "devices signed in" for a driver and no way to end one remotely except by deactivating the account | Fine for the MVP |
+| 25 | Two cab sign-ins racing each other: the loser gets `409` and the app must retry | Mention in the cab app's sign-in screen |
 
 ---
 
@@ -364,5 +395,6 @@ Network gained one public door for this: `IStationDirectory` (station codes → 
 | 14 Oct 2026 | US-B2: Network made internal with the public `INetworkSchedule`; LiveOperations gets `OperationalJourney` (Domain), the `ops` schema and migration, the journey planner, handler and hourly background service, the service-assignments check; architecture test allows LiveOperations → Network; FakeTimeProvider in the tests |
 | 14 Oct 2026 | **Staff sign-in (US-O1, US-B7):** Identity module (`StaffAccount`, `CabDevice`, `RefreshToken`, `identity` schema and `InitialIdentity` migration, staff and cab-device seed with `IdentitySeedValidator`, `AccessTokenIssuer`, `RefreshTokens`, `POST /auth/staff/sign-in`, `POST /auth/refresh`, `GET /staff/me`, policies `Controller` / `StationManager` / `Staff` / `CrewPhone`, JWT bearer authentication, 401 / 403 as Problem Details); Network gains `IStationDirectory`; architecture test allows Identity → Network; `openapi.yaml` gets the Bearer scheme and three operations; test fixture generates its own secrets; permission matrix has roles |
 | 15 Oct 2026 | **Sign-in follow-ups:** refresh grace window (10 s, once; `RefreshToken.ReplayedAt`, the `RefreshTokenReplayedAt` migration, `CanBeReplayedAt`); `POST /auth/sign-out` (`SignOut/`, `SessionRevocation`, `SessionCookie.Clear`); `DummyPasswordCheck` for unknown staff numbers; permission-matrix rows for sign-out; token tests proven able to fail (control test, issuer / audience / fallback tests, explicit `iat` / `nbf`); section 4.6 documents rules R-01 to R-06 from `develop`; `openapi.yaml` gets sign-out |
+| 15 Oct 2026 | **Crew phone and cab sign-in (US-C1, US-C2, R-09, R-19):** `POST /auth/crew/sign-in`, `POST /auth/crew/cab-sign-in`; `CabSession` (Identity owns it, D-14) with database-enforced one-active-per-driver-and-per-tablet; `ClockOffset`; the cab session checked on every request (`CabSessionCheck`); refresh and sign-out accept the token in the body for crew and the cookie for staff, crew sessions end a fixed 12 h after sign-in, a cab refresh checks session and device; policy `CrewCab`; shared `CredentialCheck` and `PasswordSignInValidator` (`StaffSignInRequest` became `PasswordSignInRequest`); the seed validates cab devices' `trainSetCode` against Network; migration `CabSessions`; matrix role `DriverCab`; contract C-10 / C-11 (`DEVICE_NOT_REGISTERED` removed), domain model D-14. **The driver is not filled on journeys** (waiting for the `feature/live-journey` merge) |
 | 14 Oct 2026 | Scope change, guard role deferred: guard accounts removed from `staff.json`, `guardStaffNumber` removed from `service-assignments.json` (the loader ignores that field, so no code change except a comment in `ServiceAssignments.cs`) |
 | 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |

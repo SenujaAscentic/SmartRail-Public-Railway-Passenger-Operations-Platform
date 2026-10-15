@@ -14,8 +14,22 @@ internal static class DummyPasswordCheck
         new PasswordHasher<StaffAccount>().HashPassword(new StaffAccount(), Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))));
 
     // Called at start-up, so the first unknown number does not pay for creating the hash (and stand out).
-    public static void Prepare() => _ = Hash.Value;
+    public static void Prepare()
+    {
+        _ = Hash.Value;
+        _ = DeviceHash.Value;
+    }
 
     public static void Run(IPasswordHasher<StaffAccount> hasher, string password) =>
         hasher.VerifyHashedPassword(new StaffAccount(), Hash.Value, password);
+
+    // The same for an unknown cab device: one hash check against a throw-away hash. Always answers false.
+    public static bool RunDevice(string secret)
+    {
+        new PasswordHasher<CabDevice>().VerifyHashedPassword(new CabDevice(), DeviceHash.Value, secret);
+        return false;
+    }
+
+    private static readonly Lazy<string> DeviceHash = new(() =>
+        new PasswordHasher<CabDevice>().HashPassword(new CabDevice(), Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))));
 }
