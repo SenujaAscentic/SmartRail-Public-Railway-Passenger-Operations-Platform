@@ -223,7 +223,7 @@ public sealed class OperationalJourney
     // measured against the scheduled arrival, or the departure for a stop that has none (R-01).
     private void RecordPassed(JourneyStop stop, DateTime at, Source source)
     {
-        PassEarlierStops(stop, at, source);
+        InferEarlierStops(stop, at, source);
         var previousLatest = LatestStopEventTime(except: stop);
 
         var incoming = new TimeWithSource(at, source);
@@ -240,7 +240,7 @@ public sealed class OperationalJourney
 
     private void RecordArrival(JourneyStop stop, DateTime at, Source source)
     {
-        PassEarlierStops(stop, at, source);
+        InferEarlierStops(stop, at, source);
         var previousLatest = LatestStopEventTime(except: stop);
 
         var incoming = new TimeWithSource(at, source);
@@ -257,7 +257,7 @@ public sealed class OperationalJourney
 
     private void RecordDeparture(JourneyStop stop, DateTime at, Source source)
     {
-        PassEarlierStops(stop, at, source);
+        InferEarlierStops(stop, at, source);
         var previousLatest = LatestStopEventTime(except: stop);
 
         var incoming = new TimeWithSource(at, source);
@@ -271,15 +271,18 @@ public sealed class OperationalJourney
         }
     }
 
-    // A stop that gets an actual time means the train is past every earlier stop. Those still Scheduled become Passed,
-    // with no time (none is known) and no delay. Without this, a missed GPS detection would leave R-23 measuring
-    // against a station the train has already gone through, and the delay would grow forever.
-    private void PassEarlierStops(JourneyStop reached, DateTime at, Source source)
+    // A stop that gets an actual time means the train is past every earlier stop (R-04, inference). Those still
+    // Scheduled get no time (none is known) and no delay. A Stop call type becomes Departed, the origin included:
+    // "Passed" at a scheduled stop would tell passengers the train did not stop there. Only a Pass call type becomes
+    // Passed. Without this, a missed GPS detection would leave R-23 measuring against a station the train has already
+    // gone through, and the delay would grow forever.
+    private void InferEarlierStops(JourneyStop reached, DateTime at, Source source)
     {
         foreach (var earlier in _stops.Where(s => s.Sequence < reached.Sequence && s.Status == StopStatus.Scheduled))
         {
             earlier.SetZoneState(new ZoneState(ZonePhase.Finished, null));   // GPS must not detect it again later
-            ChangeStatus(earlier, StopStatus.Passed, at, source);
+            var inferred = earlier.CallType == CallType.Stop ? StopStatus.Departed : StopStatus.Passed;
+            ChangeStatus(earlier, inferred, at, source);
         }
     }
 

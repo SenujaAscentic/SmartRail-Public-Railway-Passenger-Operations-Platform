@@ -3,7 +3,8 @@ using Xunit;
 
 namespace SmartRail.UnitTests.LiveOperations;
 
-// A stop that gets an actual time means the train is past every earlier stop (inferred Passed, no time), and the
+// A stop that gets an actual time means the train is past every earlier stop (inferred Departed, or Passed for a Pass
+// call type; no time), and the
 // journey delay follows the most recent stop event (R-01, R-05 clarified 15 Oct).
 public class StopSequenceTests
 {
@@ -15,13 +16,13 @@ public class StopSequenceTests
     private static DateTime At(int hour, int minute, int second = 0) =>
         new(2026, 10, 14, hour, minute, second, DateTimeKind.Utc);
 
-    private static OperationalJourney NewJourney() =>
+    private static OperationalJourney NewJourney(CallType s3 = CallType.Stop) =>
         OperationalJourney.Plan(
             Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(),
             [
                 new PlannedStop(1, S1, CallType.Stop, null, 360, "1"),
                 new PlannedStop(2, S2, CallType.Stop, 400, 402, "2"),
-                new PlannedStop(3, S3, CallType.Stop, 420, 422, "3"),
+                new PlannedStop(3, S3, s3, 420, 422, "3"),
                 new PlannedStop(4, S4, CallType.Stop, 450, null, "4"),
             ],
             TimeZoneInfo.Utc);
@@ -42,7 +43,7 @@ public class StopSequenceTests
     // ---- Inferred passes -------------------------------------------------------------------------------------
 
     [Fact]
-    public void Skipped_detection_at_stop_3_then_arrival_at_stop_4_marks_stop_3_passed_and_takes_the_delay_from_stop_4()
+    public void Skipped_detection_at_stop_3_then_arrival_at_stop_4_marks_stop_3_departed_and_takes_the_delay_from_stop_4()
     {
         var journey = NewJourney();
         journey.RecordCrewTime(S2, StopEventKind.Arrival, At(6, 40));
@@ -52,11 +53,11 @@ public class StopSequenceTests
         GpsStopsAt(journey, S4, At(7, 34));
 
         var skipped = Stop(journey, S3);
-        Assert.Equal(StopStatus.Passed, skipped.Status);
-        Assert.Null(skipped.ActualArrivalTime);   // inferred: no time is invented
+        Assert.Equal(StopStatus.Departed, skipped.Status);   // it is a Stop: "Passed" would say the train did not stop there
+        Assert.Null(skipped.ActualArrivalTime);               // inferred: no time is invented
         Assert.Null(skipped.ActualDepartureTime);
         Assert.Equal(new SourcedDelay(new Delay(4), Source.Gps), journey.CurrentDelay);
-        Assert.Contains(new StopStatusChanged(journey.Id, S3, 3, StopStatus.Scheduled, StopStatus.Passed, At(7, 34), Source.Gps), journey.DomainEvents);
+        Assert.Contains(new StopStatusChanged(journey.Id, S3, 3, StopStatus.Scheduled, StopStatus.Departed, At(7, 34), Source.Gps), journey.DomainEvents);
     }
 
     [Fact]
@@ -73,14 +74,14 @@ public class StopSequenceTests
     }
 
     [Fact]
-    public void Every_earlier_stop_still_scheduled_becomes_passed_in_order()
+    public void Every_earlier_stop_still_scheduled_is_inferred_in_order()
     {
         var journey = NewJourney();
 
         journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 3));
 
-        Assert.Equal(StopStatus.Passed, Stop(journey, S1).Status);   // the origin too, if its departure was never seen
-        Assert.Equal(StopStatus.Passed, Stop(journey, S2).Status);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S1).Status);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S2).Status);
         Assert.Equal(StopStatus.Arrived, Stop(journey, S3).Status);
         Assert.Equal(StopStatus.Scheduled, Stop(journey, S4).Status);
         Assert.Equal(
@@ -89,13 +90,13 @@ public class StopSequenceTests
     }
 
     [Fact]
-    public void A_crew_departure_tap_also_marks_earlier_stops_passed()
+    public void A_crew_departure_tap_also_infers_earlier_stops()
     {
         var journey = NewJourney();
 
         journey.RecordCrewTime(S3, StopEventKind.Departure, At(7, 5));
 
-        Assert.Equal(StopStatus.Passed, Stop(journey, S2).Status);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S2).Status);
     }
 
     [Fact]
@@ -112,7 +113,7 @@ public class StopSequenceTests
     }
 
     [Fact]
-    public void A_stop_inferred_as_passed_is_not_detected_again_by_later_positions()
+    public void An_inferred_stop_is_not_detected_again_by_later_positions()
     {
         var journey = NewJourney();
         journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 3));
@@ -120,9 +121,73 @@ public class StopSequenceTests
 
         GpsStopsAt(journey, S2, At(7, 5));   // GPS noise near stop 2 afterwards
 
-        Assert.Equal(StopStatus.Passed, Stop(journey, S2).Status);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S2).Status);
         Assert.Null(Stop(journey, S2).ActualArrivalTime);
         Assert.Equal(delayBefore, journey.CurrentDelay);
+    }
+
+    [Fact]
+    public void Inferred_stop_with_call_type_stop_becomes_departed_without_a_time()
+    {
+        var journey = NewJourney(s3: CallType.Stop);
+
+        journey.RecordCrewTime(S4, StopEventKind.Arrival, At(7, 31));
+
+        var inferred = Stop(journey, S3);
+        Assert.Equal(StopStatus.Departed, inferred.Status);
+        Assert.Null(inferred.ActualArrivalTime);
+        Assert.Null(inferred.ActualDepartureTime);
+    }
+
+    [Fact]
+    public void Inferred_stop_with_call_type_pass_becomes_passed_without_a_time()
+    {
+        var journey = NewJourney(s3: CallType.Pass);
+
+        journey.RecordCrewTime(S4, StopEventKind.Arrival, At(7, 31));
+
+        var inferred = Stop(journey, S3);
+        Assert.Equal(StopStatus.Passed, inferred.Status);
+        Assert.Null(inferred.ActualArrivalTime);
+        Assert.Null(inferred.ActualDepartureTime);
+        Assert.Contains(new StopStatusChanged(journey.Id, S3, 3, StopStatus.Scheduled, StopStatus.Passed, At(7, 31), Source.Crew), journey.DomainEvents);
+    }
+
+    [Fact]
+    public void Origin_becomes_departed_when_a_later_stop_is_reached()
+    {
+        var journey = NewJourney();
+
+        journey.RecordCrewTime(S2, StopEventKind.Arrival, At(6, 40));
+
+        Assert.Equal(StopStatus.Departed, Stop(journey, S1).Status);
+        Assert.Null(Stop(journey, S1).ActualDepartureTime);
+        Assert.Contains(new StopStatusChanged(journey.Id, S1, 1, StopStatus.Scheduled, StopStatus.Departed, At(6, 40), Source.Crew), journey.DomainEvents);
+    }
+
+    // An inferred stop has no time, so it cannot move the delay: only the stop that was reached does.
+    [Fact]
+    public void Inferred_stops_do_not_change_the_delay()
+    {
+        var journey = NewJourney();
+
+        journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 3));   // 3 min late
+
+        Assert.Equal(new SourcedDelay(new Delay(3), Source.Crew), journey.CurrentDelay);
+        Assert.Single(journey.DomainEvents.OfType<DelayChanged>());
+    }
+
+    // R-20 will settle out-of-order taps. Until then a late tap for an inferred stop records its time and keeps the status.
+    [Fact]
+    public void A_late_tap_for_an_inferred_stop_records_its_time_and_keeps_the_status()
+    {
+        var journey = NewJourney();
+        journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 3));   // infers stops 1 and 2
+
+        journey.RecordCrewTime(S2, StopEventKind.Arrival, At(6, 41));
+
+        Assert.Equal(new TimeWithSource(At(6, 41), Source.Crew), Stop(journey, S2).ActualArrivalTime);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S2).Status);
     }
 
     // ---- The delay follows the most recent stop event (R-05 clarified) ------------------------------------------
@@ -176,6 +241,6 @@ public class StopSequenceTests
         journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 3));
 
         Assert.Equal(new SourcedDelay(new Delay(10), Source.Controller), journey.CurrentDelay);
-        Assert.Equal(StopStatus.Passed, Stop(journey, S2).Status);
+        Assert.Equal(StopStatus.Departed, Stop(journey, S2).Status);
     }
 }
