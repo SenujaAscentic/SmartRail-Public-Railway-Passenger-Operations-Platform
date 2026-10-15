@@ -67,6 +67,13 @@ public class OverdueDelayTests
         Assert.Equal(new Delay(4), ExpectedTimes.OverdueDelay(Scheduled, new Delay(4), At(6, 44, 30)));
     }
 
+    // The key case: a known delay of 10 must not drop to 1 just because now is only 1 min after the scheduled time.
+    [Fact]
+    public void Overdue_delay_never_drops_below_a_known_delay_just_after_the_scheduled_time()
+    {
+        Assert.Equal(new Delay(10), ExpectedTimes.OverdueDelay(Scheduled, new Delay(10), Scheduled.AddMinutes(1)));
+    }
+
     [Fact]
     public void Overdue_delay_moves_an_early_train_back_towards_schedule()
     {
@@ -94,6 +101,19 @@ public class OverdueDelayTests
         Assert.Equal(
             [new DelayChanged(journey.Id, 1, 0, Source.Schedule, At(6, 41)), new DelayChanged(journey.Id, 2, 1, Source.Schedule, At(6, 42))],
             journey.DomainEvents.OfType<DelayChanged>());
+    }
+
+    [Fact]
+    public void Known_delay_of_10_stays_10_one_minute_after_the_next_stops_scheduled_time()
+    {
+        var journey = TrackedJourney();
+        journey.RecordCrewTime(S2, StopEventKind.Arrival, At(6, 50));   // known: 10 min late
+        journey.ClearDomainEvents();
+
+        journey.RefreshTracking(At(7, 31));   // S3 was scheduled 07:30; expected 07:40
+
+        Assert.Equal(10, journey.DelayMinutes);
+        Assert.DoesNotContain(journey.DomainEvents, e => e is DelayChanged);
     }
 
     [Fact]

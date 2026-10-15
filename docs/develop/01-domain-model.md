@@ -369,6 +369,8 @@ Written as test names. You approve, remove or add names; then the AI implements 
 - `Delay_is_unchanged_until_now_passes_the_expected_arrival`
 - `Delay_grows_in_whole_minutes_once_the_expected_arrival_has_passed`
 - `Overdue_delay_never_lowers_the_recorded_delay`
+- `Overdue_delay_never_drops_below_a_known_delay_just_after_the_scheduled_time`
+- `Known_delay_of_10_stays_10_one_minute_after_the_next_stops_scheduled_time`
 - `Overdue_delay_moves_an_early_train_back_towards_schedule`
 - `Train_stuck_between_stations_shows_growing_lateness`
 - `Overdue_delay_uses_the_next_stop_not_yet_reached`
