@@ -202,15 +202,10 @@ public sealed class OperationalJourney
         }
     }
 
-    // R-23. The result is stored with the lowest priority (Schedule): it is a guess from the clock, so any real
-    // report from crew, GPS or controller replaces it. A controller delay is left alone (R-05).
+    // R-23. Stored with source Schedule, because it is worked out from the timetable and the clock. A controller delay
+    // is kept by SourcedDelay.Apply (R-05); the next real stop time replaces this one (R-01).
     private void ApplyOverdueDelay(DateTime now)
     {
-        if (DelaySource == Source.Controller)
-        {
-            return;
-        }
-
         var next = _stops.FirstOrDefault(s => s.Status == StopStatus.Scheduled && s.ScheduledArrival is not null);
         if (next is null)
         {
@@ -220,7 +215,7 @@ public sealed class OperationalJourney
         var overdue = ExpectedTimes.OverdueDelay(next.ScheduledArrival!.Value, CurrentDelay.Value, now);
         if (overdue != CurrentDelay.Value)
         {
-            SetDelay(new SourcedDelay(overdue, Source.Schedule), now);
+            SetDelay(CurrentDelay.Apply(overdue, Source.Schedule), now);
         }
     }
 
@@ -228,6 +223,9 @@ public sealed class OperationalJourney
     // measured against the scheduled arrival, or the departure for a stop that has none (R-01).
     private void RecordPassed(JourneyStop stop, DateTime at, Source source)
     {
+        PassEarlierStops(stop, at, source);
+        var previousLatest = LatestStopEventTime(except: stop);
+
         var incoming = new TimeWithSource(at, source);
         var resolved = TimeWithSource.Resolve(stop.ActualArrivalTime, incoming);   // R-05
         stop.SetActualArrival(resolved);
@@ -236,26 +234,32 @@ public sealed class OperationalJourney
 
         if (resolved == incoming && (stop.ScheduledArrival ?? stop.ScheduledDeparture) is { } scheduled)
         {
-            SetDelay(CurrentDelay.Apply(Delay.Between(scheduled, at), source), at);
+            FollowDelay(Delay.Between(scheduled, at), source, at, previousLatest);
         }
     }
 
     private void RecordArrival(JourneyStop stop, DateTime at, Source source)
     {
+        PassEarlierStops(stop, at, source);
+        var previousLatest = LatestStopEventTime(except: stop);
+
         var incoming = new TimeWithSource(at, source);
-        var resolved = TimeWithSource.Resolve(stop.ActualArrivalTime, incoming);   // R-05
+        var resolved = TimeWithSource.Resolve(stop.ActualArrivalTime, incoming);   // R-05: protects this stop's own time
         stop.SetActualArrival(resolved);
         ChangeStatus(stop, StopStatus.Arrived, at, source);
 
-        // Only the time that won sets the delay (R-01); a lower source's time must not move it.
+        // Only the time that won at this stop counts (R-01).
         if (resolved == incoming && stop.ScheduledArrival is { } scheduled)
         {
-            SetDelay(CurrentDelay.Apply(Delay.Between(scheduled, at), source), at);
+            FollowDelay(Delay.Between(scheduled, at), source, at, previousLatest);
         }
     }
 
     private void RecordDeparture(JourneyStop stop, DateTime at, Source source)
     {
+        PassEarlierStops(stop, at, source);
+        var previousLatest = LatestStopEventTime(except: stop);
+
         var incoming = new TimeWithSource(at, source);
         var resolved = TimeWithSource.Resolve(stop.ActualDepartureTime, incoming);
         stop.SetActualDeparture(resolved);
@@ -263,9 +267,37 @@ public sealed class OperationalJourney
 
         if (resolved == incoming && stop.ScheduledDeparture is { } scheduled)
         {
-            SetDelay(CurrentDelay.Apply(Delay.Between(scheduled, at), source), at);
+            FollowDelay(Delay.Between(scheduled, at), source, at, previousLatest);
         }
     }
+
+    // A stop that gets an actual time means the train is past every earlier stop. Those still Scheduled become Passed,
+    // with no time (none is known) and no delay. Without this, a missed GPS detection would leave R-23 measuring
+    // against a station the train has already gone through, and the delay would grow forever.
+    private void PassEarlierStops(JourneyStop reached, DateTime at, Source source)
+    {
+        foreach (var earlier in _stops.Where(s => s.Sequence < reached.Sequence && s.Status == StopStatus.Scheduled))
+        {
+            earlier.SetZoneState(new ZoneState(ZonePhase.Finished, null));   // GPS must not detect it again later
+            ChangeStatus(earlier, StopStatus.Passed, at, source);
+        }
+    }
+
+    // R-01 / R-05: the delay follows the most recent stop event. A late-delivered older event (a queued crew tap) records
+    // its stop time but does not pull the delay back. A controller delay is kept by SourcedDelay.Apply.
+    private void FollowDelay(Delay delay, Source source, DateTime at, DateTime? previousLatest)
+    {
+        if (previousLatest is { } latest && at < latest)
+        {
+            return;
+        }
+
+        SetDelay(CurrentDelay.Apply(delay, source), at);
+    }
+
+    // The latest recorded time at any other stop. The stop being updated is left out: its old time is being replaced.
+    private DateTime? LatestStopEventTime(JourneyStop except) =>
+        _stops.Where(s => s != except).SelectMany(s => new[] { s.ActualArrival, s.ActualDeparture }).Max();
 
     private void ChangeStatus(JourneyStop stop, StopStatus to, DateTime at, Source source)
     {

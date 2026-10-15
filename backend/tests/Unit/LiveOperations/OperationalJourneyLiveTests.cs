@@ -160,7 +160,7 @@ public class OperationalJourneyLiveTests
 
         Assert.Equal(new TimeWithSource(At(6, 43), Source.Crew), Stop(journey, S2).ActualArrivalTime);
         Assert.Equal(new SourcedDelay(new Delay(3), Source.Crew), journey.CurrentDelay);
-        Assert.Single(journey.DomainEvents.OfType<StopStatusChanged>());   // already Arrived, so no second event
+        Assert.Single(journey.DomainEvents.OfType<StopStatusChanged>(), e => e.StationId == S2);   // already Arrived, so no second event
     }
 
     [Fact]

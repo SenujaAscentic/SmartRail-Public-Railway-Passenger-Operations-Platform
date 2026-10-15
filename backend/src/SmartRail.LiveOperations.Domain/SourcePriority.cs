@@ -18,9 +18,11 @@ public sealed record SourcedDelay(Delay Value, Source Source)
 {
     public static SourcedDelay FromSchedule { get; } = new(new Delay(0), Source.Schedule);
 
-    // R-05: same rule as TimeWithSource.Resolve. A controller delay therefore stays until the controller changes or clears it.
+    // R-05 (clarified 15 Oct): the journey delay follows the most recent stop event whatever its source, so a crew tap
+    // never freezes it. Only a controller delay blocks the others, until the controller changes or clears it.
+    // (The source priority of TimeWithSource.Resolve protects a stop's own time, not this journey-wide value.)
     public SourcedDelay Apply(Delay delay, Source source) =>
-        source > Source ? this : new SourcedDelay(delay, source);
+        Source == Source.Controller && source != Source.Controller ? this : new SourcedDelay(delay, source);
 
     // Only a controller delay is cleared. It is replaced by the delay recalculated from the latest recorded stop time
     // (FromSchedule if there is none), never blindly by 0: a reset would show a false "On time" (US-P4) and could send

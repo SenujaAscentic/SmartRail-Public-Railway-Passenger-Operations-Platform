@@ -3,7 +3,8 @@ using Xunit;
 
 namespace SmartRail.UnitTests.LiveOperations;
 
-// R-05: Controller > Crew > GPS > Schedule. A lower source never overwrites a higher one.
+// R-05: Controller > Crew > GPS > Schedule. A lower source never overwrites a higher one's time at the same stop.
+// The journey delay follows the most recent stop event whatever its source; only a controller delay blocks it.
 public class SourcePriorityTests
 {
     private static readonly DateTime T = new(2026, 10, 14, 4, 0, 0, DateTimeKind.Utc);
@@ -61,6 +62,16 @@ public class SourcePriorityTests
 
         // After the clear, GPS values apply again.
         Assert.Equal(new SourcedDelay(new Delay(2), Source.Gps), cleared.Apply(new Delay(2), Source.Gps));
+    }
+
+    [Fact]
+    public void A_crew_delay_does_not_block_a_later_gps_delay()
+    {
+        var delay = SourcedDelay.FromSchedule
+            .Apply(new Delay(3), Source.Crew)
+            .Apply(new Delay(6), Source.Gps);
+
+        Assert.Equal(new SourcedDelay(new Delay(6), Source.Gps), delay);
     }
 
     [Fact]

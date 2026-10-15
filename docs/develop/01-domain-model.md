@@ -232,7 +232,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | **R-02** | **Expected arrival** at each remaining stop = scheduled arrival + current delay. Early running carries forward for arrivals. | S5-12 |
 | **R-03** | **Expected departure** = max(scheduled departure, scheduled departure + current delay). A predicted departure is never earlier than scheduled; an actual early departure is recorded as it happened. | S5-11 |
 | **R-04** | **Station zone detection** (radius 300 m): entered the zone and speed < 5 km/h for 20 s → Arrived; left the zone after Arrived → Departed; entered and left without meeting the stop condition → Passed. | S5-07, D-2 |
-| **R-05** | **Source priority:** a stop time or the journey delay set by a higher-priority source (Controller > Crew > GPS > Schedule) cannot be overwritten by a lower one. A controller override stays until the controller clears it. | S5 source priority |
+| **R-05** | **Source priority:** a stop's time set by a higher-priority source (Controller > Crew > GPS > Schedule) cannot be overwritten by a lower one **at the same stop** (GPS cannot overwrite a crew tap at that stop). The journey delay always follows the most recent stop event (R-01) whatever its source; only a controller delay blocks that, and it stays until the controller clears it. *(Clarified 15 Oct: without this, one crew tap would freeze the delay for the rest of the trip.)* | S5 source priority |
 | **R-06** | **Freshness:** 2 min without an accepted position → Stale; 10 min → Lost; any accepted position → Live. | A-26 |
 | **R-07** | **Position acceptance:** only from a registered cab device with an active cab session on a Running journey. Otherwise rejected (403). If the device's train set differs from the journey's, accept but warn (Should, S-11). | B-3, ADR-05 |
 | **R-08** | **Position plausibility:** discard a position that is older than the last accepted one, more than 500 m from the route, or implies a speed above **120 km/h** since the last one (M-2, 12 Oct). Discarded positions are counted and logged, not stored as live. | S5 failure scenarios |
@@ -250,7 +250,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | **R-20** | **Out-of-order crew actions** from the offline queue are applied by their recorded (corrected) time, and never overwrite a newer value from the same or higher-priority source. | C-7 |
 | **R-21** | **Time saved by a skipped stop:** when a stop is skipped, the delay for every later stop is reduced by that stop's **scheduled dwell** (scheduled departure − scheduled arrival), but **never below on time** (delay ≥ 0 after the reduction; an on-time or early train is unchanged). Braking and acceleration time is not estimated; GPS corrects it at the next stop. A controller-set delay still wins (R-05). | O-4, agreed 8 Oct (D-11) |
 | **R-22** | **Time added by a hold:** while a journey is held at a station, its expected departure from that station = max(scheduled departure, now), so it moves forward with the clock, and later stops' expected times move with it (R-02). When the train departs, the delay is measured from the actual departure (R-01). Nobody enters the extra minutes by hand. | O-4, O-5, agreed 8 Oct (D-11) |
-| **R-23** | **Overdue delay:** while a tracked journey has not reached its next stop (the first remaining stop with a scheduled arrival) and now > that stop's expected arrival (R-02), the effective delay = max(recorded delay, now − scheduled arrival), whole minutes rounded toward zero (R-01). It is recomputed whenever tracking is refreshed and announced as a delay change when the minutes change. A controller override takes precedence (R-05); the overdue delay has the lowest priority, so any real report (crew, GPS, controller) replaces it. A journey whose Start was never pressed is not tracked and gets no overdue delay (4.2). | US-P4 AC1 ★, spec change 15 Oct |
+| **R-23** | **Overdue delay:** while a tracked journey has not arrived at or passed its next stop (the first remaining stop with a scheduled arrival), the shown delay = the larger of the last known delay and (now − scheduled time at that next station), whole minutes rounded toward zero (R-01). It is recomputed whenever tracking is refreshed and announced as a delay change when the minutes change. A controller delay always wins (R-05); a real arrival or pass time takes over as usual (R-01). A journey whose Start was never pressed is not tracked and gets no overdue delay (4.2). | US-P4 AC1 ★, spec change 15 Oct |
 
 ---
 
@@ -391,6 +391,8 @@ Written as test names. You approve, remove or add names; then the AI implements 
 **Source priority, freshness, positions (R-05 – R-09, R-20)**
 - `Gps_arrival_does_not_overwrite_crew_tapped_arrival`
 - `Controller_delay_is_kept_until_controller_clears_it`
+- `Crew_arrival_then_gps_arrival_at_next_stop_makes_the_delay_follow_the_next_stop` *(added 15 Oct, R-05 clarified)*
+- `Older_stop_event_does_not_move_the_delay_back`
 - `Tracking_becomes_stale_after_2_minutes_without_position`
 - `Tracking_becomes_lost_after_10_minutes_without_position`
 - `Tracking_returns_to_live_on_next_accepted_position`
