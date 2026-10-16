@@ -41,7 +41,7 @@ public sealed class JourneyPlanner(TimeProvider clock, TimeZoneInfo timeZone)
                     s.Sequence, s.StationId, ToDomain(s.CallType), s.ArrivalOffset, s.DepartureOffset, s.PlannedPlatform));
 
                 // The ID is time-ordered; the time comes from the injected clock like every other time in the code.
-                journeys.Add(OperationalJourney.Plan(Guid.CreateVersion7(now), service.Id, date, trainSetId, stops, timeZone));
+                journeys.Add(OperationalJourney.Plan(Guid.CreateVersion7(now), service.Id, date, trainSetId, stops, timeZone, service.LineId));
             }
         }
 

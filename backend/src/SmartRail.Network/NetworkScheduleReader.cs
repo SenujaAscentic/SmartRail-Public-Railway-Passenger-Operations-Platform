@@ -11,6 +11,7 @@ internal sealed class NetworkScheduleReader(NetworkDbContext db) : INetworkSched
     {
         var services = await db.Services.AsNoTracking().Include(s => s.Stops).OrderBy(s => s.Number).ToListAsync(cancellationToken);
         var calendars = await db.Calendars.AsNoTracking().Include(c => c.Exceptions).OrderBy(c => c.Code).ToListAsync(cancellationToken);
+        var lineByRoute = await db.Routes.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.LineId, cancellationToken);
         var trainSets = await db.TrainSets.AsNoTracking().OrderBy(t => t.Code).ToListAsync(cancellationToken);
 
         return new NetworkSchedule(
@@ -24,7 +25,8 @@ internal sealed class NetworkScheduleReader(NetworkDbContext db) : INetworkSched
                     stop.CallType == CallType.Pass ? ScheduledCallType.Pass : ScheduledCallType.Stop,
                     stop.ArrivalOffset,
                     stop.DepartureOffset,
-                    stop.PlannedPlatform)).ToList())).ToList(),
+                    stop.PlannedPlatform)).ToList(),
+                lineByRoute[s.RouteId])).ToList(),
             calendars.Select(c => new ServiceCalendarInfo(
                 c.Id,
                 c.DaysOfWeek,

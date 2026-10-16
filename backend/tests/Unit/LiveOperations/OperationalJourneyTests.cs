@@ -10,7 +10,7 @@ public class OperationalJourneyTests
     private static readonly Guid Station2 = Guid.NewGuid();
 
     private static OperationalJourney Plan(DateOnly date, params PlannedStop[] stops) =>
-        OperationalJourney.Plan(Guid.NewGuid(), Guid.NewGuid(), date, Guid.NewGuid(), stops, Colombo);
+        OperationalJourney.Plan(Guid.NewGuid(), Guid.NewGuid(), date, Guid.NewGuid(), stops, Colombo, Guid.NewGuid());
 
     [Fact]
     public void Scheduled_times_are_service_date_plus_offset_in_utc()
@@ -46,7 +46,7 @@ public class OperationalJourneyTests
         var trainSetId = Guid.NewGuid();
         var journey = OperationalJourney.Plan(Guid.NewGuid(), serviceId, new DateOnly(2026, 10, 14), trainSetId,
             [new PlannedStop(1, Station1, CallType.Stop, null, 390, "5"), new PlannedStop(2, Station2, CallType.Pass, 400, 400, "2")],
-            Colombo);
+            Colombo, Guid.NewGuid());
 
         Assert.Equal(JourneyStatus.Planned, journey.Status);
         Assert.Equal(serviceId, journey.ServiceId);

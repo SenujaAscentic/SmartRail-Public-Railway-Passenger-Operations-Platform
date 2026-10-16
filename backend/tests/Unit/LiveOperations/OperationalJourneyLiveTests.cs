@@ -22,7 +22,7 @@ public class OperationalJourneyLiveTests
                 new PlannedStop(2, S2, CallType.Stop, 400, 402, "2"),
                 new PlannedStop(3, S3, CallType.Stop, 450, null, "3"),
             ],
-            TimeZoneInfo.Utc);
+            TimeZoneInfo.Utc, Guid.NewGuid());
 
     private static JourneyStop Stop(OperationalJourney journey, Guid station) =>
         journey.Stops.Single(s => s.StationId == station);
@@ -104,7 +104,7 @@ public class OperationalJourneyLiveTests
     {
         var journey = OperationalJourney.Plan(
             Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(),
-            [new PlannedStop(1, S2, CallType.Pass, null, 400, "1")], TimeZoneInfo.Utc);
+            [new PlannedStop(1, S2, CallType.Pass, null, 400, "1")], TimeZoneInfo.Utc, Guid.NewGuid());
 
         Feed(journey, Near(At(6, 41), 80, S2, 100));
         Feed(journey, Near(At(6, 42, 30), 80, S2, 500));

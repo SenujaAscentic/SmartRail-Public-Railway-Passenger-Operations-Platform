@@ -25,7 +25,7 @@ public class StopSequenceTests
                 new PlannedStop(3, S3, s3, 420, 422, "3"),
                 new PlannedStop(4, S4, CallType.Stop, 450, null, "4"),
             ],
-            TimeZoneInfo.Utc);
+            TimeZoneInfo.Utc, Guid.NewGuid());
 
     private static JourneyStop Stop(OperationalJourney journey, Guid station) =>
         journey.Stops.Single(s => s.StationId == station);

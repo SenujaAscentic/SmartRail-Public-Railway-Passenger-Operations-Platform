@@ -18,7 +18,8 @@ public sealed record ScheduledService(
     Guid Id,
     string Number,
     Guid CalendarId,
-    IReadOnlyList<ScheduledStopInfo> Stops);
+    IReadOnlyList<ScheduledStopInfo> Stops,
+    Guid LineId);
 
 public enum ScheduledCallType { Stop, Pass }
 

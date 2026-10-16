@@ -21,7 +21,7 @@ public class OverdueDelayTests
                 new PlannedStop(2, S2, CallType.Stop, 400, 402, "2"),
                 new PlannedStop(3, S3, CallType.Stop, 450, null, "3"),
             ],
-            TimeZoneInfo.Utc);
+            TimeZoneInfo.Utc, Guid.NewGuid());
 
     // A tracked journey: one accepted position, far from every station.
     private static OperationalJourney TrackedJourney()

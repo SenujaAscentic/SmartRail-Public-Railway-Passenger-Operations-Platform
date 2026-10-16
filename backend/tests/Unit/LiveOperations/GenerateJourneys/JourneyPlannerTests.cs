@@ -13,6 +13,7 @@ public class JourneyPlannerTests
     private static readonly Guid WeekdayCalendarId = Guid.NewGuid();
     private static readonly Guid WeekendCalendarId = Guid.NewGuid();
     private static readonly Guid TrainSetId = Guid.NewGuid();
+    private static readonly Guid LineId = Guid.NewGuid();
 
     private static readonly IReadOnlyDictionary<string, string> Assignments = new Dictionary<string, string> { ["1001"] = "DPS-01", ["1003"] = "DPS-01" };
     private static readonly IReadOnlySet<(Guid, DateOnly)> NothingStored = new HashSet<(Guid, DateOnly)>();
@@ -28,8 +29,8 @@ public class JourneyPlannerTests
 
         return new NetworkSchedule(
             [
-                new ScheduledService(ServiceId, "1001", WeekdayCalendarId, stops),
-                new ScheduledService(weekendServiceId ?? Guid.NewGuid(), "1003", WeekendCalendarId, stops),
+                new ScheduledService(ServiceId, "1001", WeekdayCalendarId, stops, LineId),
+                new ScheduledService(weekendServiceId ?? Guid.NewGuid(), "1003", WeekendCalendarId, stops, LineId),
             ],
             [
                 new ServiceCalendarInfo(WeekdayCalendarId, [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday], []),
@@ -56,6 +57,15 @@ public class JourneyPlannerTests
         Assert.Equal(
             [new DateOnly(2026, 10, 14), new DateOnly(2026, 10, 15), new DateOnly(2026, 10, 16)],
             journeys.Select(j => j.ServiceDate).Order());
+    }
+
+    // The line comes from the service (Network knows route -> line); the stream envelope needs it (domain model 8.1).
+    [Fact]
+    public void Journeys_carry_the_line_of_their_service()
+    {
+        var journeys = PlannerAt("2026-10-14 10:00").Plan(Schedule(), Assignments, NothingStored);
+
+        Assert.All(journeys, j => Assert.Equal(LineId, j.LineId));
     }
 
     [Fact]

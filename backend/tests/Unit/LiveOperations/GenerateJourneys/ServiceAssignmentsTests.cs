@@ -9,8 +9,8 @@ public class ServiceAssignmentsTests
 {
     private static readonly NetworkSchedule Schedule = new(
         [
-            new ScheduledService(Guid.NewGuid(), "1001", Guid.NewGuid(), []),
-            new ScheduledService(Guid.NewGuid(), "1002", Guid.NewGuid(), []),
+            new ScheduledService(Guid.NewGuid(), "1001", Guid.NewGuid(), [], Guid.NewGuid()),
+            new ScheduledService(Guid.NewGuid(), "1002", Guid.NewGuid(), [], Guid.NewGuid()),
         ],
         [],
         [new TrainSetInfo(Guid.NewGuid(), "DPS-01")]);

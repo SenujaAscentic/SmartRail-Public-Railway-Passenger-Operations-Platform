@@ -108,6 +108,7 @@ public sealed class OperationalJourney
     public Guid ServiceId { get; private set; }
     public DateOnly ServiceDate { get; private set; }
     public Guid TrainSetId { get; private set; }
+    public Guid LineId { get; private set; }   // for the event stream: lets a client filter by line (domain model 8.1)
     public JourneyStatus Status { get; private set; }
     public IReadOnlyList<JourneyStop> Stops => _stops;
 
@@ -361,7 +362,7 @@ public sealed class OperationalJourney
     // date in the given time zone (Asia/Colombo); they are converted to UTC here, once, and never again.
     public static OperationalJourney Plan(
         Guid id, Guid serviceId, DateOnly serviceDate, Guid trainSetId,
-        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone)
+        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone, Guid lineId)
     {
         var journey = new OperationalJourney
         {
@@ -369,6 +370,7 @@ public sealed class OperationalJourney
             ServiceId = serviceId,
             ServiceDate = serviceDate,
             TrainSetId = trainSetId,
+            LineId = lineId,
             Status = JourneyStatus.Planned,
         };
 

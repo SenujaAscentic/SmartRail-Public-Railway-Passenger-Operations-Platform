@@ -45,6 +45,9 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<DateTime?>("LastPositionAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("LineId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly>("ServiceDate")
                         .HasColumnType("date");
 
