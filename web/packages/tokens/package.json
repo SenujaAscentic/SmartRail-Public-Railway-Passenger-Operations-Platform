@@ -1,0 +1,15 @@
+{
+  "name": "@smartrail/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Design tokens: shared/tokens.json turned into CSS variables. dist/tokens.css is generated, never committed.",
+  "exports": {
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "scripts": {
+    "build": "node scripts/build-tokens.ts",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  }
+}
