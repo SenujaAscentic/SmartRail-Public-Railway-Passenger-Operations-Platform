@@ -1,0 +1,22 @@
+{
+  "name": "@smartrail/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed calls to the SmartRail API. The types are GENERATED from backend/openapi.yaml (ADR-09, C-8); nothing here describes an API shape by hand.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "api:generate": "node scripts/generate-schema.ts",
+    "api:check": "node scripts/generate-schema.ts --check",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  }
+}
