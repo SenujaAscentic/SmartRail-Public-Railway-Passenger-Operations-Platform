@@ -50,7 +50,7 @@ public class ServiceAssignmentsTests
     [Fact]
     public void The_real_assignment_file_lists_the_8_seed_services()
     {
-        var assignments = ServiceAssignments.Read(SeedFolder.Find(configuredPath: null));
+        var assignments = ServiceAssignments.Read(global::SmartRail.Network.Seed.SeedFolder.Find(configuredPath: null));
 
         Assert.Equal(8, assignments.Count);
         Assert.Equal("DPS-01", assignments["1001"]);

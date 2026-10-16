@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartRail.LiveOperations.Domain;
+using SmartRail.LiveOperations.Outbox;
 
 namespace SmartRail.LiveOperations.Persistence;
 
@@ -10,6 +11,7 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
     public const string Schema = "ops";
 
     public DbSet<OperationalJourney> Journeys => Set<OperationalJourney>();
+    internal DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -41,6 +43,23 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
                 stop.Property(s => s.ActualDepartureSource).HasConversion<string>().HasMaxLength(20);
             });
             journey.Navigation(j => j.Stops).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        // The stream sequence (contract section 4). A database sequence never goes back, even after old rows are deleted,
+        // so a client's Last-Event-ID can never match a newer event by accident.
+        model.HasSequence<long>("EventSequence");
+
+        model.Entity<OutboxEvent>(outbox =>
+        {
+            outbox.ToTable("OutboxEvents");
+            outbox.HasKey(e => e.Id);
+            outbox.Property(e => e.Id).ValueGeneratedOnAdd();
+            outbox.Property(e => e.Type).HasMaxLength(60);
+            outbox.Property(e => e.Json).HasColumnType("jsonb");
+            outbox.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            outbox.HasIndex(e => e.EventId).IsUnique();
+            outbox.HasIndex(e => new { e.Status, e.Id });      // the dispatcher: oldest Pending first
+            outbox.HasIndex(e => e.Sequence).IsUnique();       // resume: rows after a sequence (NULLs may repeat)
         });
     }
 }

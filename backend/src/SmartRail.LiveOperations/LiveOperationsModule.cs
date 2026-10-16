@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
+using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Persistence;
 using SmartRail.Network;
 
@@ -18,13 +19,15 @@ public static class LiveOperationsModule
     // check below needs the network seed to be loaded first.
     public static IServiceCollection AddLiveOperationsModule(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<LiveOperationsDbContext>(options =>
+        services.AddSingleton<OutboxInterceptor>();   // writes the aggregate's events into the outbox with every save
+        services.AddDbContext<LiveOperationsDbContext>((provider, options) =>
         {
             var connectionString = configuration.GetConnectionString("SmartRail")
                 ?? throw new InvalidOperationException("No connection string. See the message of the Network module for how to set it.");
 
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", LiveOperationsDbContext.Schema));
+            options.AddInterceptors(provider.GetRequiredService<OutboxInterceptor>());
         });
 
         services.AddSingleton(provider => new JourneyPlanner(

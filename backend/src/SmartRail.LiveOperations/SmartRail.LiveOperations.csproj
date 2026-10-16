@@ -14,4 +14,10 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The tests reach the module's internal outbox and stream types, like Network and Identity do. -->
+    <InternalsVisibleTo Include="SmartRail.UnitTests" />
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
+
 </Project>
