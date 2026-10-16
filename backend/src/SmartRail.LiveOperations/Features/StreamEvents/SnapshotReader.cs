@@ -56,7 +56,7 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
         return journeys.Select(j => ToSnapshot(j, sequence)).ToList();
     }
 
-    private static JourneySnapshot ToSnapshot(OperationalJourney journey, long sequence)
+    internal static JourneySnapshot ToSnapshot(OperationalJourney journey, long sequence)
     {
         var delay = journey.CurrentDelay.Value;
         var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon ? new SnapshotPosition(lat, lon) : null;

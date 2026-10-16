@@ -15,6 +15,9 @@ internal static class PublicProjection
         ["DataFreshnessChanged"] = ["from", "to", "lastSeenAt", "lastStationId"],
     };
 
+    // The event types the public stream sends. Each has an example in shared/events (CLAUDE.md section 5, step 5).
+    public static IEnumerable<string> PublicEventTypes => PublicPayloadFields.Keys;
+
     // Null means "not for the public stream".
     public static PublicEvent? Of(EventEnvelope envelope, long sequence)
     {

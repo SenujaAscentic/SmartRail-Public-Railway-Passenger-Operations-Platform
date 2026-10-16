@@ -214,6 +214,32 @@ public class StreamTests(ApiFixture api)
         Assert.Contains(journey.Terminus, first.Json.GetProperty("stationIds").EnumerateArray().Select(e => e.GetGuid()));
     }
 
+    // CLAUDE.md section 5, step 5: the example files in shared/events are what client authors build from, so what the stream
+    // really sends must carry exactly their fields (the shape check in the unit tests covers the nested detail).
+    [Fact]
+    public async Task Frames_on_the_wire_carry_the_fields_of_the_shared_examples()
+    {
+        var folder = Path.GetFullPath(Path.Combine(global::SmartRail.Network.Seed.SeedFolder.Find(configuredPath: null), "..", "events"));
+        static List<string> Names(JsonElement element) => element.EnumerateObject().Select(p => p.Name).Order().ToList();
+        JsonElement Example(string name) => JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, name + ".json"))).RootElement;
+
+        var journey = await TestJourney.CreateAsync(Services);
+        using var client = await Connect($"journeyIds={journey.Id}");
+        var snapshot = (await client.NextEventAsync(Wait, Ct))!;
+        await journey.ArriveLateAtMiddleAsync(Services, 4, Ct);
+        var frames = await ReadUntil(client, "DelayChanged");
+
+        // A fresh journey has no position yet, so the snapshot lacks lastSeenAt and lastPosition: those two are optional.
+        var optional = new[] { "lastSeenAt", "lastPosition" };
+        Assert.Equal(Names(Example("snapshot")).Except(optional), Names(snapshot.Json));
+        foreach (var type in new[] { "StopStatusChanged", "DelayChanged" })
+        {
+            var frame = frames.First(f => f.Event == type).Json;
+            Assert.Equal(Names(Example(type)), Names(frame));
+            Assert.Equal(Names(Example(type).GetProperty("payload")), Names(frame.GetProperty("payload")));
+        }
+    }
+
     // ---- resume ----
 
     [Fact]

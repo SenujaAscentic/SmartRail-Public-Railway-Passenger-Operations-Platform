@@ -24,6 +24,9 @@ internal sealed record StreamSettings(TimeSpan Heartbeat);
 internal sealed class StreamHandler(
     LiveOperationsDbContext db, StreamHub hub, SnapshotReader snapshots, StreamSettings settings, ILogger<StreamHandler> log)
 {
+    // What a client is told when it cannot be caught up from the log (an example is in shared/events/resync.json).
+    internal const string ResyncData = """{"reason":"The missed events are no longer kept."}""";
+
     public async Task RunAsync(HttpContext http, StreamFilter filter, long? lastEventId, CancellationToken cancellationToken)
     {
         var response = http.Response;
@@ -48,7 +51,7 @@ internal sealed class StreamHandler(
 
             case ResumeAction.Resync:
                 // No id on this event: it must not change the client's last event id.
-                await WriteAsync(response, SseFormat.Event(null, "resync", """{"reason":"The missed events are no longer kept."}"""), cancellationToken);
+                await WriteAsync(response, SseFormat.Event(null, "resync", ResyncData), cancellationToken);
                 await SendSnapshotsAsync(response, filter, covered, cancellationToken);
                 break;
 
