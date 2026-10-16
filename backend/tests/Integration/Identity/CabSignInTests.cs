@@ -111,10 +111,14 @@ public class CabSignInTests(ApiFixture api)
         await SetDeviceActive("CAB-04", false);
         try
         {
+            // Other tests in this shared database may have left DRV-04 a session, so compare before and after (as the
+            // clock-offset test below does): a refused sign-in must neither start a session nor end one.
+            var before = await ActiveSessionsOf("DRV-04");
+
             var response = await CabAsync(device: "CAB-04", staff: "DRV-04");
 
             await AssertGenericRefusal(response);
-            Assert.Equal(0, await ActiveSessionsOf("DRV-04"));
+            Assert.Equal(before, await ActiveSessionsOf("DRV-04"));
         }
         finally
         {
