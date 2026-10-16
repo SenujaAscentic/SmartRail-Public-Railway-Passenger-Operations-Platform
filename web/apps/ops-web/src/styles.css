@@ -1,0 +1,116 @@
+/* Plain CSS on the design tokens (packages/tokens). No colour is written here: every colour is a token, so the
+   light and dark themes (system setting) and the contrast promised by tokens.json carry over. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;   /* times and counts do not shift when digits change */
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: var(--font-size-title);
+  margin: 0 0 var(--space-md);
+}
+
+main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+main:focus {
+  outline: none;   /* main is only focused by the skip link, not a control */
+}
+
+.app-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.app-name {
+  font-weight: 700;
+}
+
+/* A visible focus ring for everything that can be focused (WCAG 2.4.7); the colour is a token with 3:1 contrast. */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-sm);
+  top: -4rem;
+  background: var(--color-background);
+  color: var(--color-text);
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.skip-link:focus {
+  top: var(--space-sm);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button,
+input {
+  font: inherit;
+  min-height: var(--touch-target);
+  border-radius: var(--radius-sm);
+}
+
+button {
+  background: var(--color-accent);
+  color: var(--color-background);
+  border: 2px solid var(--color-accent);
+  padding: 0 var(--space-md);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--color-accent);
+}
+
+input {
+  background: var(--color-background);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  padding: 0 var(--space-sm);
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skip-link {
+    transition: top var(--motion-duration) ease-out;
+  }
+}
