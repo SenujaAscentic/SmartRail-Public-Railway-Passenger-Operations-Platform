@@ -2,7 +2,7 @@
 
 **Written for:** Senuja, to read before a review (§28) and to explain the code without the AI.
 **Kept up to date by:** the coding agent, after every change to backend code (CLAUDE.md §5, step 9).
-**Last updated:** 14 Oct 2026 · **Covers:** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface, `IStationDirectory`), LiveOperations (daily journey generation, US-B2), **Identity (staff sign-in, crew phone and cab sign-in with cab sessions, refresh with a 10 s grace window, sign-out, policies, staff and cab-device seed; US-O1, US-B7, US-C1, US-C2)**, **the pure rules R-01 to R-06 in `LiveOperations.Domain`**, Api host, API description (`openapi.yaml`), tests.
+**Last updated:** 16 Oct 2026 · **Covers:** **LiveOperations live state, the transactional outbox, the dispatcher and the public SSE stream (sections 4.7 to 4.13),** solution scaffold, Network module (model, migration, seed, `GET /stations`, public schedule interface, `IStationDirectory`), LiveOperations (daily journey generation, US-B2), **Identity (staff sign-in, crew phone and cab sign-in with cab sessions, refresh with a 10 s grace window, sign-out, policies, staff and cab-device seed; US-O1, US-B7, US-C1, US-C2)**, **the pure rules R-01 to R-06 in `LiveOperations.Domain`**, Api host, API description (`openapi.yaml`), tests.
 
 For *what* the system must do, read the specs (`docs/define/`, `01-domain-model.md`, `02-api-contract.md`). This guide explains *how the code does it* and *why it is written that way*.
 
@@ -25,7 +25,7 @@ One program (the *modular monolith*, ADR-01) made of modules. Each module owns i
 |---|---|---|
 | `SmartRail.Api` | The host: starts the program, connects the modules, serves HTTP | Network, LiveOperations and Identity wired in; authentication and authorisation in the pipeline |
 | `SmartRail.Network` | The timetable data: stations, routes, services, train sets | **Built** (this guide) |
-| `SmartRail.LiveOperations` / `.Domain` | Today's journeys and the delay/ETA rules | **Daily journey generation built** (section 4); **rules R-01 to R-06 exist as pure functions** (4.6) but are not wired into `OperationalJourney` yet |
+| `SmartRail.LiveOperations` / `.Domain` | Today's journeys and the delay/ETA rules | **Built:** daily journey generation (4.1 to 4.5); the live rules wired into the journey (4.6, 4.7); the transactional outbox, the dispatcher and the public SSE stream `GET /stream` (4.8 to 4.13) |
 | `SmartRail.Disruptions` / `.Domain` | Incidents | Empty |
 | `SmartRail.Identity` | Who is calling and may they do this: staff sign-in, tokens, policies | **Staff, crew phone and cab sign-in built** (section 5); passengers, display devices, provider not yet |
 | `SmartRail.Notifications`, `.CateringIntegration` | Push, catering | Empty |
@@ -150,7 +150,7 @@ The seed files live in `shared/seed/` (see its README for what is real and what 
 
 ## 4. The LiveOperations module (`SmartRail.LiveOperations` and `.Domain`)
 
-Only **daily journey generation (US-B2)** exists so far: for today and the next 2 days, every service that runs on a date gets one *operational journey*, stored with all its stops. Delay, hold, tracking and the other statuses will come with their own rules.
+Three things exist so far. **Daily journey generation (US-B2)**: for today and the next 2 days, every service that runs on a date gets one *operational journey*, stored with all its stops (4.1 to 4.5). **The live rules wired into the journey**: positions and crew taps become stop times, delay, tracking and domain events (4.6, 4.7). **The transactional outbox, the dispatcher and the public event stream** that carry those events to every client (4.8 to 4.13). Hold, cancel, terminate and the other decisions come with their own stories.
 
 ```
  every hour (and at start) ► GenerateJourneysHandler
@@ -160,7 +160,7 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 ```
 
 ### 4.1 `LiveOperations.Domain/OperationalJourney.cs`
-**What:** the aggregate: `Id`, `ServiceId`, `ServiceDate`, `TrainSetId`, `Status` (only `Planned`) and its `Stops` (sequence, station, Stop/Pass, scheduled arrival and departure in **UTC**, planned platform). The driver is not here yet (see open points); a journey will have a driver only, the guard role is deferred.
+**What:** the aggregate: `Id`, `ServiceId`, `ServiceDate`, `TrainSetId`, `LineId` (the line of its service, for the stream envelope), `Status` (only `Planned`), the live state of 4.7, and its `Stops` (sequence, station, Stop/Pass, scheduled arrival and departure in **UTC**, planned platform). The driver is not here yet (see open points); a journey will have a driver only, the guard role is deferred.
 **How:** `OperationalJourney.Plan(...)` is the only way to create one. It takes the timetable's offsets (minutes after *local* midnight of the service date) and a `TimeZoneInfo`, and converts each to UTC once: local midnight + offset, then `TimeZoneInfo.ConvertTimeToUtc`. An offset above 1440 (an overnight run) lands on the next calendar day but stays in this journey (E-12).
 **Why in Domain:** it is a rule of how a journey gets its times. The project references nothing but `System`, reads no clock and is checked by the architecture test. The private constructors exist only so EF Core can fill the objects.
 
@@ -192,18 +192,128 @@ Only **daily journey generation (US-B2)** exists so far: for today and the next 
 | `Guid.CreateVersion7(now)` with the injected clock | Time-ordered ids without reading the system clock |
 
 ### 4.6 `LiveOperations.Domain` — rules R-01 to R-06 as pure value objects and functions
-Built on `feature/live-rules` by a second agent ("agent B"), merged into `develop` on 15 Oct (commit `e4f6d1e`), **test-first with the approved names of domain model §10**. **Not wired into `OperationalJourney` yet.** Every file reads no clock (times are passed in) and uses only `System` types, so the architecture test keeps the project pure. This section is written from the code and the commit message; agent B's own summary was not available to the agent that wrote this guide.
+Built on `feature/live-rules` by a second agent ("agent B"), merged into `develop` on 15 Oct (commit `e4f6d1e`), **test-first with the approved names of domain model §10**. **Wired into `OperationalJourney` in 4.7.** Every file reads no clock (times are passed in) and uses only `System` types, so the architecture test keeps the project pure. This section is written from the code and the commit message; agent B's own summary was not available to the agent that wrote this guide.
 
 | File | Rule | What it does and why it is written that way |
 |---|---|---|
 | `Delay.cs` | R-01 | `Delay(int Minutes)`, signed whole minutes (`IsLate`, `IsEarly`, `IsOnTime`). `Delay.Between(scheduled, actual)` divides the tick difference by ticks-per-minute, which **drops the fraction towards zero**: 59 s late = 0, 119 s late = 1, 59 s early = 0. Integer division is the whole rule, so there is no rounding call to get wrong. |
 | `ExpectedTimes.cs` | R-02, R-03 | `Arrival` = scheduled + delay (a negative delay carries forward). `Departure` = scheduled + `max(0, delay)`: a predicted departure is **never earlier than scheduled**. An actual early departure is not predicted; it is recorded as it happened and `Delay.Between` shows it negative. |
-| `SourcePriority.cs` | R-05 | `Source` enum with the priority as its number (Controller 1, Crew 2, Gps 3, Schedule 4; **lower wins**). `TimeWithSource.Resolve(current, incoming)` keeps the current value only when it comes from a strictly higher-priority source, so the **same source may overwrite itself** (newer GPS replaces older GPS). `SourcedDelay.Apply` is the same rule for the journey delay; `ClearController()` returns to "on schedule" only if the controller set the value. The server sets `Source` from the credential, never from a request body (CLAUDE.md §4). |
+| `SourcePriority.cs` | R-05 | `Source` enum with the priority as its number (Controller 1, Crew 2, Gps 3, Schedule 4; **lower wins**). `TimeWithSource.Resolve(current, incoming)` keeps the current value only when it comes from a strictly higher-priority source, so the **same source may overwrite itself** (newer GPS replaces older GPS). `SourcedDelay.Apply` is **not** the same rule: since the R-05 clarification of 15 Oct the journey delay follows the most recent stop event whatever its source, and only a controller delay blocks it (4.7); `ClearController(recalculated)` replaces a controller delay by the delay recalculated from the latest stop time. The server sets `Source` from the credential, never from a request body (CLAUDE.md §4). |
 | `StationZone.cs` | R-04 | A pure state machine: `Observe(state, sample)` returns the new state and an event (`Arrived`, `Departed`, `Passed`, `None`). Radius 300 m; "stopped" = speed under 5 km/h for an **unbroken** 20 s (the spell restarts when the train speeds up). Entering and leaving without that spell gives `Passed`; leaving after `Arrived` gives `Departed`. The caller measures the distance to the station, so the rule contains no map geometry (R-07 / R-08 bring that). Samples must arrive oldest first; discarding older ones is R-08. |
 | `TrackingFreshness.cs` | R-06 | `Of(lastPositionAt, now)`: under 2 min = `Live`, 2 to under 10 min = `Stale`, 10 min or more = `Lost`. Any accepted position moves `lastPositionAt` to now, which gives `Live` again, so no separate "recovered" code exists. `NotStarted` and `Ended` come from journey start and end, not from time. |
 
 **Tests** (`tests/Unit/LiveOperations`): `DelayTests` (8: R-01 to R-03 together), `SourcePriorityTests` (7), `StationZoneTests` (9), `TrackingFreshnessTests` (4).
-**Watch out:** these functions do not say *what a controller override does when GPS later contradicts it* (US-O3.3); that warning belongs to the journey, not to these functions. Another branch (`feature/live-journey`) was still open when this was written.
+**Watch out:** these functions do not say *what a controller override does when GPS later contradicts it* (US-O3.3); that warning belongs to the journey, not to these functions. The warning itself (US-O3.3) is not built yet.
+
+### 4.7 The live state inside `OperationalJourney` (R-01 to R-09, R-23, inference)
+Built on `feature/live-journey` (15 Oct) and merged. The aggregate now *uses* the rules of 4.6 and collects domain events. **It reads no clock, no database and no HTTP**: every time is passed in, and the slice that saves the journey does the rest.
+
+| Member | What it does |
+|---|---|
+| `RecordPosition(PositionSample, now)` | One position from the cab tablet. Event time from R-09 (`ClockCorrection.EventTime`: GPS time, else device time + the clock offset). Then R-08 (`PositionPlausibility.Check`: not newer than the last accepted, more than 500 m from the route, more than 120 km/h since the last one) → a `PositionVerdict`; a discarded position **changes nothing and raises nothing**. An accepted one makes tracking `Live`, then runs R-04 (`StationZone.Observe`) for every stop the slice gave a distance for. |
+| `RecordCrewTime(stationId, kind, occurredAt)` | A crew tap (source = Crew). An unknown station is an `ArgumentException`; the slice has already checked it is on the journey. |
+| `SetControllerDelay` / `ClearControllerDelay` | The controller override (R-05). Clearing **recalculates** from the most recent recorded stop time (R-01), and only goes to "on schedule" when no stop event exists: a reset to 0 would show a false "On time" (US-P4 ★). Neither bumps `controlVersion`, which does not exist yet (the decisions slice adds it). |
+| `RefreshTracking(now)` | R-06 (`Live` → `Stale` → `Lost` by the age of the last position) **and R-23** (the overdue delay). Must be called at least every 30 s by a background service (Phase 2), so lateness grows "within 1 minute" (US-P4 AC1 ★). |
+| `DomainEvents`, `ClearDomainEvents()` | The facts this journey announced since it was loaded: `StopStatusChanged`, `DelayChanged`, `DataFreshnessChanged` (domain model §8.2 names). The outbox interceptor (4.8) reads and then clears them. |
+| `JourneyStop.ExpectedArrival(delay)` / `ExpectedDeparture(delay)` | Computed on read, never stored: what happened wins, otherwise R-02 / R-03. |
+
+**State is stored as plain columns** (delay minutes + source, tracking, last position, and per stop: status, actual times and their sources, zone phase), not as value-object types, so EF Core maps it with **no configuration inside the Domain project**; the `Source`, `StopStatus`, `ZonePhase` and `TrackingStatus` enums are stored as **text** like the other enums. Migrations `LiveJourneyState` (the columns) and `JourneyLineId`. The values and their sources are exposed again as `CurrentDelay`, `ActualArrivalTime`, … (read-only, so EF ignores them).
+
+**The rules as they are wired (each was a decision by Senuja, 15 Oct):**
+| Rule | What the code does |
+|---|---|
+| R-01 | `Delay.Between` **truncates toward zero** (59 s early is "on time"). The domain model §5 says so. |
+| R-05 (clarified) | Source priority protects **the same stop's time** (`TimeWithSource.Resolve`): GPS cannot overwrite a crew tap at that stop. **The journey delay follows the most recent stop event whatever its source** (`SourcedDelay.Apply`); only a controller delay blocks it, until cleared. A late-delivered older event stores its stop time but does not pull the delay back (`FollowDelay`). Without this, one crew tap would freeze the delay for the rest of the trip. |
+| R-04 | `Arrived` is timed **when the train stopped** (the first slow sample in the zone), not when the 20 s were complete. A `Passed` stop records its passing time (source GPS) as both arrival and departure and **updates the delay** from it (express trains otherwise go up to 46 km without a delay update). |
+| R-04 inference | When a stop gets an actual time, every **earlier stop still Scheduled** is inferred **without a time and without touching the delay**: `Departed` if its call type is Stop (the origin too), `Passed` only if its call type is Pass. "Passed" at a scheduled stop would tell passengers the train did not stop there. `InferEarlierStops` also marks its zone finished, so later GPS noise cannot detect it again. Without it a missed GPS detection would leave R-23 measuring against a station the train has gone through, and the delay would grow forever. |
+| R-23 | `ExpectedTimes.OverdueDelay`: while a tracked journey has not arrived at or passed its next stop, the shown delay is the larger of the last known delay and (now − scheduled time at that stop), whole minutes toward zero. Stored with source `Schedule` (it is worked out from the timetable and the clock) and replaced by the next real stop time. A controller delay wins. A journey that was never started (`Tracking = NotStarted`) is **not** tracked and gets no overdue delay. |
+
+**Tests** (`tests/Unit/LiveOperations`): `OperationalJourneyLiveTests` (GPS and crew into stop times, status, delay, events; plausibility; clock correction; freshness), `StopSequenceTests` (inference and "the delay follows the latest event"), `OverdueDelayTests` (R-23, pure and in the journey), `PositionRulesTests` (R-08, R-09, haversine), plus the R-01 to R-06 tests of 4.6. A late tap for an inferred stop is covered (it keeps its time, not its status; R-20 will settle out-of-order taps).
+**Watch out:**
+- **R-07 is not checked here** (registered device, active cab session, assigned driver, Running journey): the position slice must, and the permission matrix and integration tests must prove it (threat T-19 now relies on it, plus R-08).
+- **Apps must show "Live information unavailable", never "On time", for a never-started journey** (to go into `shared/status-fixtures.json`).
+- **Anti-flicker (US-P4 AC2: a displayed delay changes only after two consecutive updates) is not in the aggregate**; it belongs to the position slice (Phase 2, to be agreed).
+- The journey has **no driver yet** (open point 9).
+
+### 4.8 The transactional outbox (`Outbox/`)
+**Why:** announcing a fact (architecture principles) must succeed or fail *together* with the state change, and a stream client must never hear about something that was not saved.
+
+```
+ slice: journey.RecordCrewTime(...)  ──►  journey.DomainEvents = [StopStatusChanged, DelayChanged, ...]
+ slice: db.SaveChanges()  ─►  OutboxInterceptor (SavingChanges): one OutboxEvents row per event, added to the SAME SaveChanges
+                          ─►  PostgreSQL transaction: journey rows + outbox rows commit together, or neither
+                          ─►  OutboxInterceptor (SavedChanges): journey.ClearDomainEvents()   (only after success)
+```
+
+| File | Role |
+|---|---|
+| `OutboxEvent.cs` | One row of `ops."OutboxEvents"`: identity `Id` (insertion order), `EventId`, `Type`, `OccurredAt` (the corrected event time), `CreatedAt` (TimeProvider), `JourneyId`, `Json` (jsonb: the full envelope **including source**), `Status` (`Pending`/`Dispatched`/`Failed`, text), `Attempts`, `Sequence` (null until dispatched; unique), `DispatchedAt`. |
+| `EventEnvelope.cs` | The envelope of domain model §8.1 (`eventId`, `type`, `version`, `occurredAt`, `journeyId`, `serviceDate`, `stationIds`, `lineId`, `source`, `payload`) and the three payload records of §8.2. `EventJson.Options` is the one set of JSON rules (camelCase, enums as names, null fields left out) used by the outbox, the stream and the examples. **`sequence` is not in the stored envelope**: it is given at dispatch. **`causedBy` is left out** until the decision endpoints exist (nothing here knows an actor or a request id). |
+| `EventMapper.cs` | Domain event → envelope. `stationIds`: `StopStatusChanged` its own station; `DelayChanged` and `DataFreshnessChanged` every remaining stop's station (Scheduled or Arrived), so every display downstream hears the new delay. `DelayChanged.stops[]` and `lastStationId` are worked out from the journey **as it is at save time**. `DataFreshnessChanged` has source `Gps` (it is about the age of GPS data). |
+| `OutboxInterceptor.cs` | An EF Core `SaveChangesInterceptor`, registered on `LiveOperationsDbContext`. Adds rows in `SavingChanges`, clears the aggregate's list in `SavedChanges`. |
+| Migration `OutboxEvents` | The table, its indexes and the `ops."EventSequence"` database sequence. |
+
+**Tests:** `EventMapperTests` (unit); `OutboxTests` (integration: rows written in the `ops` schema with TimeProvider times; the list is emptied only after success; **a failed save writes no rows and keeps the events**).
+**Watch out:** only journeys **tracked by the DbContext** are looked at (an `AsNoTracking` journey that is changed and saved announces nothing).
+
+### 4.9 The dispatcher (`Outbox/OutboxPump.cs`, `OutboxDispatcher.cs`)
+`OutboxDispatcher` is a `BackgroundService` registered **after** the start-up and generation services (so the schema exists). Every 250 ms (`Outbox:PollMilliseconds`) it calls `OutboxPump.DispatchBatchAsync`; a full batch (100) repeats at once. Every minute it calls `DeleteOldAsync`.
+
+| Behaviour | How, and why |
+|---|---|
+| Order and the **sequence** | Oldest `Pending` first (by identity `Id`). The sequence is taken from `ops."EventSequence"` **here, one row at a time**, not when the row is written: two transactions can commit in the opposite order to their start, and a client must never see sequence 10 before 9. A database sequence never goes back, even after old rows are deleted. |
+| Hand-over | `IEventPublisher.Publish(PublicEvent)` (the stream hub). The row is projected for the public stream first (`PublicProjection`); a type that is not public (none yet) is still marked dispatched, for a later staff stream. |
+| Marking | One `SaveChanges` per row. A crash between publishing and marking sends that row again after restart under a **new sequence**: **at-least-once**, which is why every event has an `eventId` that consumers ignore the second time. |
+| Failure | `Attempts` + 1, the sequence is taken back, the row stays `Pending`; at **5** attempts it becomes `Failed` (logged once as an error). Later rows are not blocked. |
+| Retention | `Dispatched` and `Failed` rows older than **24 h** are deleted (contract §4: resume works for 24 h). `Pending` rows are never deleted. |
+| Logs | **Ids, types and counts only; for an exception only its type name**, never its message or the payload (CLAUDE.md §6). A test checks it. |
+| **Real timers** | The wait between polls is a real `Task.Delay`, not `TimeProvider`: it is scheduling, not a business timestamp, and the tests' frozen clock would never wake it. **A deliberate exception to the TimeProvider rule** (agreed 16 Oct); every stored timestamp still comes from `TimeProvider`. The stream's heartbeat wait is the same exception. |
+
+**Tests:** `OutboxDispatcherTests`: dispatched within a second (limit 2 s), increasing sequences in insertion order, higher sequences for later events across journeys, **retry then give-up after 5 attempts while a healthy journey still flows** (a `FaultInjectingPublisher` in the *test* project stands in front of the hub), logs hold ids only, 24 h deletion.
+**Watch out:** **one dispatcher instance** is assumed (the monolith runs once). The unique index on `Sequence` would stop two instances from corrupting the stream, but they would also compete for rows; scaling out needs a lock (`FOR UPDATE SKIP LOCKED`) and a shared fan-out (architecture Q8).
+
+### 4.10 The public stream: `GET /api/v1/stream` (`Stream/` and `Features/StreamEvents/`)
+Contract §4, **policy Public**: the endpoint says `AllowAnonymous()` itself, because default-deny is on for the whole application (`PermissionMatrixTests` has a row for every role).
+
+```
+ client ──GET /stream?journeyIds=..&stationIds=..&lineIds=..  [Last-Event-ID: n]──►  StreamEndpoint (validate → 400 or run)
+   StreamHandler: 1 subscribe to the hub   2 read newest dispatched sequence   3 snapshot / replay / resync   4 live events + heartbeat
+   dispatcher ──► PublicProjection (allow-list) ──► StreamHub ──► every matching Subscription (its own buffer) ──► the open response
+```
+
+| File | Role |
+|---|---|
+| `Stream/PublicEvent.cs`, `PublicProjection.cs` | **T-07.** The public event is the envelope **without `source`** (and without `causedBy`) plus the sequence. `PublicProjection` is an **allow-list**: only event types and payload fields named there are ever sent (`PublicEventTypes` is what the examples test enumerates), so a field added to an event later stays private until someone decides otherwise. |
+| `Stream/StreamHub.cs` | `StreamFilter` (an event matches if it matches **any** of the three lists: a client lists everything it cares about, one connection), `Subscription` (a bounded channel of 1000), `StreamHub` (singleton fan-out). A subscriber whose buffer is full is **cut off** (`SubscriberTooSlowException`) and resumes with `Last-Event-ID`: it must neither block the dispatcher nor grow memory without limit. |
+| `StreamRequest.cs` | Parses the three comma-separated GUID lists (max **50** ids each, bounding the snapshot query, T-10) and `Last-Event-ID`. **At least one filter is required** (else `400 VALIDATION_FAILED`, errors per field), so nobody can ask for the whole network. A bad id is not echoed back. |
+| `ResumeDecision.cs` | `Fresh` (no id), `Resume` (id within what the log keeps, or the one just before the oldest), `Resync` (anything else). Sequences have gaps, so the log cannot prove nothing was deleted; the safe rule is: a false "resync" costs one snapshot reload, a false "resume" would lose events silently. |
+| `SnapshotReader.cs` | One `snapshot` per matching journey: delay, tracking, last seen, last position, and per stop its status, actual and expected times. **Public fields only.** By id (any date), or today's journeys (and yesterday's still running past midnight, E-12) that call at a named station or run on a named line. `sequence` = the stream position the snapshot is current to. |
+| `StreamHandler.cs` | The order above. **Subscribing first** is what makes "nothing is lost between the snapshot and the live part"; events at or below the snapshot's sequence are skipped; one that is in both is harmless because events say "the value is now X". Heartbeat: a comment line `: keep-alive` every 15 s (`Stream:HeartbeatSeconds`), via a real timer. Headers: `text/event-stream`, `Cache-Control: no-store`, `X-Accel-Buffering: no`, buffering off. |
+| `SseFormat.cs` | The text of a frame. **A line break in the type or data is refused** (it would end the frame and let content pose as another field). The response is **written by hand** (`StreamHandler.WriteAsync`) rather than with the built-in `TypedResults.ServerSentEvents`, which cannot write the comment line the contract requires for the heartbeat. |
+
+**What a client receives:** `snapshot` (id = its sequence) for each journey; then `StopStatusChanged`, `DelayChanged`, `DataFreshnessChanged` with `id: <sequence>`; `resync` (no id) when it cannot be caught up, followed by snapshots; comment lines as heartbeat. After a disconnect the client sends `Last-Event-ID` and gets only what it missed.
+**Tests:** unit `StreamRequestTests`, `StreamHubTests`, `PublicProjectionTests`; integration `StreamTests` (400s; headers; the snapshot and what it reflects; station and line filters; live events with increasing ids; **no source, staff or session data on the wire**; another journey's events not delivered; replay without a snapshot; nothing repeated; resync; heartbeat; fields equal the shared examples) and `StreamLatencyTests` (below).
+**Gate G2 / SM-3:** `StreamLatencyTests` loads a **real generated journey**, changes it through the aggregate, saves, and times how long a connected client waits for the event: **about 0.25 s** measured, limit 5 s. **No application endpoint is involved** (none is added for a test).
+
+### 4.11 `shared/events/` — one example per stream event (CLAUDE.md §5, step 5)
+`StopStatusChanged.json`, `DelayChanged.json`, `DataFreshnessChanged.json` (what is in `data:` of the frame), `snapshot.json`, `resync.json`. `EventExamplesTests` (a) parses every example into the real types, (b) fails if a public event type has no example, (c) checks the examples show no staff fields, and (d) compares the **shape** (every property path and its kind: guid, date-time, date, string, number…) of each example with what the backend really serialises; `StreamTests` also compares the fields of frames on the wire. The check was shown able to fail by deleting a field from an example. **Change the example in the same commit as the event.** The web and Flutter tests parse the same files.
+
+### 4.12 Design decisions of this round (one line each)
+| Decision | Reason |
+|---|---|
+| Outbox, dispatcher, hub and endpoint live **inside LiveOperations** (CLAUDE.md §9 changed) | It is the only event producer; Api would have had to read `ops` tables (forbidden). Api only calls `MapLiveOperationsEndpoints()` |
+| Rows written by an EF `SaveChangesInterceptor`, cleared after success | Same transaction for free, no change to any slice, and a failed save loses no event |
+| Sequence given at dispatch, from a database sequence | Commit order can differ from start order; the single dispatcher sends in order |
+| Stored envelope keeps `source`; the public one is built from an allow-list | The staff stream will need it later; T-07 can never be broken by adding a field |
+| One table is both outbox and 24 h replay log | No second store; resume reads the same rows |
+| Filters are alternatives (OR) | One connection can follow saved trips and a home station |
+| `snapshot` is an SSE event of its own, sent on connect and after `resync` | The public journey endpoints do not exist yet, and a client needs one consistent way to start |
+| Slow client cut off, not buffered | Protects the dispatcher and memory; resume repairs it |
+| Test-only fault injection lives in the test project | "No test-only endpoints in the application" |
+| `LineId` added to `ScheduledService` and the journey | The envelope needs it (`lineId`); Network answers route → line |
+
+### 4.13 How a second event producer joins later (Disruptions)
+CLAUDE.md §9 used to put "SSE, outbox dispatcher" in `SmartRail.Api`; it now says they live in LiveOperations. When **Disruptions** needs to announce something (announcements, US-O9), it must **publish through a small public LiveOperations interface** (Disruptions → LiveOperations is an allowed dependency; the reverse is not), so **all events share one table and one sequence and `Last-Event-ID` resume keeps working** for every client. To be designed with US-O9: the interface (roughly "announce this event for these stations"), and how the write stays in the **same transaction** as Disruptions' own state change (two `DbContext`s in one database: pass the transaction, or write both through one connection). If a producer ever has to live outside LiveOperations, the hub and endpoint move to Api behind an `IEventPublisher`-style interface.
 
 ## 5. The Identity module (`SmartRail.Identity`)
 
@@ -331,11 +441,13 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | `tests/Integration` → `OpenApiDocumentTests` | The running application's `/openapi/v1.yaml` equals the committed `backend/openapi.yaml`. An API change that is not reflected in the file fails the build (and CI). | Docker |
 | `tests/Unit/Identity` | The access token (15 min, claims incl. the cab claims, no personal data), the refresh token (30 min, only the hash is stored, usable once, the 10 s replay rule, the fixed 12 h crew end and `Next`), the clock offset (R-09: sign, ±24 h limit), the staff / cab-device seed rules (incl. an unknown train set) | Nothing |
 | `tests/Integration/Identity` | Seeding (8 accounts, no guard, station IDs, hashed passwords and device secrets, restart, missing secrets and an **unknown train set** stop the start); **staff sign-in**; **crew phone sign-in** (body tokens, fixed 12 h, no cab session, staff refused); **cab sign-in** (claims and stored offset, every credential problem the same generic 401, a bad tablet never locks a driver, headers and offset limit, R-19 per driver and per tablet, racing sign-ins, **no secret in any log line**); **refresh** (rotation, grace window, 30 min idle, sliding, crew body tokens, the fixed shift, each token only from its own place, cab refresh keeps its claims, deactivated device / driver); **the cab session checked on every request**; **sign-out** (cookie and body, ends the cab session); **timing** (one password check for an unknown number); **`/staff/me` and tokens** (expired, forged, unsigned, wrong issuer or audience, fallback policy, a positive control); `PolicyTests` (every policy × role incl. `CrewCab`) | **Docker running** |
+| `tests/Unit/LiveOperations` (live) | The live rules in the aggregate (`OperationalJourneyLiveTests`, `StopSequenceTests`, `OverdueDelayTests`, `PositionRulesTests`), the outbox mapping (`Outbox/EventMapperTests`), the public projection, filter, hub, request parsing, resume decision and SSE framing (`Stream/*`), and **the shared event examples against the real shapes** (`Stream/EventExamplesTests`) | Nothing; the examples test reads `shared/events` |
+| `tests/Integration/LiveOperations` | `OutboxTests` (rows in the same save; none on a failed save), `OutboxDispatcherTests` (order, sequence, retry and give-up, logs, retention), `StreamTests` (the public stream end to end), `StreamLatencyTests` (**G2**), plus the `/stream` rows of the permission matrix | **Docker running** |
 | `tests/Contract` | (empty so far) | |
 
 **Token tests must be able to fail.** On 15 Oct each check was broken on purpose (staff policy, fallback policy, signature, expiry, audience, issuer) and the matching test turned red every time, then the code was restored. Doing it exposed that the first forged-token tests could not fail: a forged token without `iat` / `nbf` gets the machine's real clock, which is a day ahead of the fixture's fake clock, so it was refused as "not valid yet" whatever the check did. The `Forge` helper now sets both, and the control test guards against it. On the same day the crew and cab tests were put through it: the device secret written to the log, an older session not ended, a deactivated device accepted, the session check removed, the 12-hour shift sliding. Each turned the matching tests red. Repeat the exercise when a check changes.
 
-`ApiFixture` starts one PostgreSQL container and one copy of the application for all integration tests. The application's clock is a `FakeTimeProvider` fixed at **Wednesday 14 Oct 2026, 10:00 in Colombo**, so "today and the next 2 days" are three weekdays and the expected counts never depend on the real date. The journey tests read the tables with plain SQL, so they do not depend on the module's internals. Run everything: `dotnet test backend/SmartRail.sln`.
+`ApiFixture` starts one PostgreSQL container and one copy of the application for all integration tests. The application's clock is a `FakeTimeProvider` fixed at **Wednesday 14 Oct 2026, 10:00 in Colombo**, so "today and the next 2 days" are three weekdays and the expected counts never depend on the real date. The journey tests read the tables with plain SQL, so they do not depend on the module's internals. Since 16 Oct the fixture also sets `Stream:HeartbeatSeconds` to 1 (the real default is 15), puts a `FaultInjectingPublisher` in front of the stream hub (a test can make one journey's hand-over fail) and captures the `OutboxPump` log. A test that needs a journey of its own makes one with `TestJourney` (the journey tables hold no foreign keys to Network, so stations can be made up); `SseClient` reads a stream the way the real clients do. **The permission matrix reads response headers only** (an open stream never ends). Run everything: `dotnet test backend/SmartRail.sln`.
 **After changing an endpoint:** run the tests once with `UPDATE_OPENAPI=1` (PowerShell: `$env:UPDATE_OPENAPI="1"; dotnet test backend/SmartRail.sln; Remove-Item Env:UPDATE_OPENAPI`) to rewrite `backend/openapi.yaml`, then read `git diff backend/openapi.yaml` and compare it with the contract (CLAUDE.md §5.3).
 `PermissionMatrixTests` holds one row per endpoint and role (Anonymous, Controller, StationManager, Driver = a crew **phone** token, DriverCab = a **cab session** token; every token comes from a real sign-in). Passenger, Display and Provider rows are added when those credentials exist. The tests make their own JWT signing key, demo password and cab-device secrets (`ApiFixture`), so nothing secret is committed and CI needs no user-secrets. A test that needs time to pass (token expiry, idle limit) starts its own copy of the application with its own `FakeTimeProvider`.
 
@@ -352,6 +464,7 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
    Without them the application refuses to start and prints the exact command for the missing one.
 4. `dotnet run --project backend/src/SmartRail.Api` — in Development it migrates and seeds, then serves `/api/v1/stations?query=kan`. Sign in as `CTRL-01` (controller) or `SM-FOT`, `SM-PLG`, `SM-KDT` (station managers) with the demo password; drivers `DRV-01` to `DRV-04` cannot sign in on the staff endpoint: they use `POST /auth/crew/sign-in` (phone) or `POST /auth/crew/cab-sign-in` with the headers `X-Device-Id: CAB-01` and `X-Device-Secret: <the secret you set for CAB-01>` (cab). Crew apps keep the refresh token from the response body and send it as `{"refreshToken": "…"}` to `/auth/refresh` and `/auth/sign-out`.
 
+5. Optional settings (the value in brackets is the default): `Outbox:PollMilliseconds` (250) is how often saved events are looked for; `Stream:HeartbeatSeconds` (15) is the pause before an idle stream gets a comment line.
 ---
 
 ## 8. Open points
@@ -379,11 +492,21 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 19 | Contract §3.3 says `/staff/me` returns "scope" without a shape; it returns `{name, role, stationId}` (`stationId` null = whole line). `openapi.yaml` cannot describe the refresh `Set-Cookie` header | Confirm the shape with the ops web |
 | 20 | A cab device whose `trainSetCode` is not in the network | **Done (15 Oct):** the seed stops the start and names both |
 | 21 | `IdentityUserContext` creates three empty tables (`AspNetUserClaims`, `…Logins`, `…Tokens`) | Leave: they are part of the documented setup |
-| 22 | **End journey does not end the cab session yet.** The cab app calls sign-out after "End journey" for now. When LiveOperations has journeys that end, `JourneyEnded` (through the outbox) should end the session so the app's help is not needed | Later, with the outbox |
+| 22 | **End journey does not end the cab session yet.** The cab app calls sign-out after "End journey" for now. When LiveOperations has journeys that end, `JourneyEnded` (through the outbox) should end the session so the app's help is not needed | The outbox exists since 16 Oct, but nothing raises `JourneyEnded` yet; do it with the Start / End endpoints (Phase 2) |
 | 23 | The clock offset ignores the network delay of the one sign-in request (milliseconds to a second or two) | Fine for minute-level delays (R-01) |
 | 24 | A **phone** sign-in has no session record, so there is no list of "devices signed in" for a driver and no way to end one remotely except by deactivating the account | Fine for the MVP |
 | 25 | Two cab sign-ins racing each other: the loser gets `409` and the app must retry | Mention in the cab app's sign-in screen |
 
+| 26 | **Journeys generated before the `JourneyLineId` migration have an empty `LineId`**, so a `lineIds` filter never matches them (and their events carry an empty line). Generation never changes an existing journey (A-17) | Reset the development database, or backfill; no production data exists yet |
+| 27 | **One dispatcher instance is assumed** (4.9) | Add a row lock and a shared fan-out before running two instances (architecture Q8) |
+| 28 | **No cap on SSE connections per IP yet** (threat T-10, planned 17 Oct). A request is limited to 50 ids per list and one slow client is cut off, nothing more | Add with the other rate limits |
+| 29 | **Contract §4 differences (not edited, for you to decide):** the contract names no `snapshot` event, but the stream sends one on connect and after `resync` (it says the client reloads its own snapshot, and the public journey endpoints do not exist yet); a request with **no filter** is a `400`; each list holds at most 50 ids; filters are alternatives (OR); `ops/stream` and `crew/stream` are not built | Confirm, then update §4 of the contract |
+| 30 | `causedBy` (actor, incident, request id) is **not in the envelope yet**: events from positions have no actor, and the interceptor must not depend on HTTP | Add with the decision endpoints (it is staff-only anyway) |
+| 31 | A snapshot by station or line covers **today's** journeys and yesterday's that are still running (E-12); a journey asked for by id is returned whatever its date | Fine for the MVP |
+| 32 | **A resume is refused (resync) more often than strictly needed** when sequence numbers have gaps (a failed dispatch uses one up) | Deliberate: a false resync costs one snapshot, a false resume would lose events |
+| 33 | **CabSignInTests** `A_deactivated_device_is_the_generic_401_…` asserted *zero* active sessions for DRV-04, which only held when it ran before the tests that leave one; the full suite failed on this branch for that reason alone | **Fixed 16 Oct** (before / after comparison, like the clock-offset test next to it); revert it if you disagree |
+| 34 | CLAUDE.md §3 and §4 still describe R-01 as "rounded down" and R-05 as the old rule | Ask Senuja to update them (the domain model §5 is already correct) |
+| 35 | `Stream/PublicProjection` lists three event types; every later event (JourneyStarted, TrainPositionUpdated, …) needs an allow-list entry **and** an example in `shared/events` in the same commit | A test fails if the example is missing |
 ---
 
 ## 9. Change log
@@ -398,3 +521,6 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 15 Oct 2026 | **Crew phone and cab sign-in (US-C1, US-C2, R-09, R-19):** `POST /auth/crew/sign-in`, `POST /auth/crew/cab-sign-in`; `CabSession` (Identity owns it, D-14) with database-enforced one-active-per-driver-and-per-tablet; `ClockOffset`; the cab session checked on every request (`CabSessionCheck`); refresh and sign-out accept the token in the body for crew and the cookie for staff, crew sessions end a fixed 12 h after sign-in, a cab refresh checks session and device; policy `CrewCab`; shared `CredentialCheck` and `PasswordSignInValidator` (`StaffSignInRequest` became `PasswordSignInRequest`); the seed validates cab devices' `trainSetCode` against Network; migration `CabSessions`; matrix role `DriverCab`; contract C-10 / C-11 (`DEVICE_NOT_REGISTERED` removed), domain model D-14. **The driver is not filled on journeys** (waiting for the `feature/live-journey` merge) |
 | 14 Oct 2026 | Scope change, guard role deferred: guard accounts removed from `staff.json`, `guardStaffNumber` removed from `service-assignments.json` (the loader ignores that field, so no code change except a comment in `ServiceAssignments.cs`) |
 | 13 Oct 2026 | `openapi.yaml`: served at `/openapi/v1.yaml` and checked by `OpenApiDocumentTests`; removed `Microsoft.Extensions.ApiDescription.Server` and the build-time workaround |
+| 16 Oct 2026 | **Outbox and stream (Phase 1):** `LineId` on `ScheduledService` and the journey (migration `JourneyLineId`); `OutboxEvent`, `EventEnvelope`, `EventMapper`, `OutboxInterceptor` (migration `OutboxEvents`, the `EventSequence` sequence); `OutboxPump` and `OutboxDispatcher`; `PublicProjection`, `StreamHub`, `StreamHandler`, `SnapshotReader`, `GET /api/v1/stream` (Public; snapshot, resume, resync, heartbeat); `shared/events/*.json` and their tests; G2 latency test; permission-matrix rows; `openapi.yaml` regenerated; CLAUDE.md §9 changed (the outbox, dispatcher and stream live in LiveOperations); real timers for the poll and heartbeat as a deliberate exception to the TimeProvider rule |
+| 16 Oct 2026 | **Domain (documented now):** the live state in `OperationalJourney` (4.7): R-08, R-09, R-23, inference of earlier stops, R-05 clarified, passed stops recorded; `LiveJourneyState` migration (enums as text) |
+

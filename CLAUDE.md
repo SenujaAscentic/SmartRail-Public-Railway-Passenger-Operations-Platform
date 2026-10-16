@@ -90,8 +90,9 @@ The concepts in the docs are fixed: modular monolith, module schemas and public 
 
 ```
 docs/                     specs (read-only for agents unless asked)
-backend/src/              SmartRail.Api (host, auth, SSE, outbox dispatcher)
+backend/src/              SmartRail.Api (host, auth)
                           SmartRail.LiveOperations.Domain, SmartRail.LiveOperations
+                            (journeys, outbox, dispatcher, the public SSE stream; changed 16 Oct: see below)
                           SmartRail.Disruptions.Domain, SmartRail.Disruptions
                           SmartRail.Network, .Identity, .Notifications, .CateringIntegration
                           SmartRail.Simulator
@@ -102,3 +103,5 @@ web/apps/{ops-web,station-display}, web/packages/{ui,api-client,tokens}
 shared/                   tokens.json, status-fixtures.json, events/, seed/
 e2e/                      Playwright flows
 ```
+
+**Where the outbox and the stream live (changed 16 Oct 2026).** The outbox table, the dispatcher, the stream hub and `GET /stream` are in `SmartRail.LiveOperations`, not in `SmartRail.Api`: LiveOperations is the only event producer for now, and the Api must not read another module's tables. The Api only calls `MapLiveOperationsEndpoints()`. When Disruptions needs to announce something (US-O9) it publishes **through a small public LiveOperations interface** (Disruptions → LiveOperations is an allowed dependency), so all events share one sequence and `Last-Event-ID` resume keeps working. Deliberate exception to the `TimeProvider` rule: the dispatcher's poll wait and the stream's heartbeat wait use real timers (scheduling, not business time); every stored timestamp still comes from `TimeProvider`.
