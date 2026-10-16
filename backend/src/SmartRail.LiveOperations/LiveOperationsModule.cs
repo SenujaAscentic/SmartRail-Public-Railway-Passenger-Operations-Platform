@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
 using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Persistence;
+using SmartRail.LiveOperations.Stream;
 using SmartRail.Network;
 
 namespace SmartRail.LiveOperations;
@@ -34,8 +35,15 @@ public static class LiveOperationsModule
             provider.GetRequiredService<TimeProvider>(), TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId)));
         services.AddScoped<GenerateJourneysHandler>();
 
+        // The outbox reaches the clients through the stream hub (one fan-out for the whole application).
+        services.AddSingleton(new OutboxSettings(TimeSpan.FromMilliseconds(configuration.GetValue("Outbox:PollMilliseconds", 250))));
+        services.AddSingleton<StreamHub>();
+        services.AddSingleton<IEventPublisher>(provider => provider.GetRequiredService<StreamHub>());
+        services.AddSingleton<OutboxPump>();
+
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
         services.AddHostedService<JourneyGenerationService>();       // then generates now and every hour
+        services.AddHostedService<OutboxDispatcher>();               // sends saved events to the stream
 
         return services;
     }

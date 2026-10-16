@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using SmartRail.IntegrationTests.LiveOperations;
+using SmartRail.LiveOperations.Stream;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -29,6 +32,9 @@ public sealed class ApiFixture : IAsyncLifetime
 
     public string ConnectionString => _database.GetConnectionString();
 
+    // What the outbox dispatcher logs, for the tests that check it writes ids only.
+    public LogCapture OutboxLog { get; } = new("OutboxPump", Microsoft.Extensions.Logging.LogLevel.Information);
+
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
@@ -43,7 +49,13 @@ public sealed class ApiFixture : IAsyncLifetime
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
-            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Clock));
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddSingleton<TimeProvider>(Clock);
+                // A test can make the hand-over of one journey's events fail (see FaultInjectingPublisher).
+                services.AddSingleton<IEventPublisher>(provider => new FaultInjectingPublisher(provider.GetRequiredService<StreamHub>()));
+            });
+            builder.ConfigureLogging(logging => logging.AddProvider(OutboxLog));
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 var settings = new Dictionary<string, string?>
