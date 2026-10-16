@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
+using SmartRail.LiveOperations.Features.StreamEvents;
 using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Persistence;
 using SmartRail.LiveOperations.Stream;
@@ -14,7 +16,7 @@ namespace SmartRail.LiveOperations;
 public static class LiveOperationsModule
 {
     // Service dates and offsets are local times in Sri Lanka (CLAUDE.md: store and send UTC, convert once).
-    private const string TimeZoneId = "Asia/Colombo";
+    internal const string TimeZoneId = "Asia/Colombo";
 
     // Call this AFTER AddNetworkModule: hosted services start in the order they are registered, and the start-up
     // check below needs the network seed to be loaded first.
@@ -36,16 +38,29 @@ public static class LiveOperationsModule
         services.AddScoped<GenerateJourneysHandler>();
 
         // The outbox reaches the clients through the stream hub (one fan-out for the whole application).
-        services.AddSingleton(new OutboxSettings(TimeSpan.FromMilliseconds(configuration.GetValue("Outbox:PollMilliseconds", 250))));
+        // Read when first needed, not now: the host (and the tests) add settings after this method has run.
+        services.AddSingleton(provider => new OutboxSettings(
+            TimeSpan.FromMilliseconds(provider.GetRequiredService<IConfiguration>().GetValue("Outbox:PollMilliseconds", 250))));
         services.AddSingleton<StreamHub>();
         services.AddSingleton<IEventPublisher>(provider => provider.GetRequiredService<StreamHub>());
         services.AddSingleton<OutboxPump>();
+        services.AddSingleton(provider => new StreamSettings(
+            TimeSpan.FromSeconds(provider.GetRequiredService<IConfiguration>().GetValue("Stream:HeartbeatSeconds", 15))));
+        services.AddScoped<SnapshotReader>();
+        services.AddScoped<StreamHandler>();
 
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
         services.AddHostedService<JourneyGenerationService>();       // then generates now and every hour
         services.AddHostedService<OutboxDispatcher>();               // sends saved events to the stream
 
         return services;
+    }
+
+    // The host decides the URL prefix (/api/v1) and passes the group in.
+    public static IEndpointRouteBuilder MapLiveOperationsEndpoints(this IEndpointRouteBuilder routes)
+    {
+        StreamEndpoint.Map(routes);
+        return routes;
     }
 }
 

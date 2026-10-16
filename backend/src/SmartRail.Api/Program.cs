@@ -91,6 +91,7 @@ app.UseAuthorization();
 // Every endpoint lives under /api/v1 (contract section 1).
 var api = app.MapGroup("/api/v1");
 api.MapNetworkEndpoints();
+api.MapLiveOperationsEndpoints();
 api.MapIdentityEndpoints();
 
 app.Run();

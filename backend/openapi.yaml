@@ -29,6 +29,34 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/stream:
+    get:
+      tags:
+        - LiveOperations
+      summary: 'Public event stream (Server-Sent Events). Give at least one of journeyIds, stationIds, lineIds (comma-separated GUIDs); send Last-Event-ID to resume.'
+      operationId: StreamEvents
+      parameters:
+        - name: journeyIds
+          in: query
+          schema:
+            type: string
+        - name: stationIds
+          in: query
+          schema:
+            type: string
+        - name: lineIds
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -381,4 +409,5 @@ components:
       bearerFormat: JWT
 tags:
   - name: Network
+  - name: LiveOperations
   - name: Identity

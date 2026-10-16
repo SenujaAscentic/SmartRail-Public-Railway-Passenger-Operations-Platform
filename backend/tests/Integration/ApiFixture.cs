@@ -63,6 +63,7 @@ public sealed class ApiFixture : IAsyncLifetime
                     ["ConnectionStrings:SmartRail"] = _database.GetConnectionString(),
                     ["Jwt:SigningKey"] = JwtSigningKey,
                     ["Seed:DemoPassword"] = DemoPassword,
+                    ["Stream:HeartbeatSeconds"] = "1",   // the real default is 15 s; a test should not wait that long
                 };
                 foreach (var (id, secret) in CabDeviceSecrets)
                 {

@@ -64,6 +64,20 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "GET", "/api/v1/staff/me", HttpStatusCode.OK },
         { "Driver", "GET", "/api/v1/staff/me", HttpStatusCode.Forbidden },
         { "DriverCab", "GET", "/api/v1/staff/me", HttpStatusCode.Forbidden },
+
+        // GET /stream: Public. Default-deny is on, so the endpoint must say AllowAnonymous itself: Anonymous getting 200 proves it.
+        // With a filter (a journey that does not exist: nothing to show yet) the stream opens for every role.
+        // Without any filter every role gets 400 (past the policy, refused by validation).
+        { "Anonymous", "GET", "/api/v1/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "Controller", "GET", "/api/v1/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "StationManager", "GET", "/api/v1/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "Driver", "GET", "/api/v1/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "DriverCab", "GET", "/api/v1/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "Anonymous", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
+        { "Controller", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
+        { "StationManager", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
+        { "Driver", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
+        { "DriverCab", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
     };
 
     [Theory]
@@ -82,7 +96,8 @@ public class PermissionMatrixTests(ApiFixture api)
             request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
         }
 
-        var response = await client.SendAsync(request, Ct);
+        // Headers only: an open event stream never ends, so the body must not be waited for. Disposing ends the request.
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, Ct);
 
         Assert.Equal(expected, response.StatusCode);
     }
