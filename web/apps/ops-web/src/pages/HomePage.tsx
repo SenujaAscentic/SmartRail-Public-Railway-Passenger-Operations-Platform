@@ -1,8 +1,9 @@
+// Where a signed-in person lands.
 export function HomePage() {
   return (
     <>
       <h1>SmartRail Operations</h1>
-      <p>Staff only. Sign-in comes next.</p>
+      <p>You are signed in.</p>
     </>
   );
 }

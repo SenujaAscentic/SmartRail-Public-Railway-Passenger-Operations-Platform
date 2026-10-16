@@ -4,6 +4,8 @@ import type { paths } from "./schema";
 // The generated description of the API: `paths` (every URL and its request and response) and `components` (named schemas).
 // Apps take their types from here, e.g. components["schemas"]["AccessTokenResponse"].
 export type { components, paths } from "./schema";
+// For apps that add middleware to the client (for example the ops web puts the Bearer token on every request).
+export type { Middleware } from "openapi-fetch";
 
 export interface ApiClientOptions {
   // "" (the default) means the same origin as the page. In development the Vite dev server proxies /api to the backend,

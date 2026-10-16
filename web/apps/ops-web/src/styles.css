@@ -109,6 +109,63 @@ input {
   width: 100%;
 }
 
+.icon {
+  flex: none;
+  margin-top: 0.2em;
+}
+
+/* Messages: icon + words + border, colours from the status tokens (never colour alone). */
+.message,
+.field-error {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid currentColor;
+  border-radius: var(--radius-md);
+}
+
+.message-error,
+.field-error {
+  color: var(--status-cancelled-fg);
+  background: var(--status-cancelled-bg);
+}
+
+.message-notice {
+  color: var(--status-scheduled-fg);
+  background: var(--status-scheduled-bg);
+}
+
+.field-error {
+  margin: var(--space-xs) 0 0;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.form {
+  max-width: 24rem;
+}
+
+.field {
+  margin-bottom: var(--space-md);
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--status-cancelled-fg);
+}
+
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .skip-link {
     transition: top var(--motion-duration) ease-out;
