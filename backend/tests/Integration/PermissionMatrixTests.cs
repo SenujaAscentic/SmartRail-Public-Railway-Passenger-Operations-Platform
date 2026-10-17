@@ -90,6 +90,19 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
         { "Driver", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
         { "DriverCab", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+
+        // GET /journeys/search and GET /journeys/{id}: Public. No parameters is 400 and an unknown journey is 404 for every role
+        // (never 401 or 403: the endpoints are public, so a request that gets past the policy shows it).
+        { "Anonymous", "GET", "/api/v1/journeys/search", HttpStatusCode.BadRequest },
+        { "Controller", "GET", "/api/v1/journeys/search", HttpStatusCode.BadRequest },
+        { "StationManager", "GET", "/api/v1/journeys/search", HttpStatusCode.BadRequest },
+        { "Driver", "GET", "/api/v1/journeys/search", HttpStatusCode.BadRequest },
+        { "DriverCab", "GET", "/api/v1/journeys/search", HttpStatusCode.BadRequest },
+        { "Anonymous", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "Controller", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "StationManager", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "Driver", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "DriverCab", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
     };
 
     [Theory]

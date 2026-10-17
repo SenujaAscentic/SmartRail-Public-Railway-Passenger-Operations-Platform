@@ -30,6 +30,9 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("ControlVersion")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DelayMinutes")
                         .HasColumnType("integer");
 

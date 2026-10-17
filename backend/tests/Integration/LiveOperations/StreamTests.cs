@@ -12,8 +12,13 @@ namespace SmartRail.IntegrationTests.LiveOperations;
 // GET /api/v1/stream (contract section 4): the public event stream. Snapshot on connect, live events, Last-Event-ID resume,
 // heartbeat, and the public projection (threat T-07).
 [Collection("Api")]
-public class StreamTests(ApiFixture api)
+public class StreamTests(ApiFixture api) : IAsyncLifetime
 {
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+    // The journeys this class made are removed again (see JourneyCleanup).
+    public async ValueTask DisposeAsync() => await JourneyCleanup.RemoveAllAsync(api.ConnectionString);
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(5);
 

@@ -95,6 +95,78 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/journeys/search:
+    get:
+      tags:
+        - LiveOperations
+      summary: Direct journeys between two stations on a date. Past departures are hidden; cancelled journeys are included with their status.
+      operationId: SearchJourneys
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+        - name: after
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JourneySummaryResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/journeys/{journeyId}':
+    get:
+      tags:
+        - LiveOperations
+      operationId: GetJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -348,6 +420,319 @@ components:
         serverTime:
           type: string
           format: date-time
+    CoachResponse:
+      required:
+        - position
+        - class
+        - seating
+      type: object
+      properties:
+        position:
+          type: integer
+          format: int32
+        class:
+          type: string
+        seating:
+          type: string
+    JourneyDetailFreshnessResponse:
+      required:
+        - tracking
+        - updatedAt
+        - lastPosition
+      type: object
+      properties:
+        tracking:
+          type: string
+        updatedAt:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        lastPosition:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/PositionResponse'
+    JourneyDetailResponse:
+      required:
+        - journeyId
+        - serviceNumber
+        - name
+        - trainType
+        - serviceDate
+        - status
+        - from
+        - to
+        - freshness
+        - hold
+        - reason
+        - version
+        - stops
+        - trainSet
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceNumber:
+          type: string
+        name:
+          type: string
+        trainType:
+          type: string
+        serviceDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/JourneyStatusResponse'
+        from:
+          $ref: '#/components/schemas/JourneyFromResponse'
+        to:
+          $ref: '#/components/schemas/JourneyToResponse'
+        freshness:
+          $ref: '#/components/schemas/JourneyDetailFreshnessResponse'
+        hold:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyHoldResponse'
+        reason:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyReasonResponse'
+        version:
+          type: integer
+          format: int32
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/JourneyStopResponse'
+        trainSet:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/TrainSetResponse'
+    JourneyFreshnessResponse:
+      required:
+        - tracking
+        - updatedAt
+      type: object
+      properties:
+        tracking:
+          type: string
+        updatedAt:
+          type:
+            - 'null'
+            - string
+          format: date-time
+    JourneyFromResponse:
+      required:
+        - stationId
+        - name
+        - scheduledDeparture
+        - expectedDeparture
+        - platform
+        - previousPlatform
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scheduledDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        platform:
+          type: string
+        previousPlatform:
+          type:
+            - 'null'
+            - string
+    JourneyHoldResponse:
+      required:
+        - stationId
+        - minutes
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        minutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+    JourneyReasonResponse:
+      required:
+        - code
+        - note
+      type: object
+      properties:
+        code:
+          type: string
+        note:
+          type:
+            - 'null'
+            - string
+    JourneyStatusResponse:
+      required:
+        - kind
+        - delayMinutes
+      type: object
+      properties:
+        kind:
+          type: string
+        delayMinutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+    JourneyStopResponse:
+      required:
+        - sequence
+        - stationId
+        - name
+        - callType
+        - status
+        - isAdded
+        - scheduledArrival
+        - expectedArrival
+        - actualArrival
+        - scheduledDeparture
+        - expectedDeparture
+        - actualDeparture
+        - plannedPlatform
+        - platform
+        - previousPlatform
+      type: object
+      properties:
+        sequence:
+          type: integer
+          format: int32
+        stationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        callType:
+          type: string
+        status:
+          type: string
+        isAdded:
+          type: boolean
+        scheduledArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        actualArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        scheduledDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        actualDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        plannedPlatform:
+          type: string
+        platform:
+          type: string
+        previousPlatform:
+          type:
+            - 'null'
+            - string
+    JourneySummaryResponse:
+      required:
+        - journeyId
+        - serviceNumber
+        - name
+        - trainType
+        - serviceDate
+        - status
+        - from
+        - to
+        - freshness
+        - hold
+        - reason
+        - version
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceNumber:
+          type: string
+        name:
+          type: string
+        trainType:
+          type: string
+        serviceDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/JourneyStatusResponse'
+        from:
+          $ref: '#/components/schemas/JourneyFromResponse'
+        to:
+          $ref: '#/components/schemas/JourneyToResponse'
+        freshness:
+          $ref: '#/components/schemas/JourneyFreshnessResponse'
+        hold:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyHoldResponse'
+        reason:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyReasonResponse'
+        version:
+          type: integer
+          format: int32
+    JourneyToResponse:
+      required:
+        - stationId
+        - name
+        - scheduledArrival
+        - expectedArrival
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scheduledArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
     LineResponse:
       required:
         - lineId
@@ -391,6 +776,18 @@ components:
           type: string
         inService:
           type: boolean
+    PositionResponse:
+      required:
+        - latitude
+        - longitude
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
     ProblemDetails:
       required:
         - code
@@ -545,6 +942,21 @@ components:
           type: string
         name:
           type: string
+    TrainSetResponse:
+      required:
+        - code
+        - traction
+        - coaches
+      type: object
+      properties:
+        code:
+          type: string
+        traction:
+          type: string
+        coaches:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachResponse'
   securitySchemes:
     Bearer:
       type: http

@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
+using SmartRail.LiveOperations.Features.GetJourney;
+using SmartRail.LiveOperations.Features.SearchJourneys;
 using SmartRail.LiveOperations.Features.StreamEvents;
 using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Persistence;
@@ -60,6 +62,8 @@ public static class LiveOperationsModule
     public static IEndpointRouteBuilder MapLiveOperationsEndpoints(this IEndpointRouteBuilder routes)
     {
         StreamEndpoint.Map(routes);
+        SearchJourneysEndpoint.Map(routes);
+        GetJourneyEndpoint.Map(routes);
         return routes;
     }
 }
