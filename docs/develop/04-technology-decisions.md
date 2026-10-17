@@ -27,6 +27,7 @@ SmartRail runs on an ASP.NET Core (C#) backend with PostgreSQL, Flutter for the 
 | API contract | Design-first document; `openapi.yaml` generated from code and checked in CI; generated client types | One source of truth across C#, TypeScript and Dart | Decided (ADR-09) |
 | Authentication | ASP.NET Core Identity + backend-issued JWT; no full OAuth 2.0 in the MVP | All clients are first-party | Decided (ADR-10) |
 | Backend code structure | Feature slices; pure `Domain` projects for rule-heavy modules | Structure in proportion to complexity; compiler guards the rules | Decided (ADR-11) |
+| Mobile architecture | `ChangeNotifier`, `Navigator`, `http`, hand-written models, shared `core` package | Built-in Flutter only; readable in a review | Decided (ADR-12) |
 | Testing tools | xUnit + Testcontainers, Vitest, Flutter tests, Playwright + axe | One tool per layer; E2E across apps | Decided |
 
 **Solution architecture:** 4 clients, 1 backend, 2 databases (diagram: `develop/03-architecture-principles.md`).
@@ -330,6 +331,28 @@ web/
 | **Feature slices + pure Domain projects where rules live** | **Chosen** | Keeps Clean Architecture's dependency rule where it matters, enforced by the compiler; everything else stays simple |
 
 **Consequences:** 8 module projects + host + simulator instead of ~24; the build fails if a Domain project gains an infrastructure reference; NetArchTest additionally enforces module boundaries. Full reasoning: `develop/03-architecture-principles.md` Q6.
+
+## ADR-12 Mobile architecture (passenger app first, driver app later)
+
+**Decision (17 Oct, Senuja):** the Flutter apps use only what the SDK and one official package give us. Every point below has a one-line reason.
+
+| # | Decision | Reason |
+| --- | --- | --- |
+| 1 | **State:** `ChangeNotifier` / `ValueNotifier` with constructor injection; no state-management package. A screen's state is a Dart 3 `sealed class` (loading / live / stale / error) shown with a `switch`; no `freezed`. | Built into Flutter; a missing case is a compile error; nothing to learn or explain beyond the SDK. |
+| 2 | **Navigation:** the built-in `Navigator`; no routing package. | The passenger app has a handful of screens and no deep links in the MVP. |
+| 3 | **HTTP and SSE:** the official `http` package (publisher dart.dev). The stream is read from `Client.send()`'s streamed response and parsed in `packages/core`; no SSE package. | ADR-02: SSE is plain HTTP; the parser is about 40 lines we can test with the files in `shared/events/`. |
+| 4 | **Models:** hand-written plain Dart classes with hand-written `fromJson` in `packages/core`, only for what the passenger screens use. **No code generation of any kind** (no OpenAPI generator, `json_serializable`, `freezed`, `build_runner`). | Narrows ADR-09 for Dart ("generator only if clean, else hand-written models + contract tests"): decided on the passenger app day, hand-written. Every line is readable in a review. |
+| 5 | **Structure:** `mobile/packages/core` (api, models, stream, theme, status texts, time formatting) is shared with the driver app; `mobile/apps/passenger/lib/features/<screen>/` holds one folder per screen. | Same idea as the backend's feature slices; the driver app reuses core without copying. |
+| 6 | **Times:** the server sends UTC; the app always shows Asia/Colombo (UTC+05:30, no daylight saving) through **one tested function in core**. Device local time is never used. | The Android emulator runs in UTC and would show every train 5½ hours off. A fixed offset needs no timezone package. |
+| 7 | **API base URL:** `--dart-define=API_BASE_URL`, default `http://10.0.2.2:5045`. | `10.0.2.2` is how the Android emulator reaches the PC's localhost. |
+| 8 | **No persistent cache yet.** Data lives in memory only and always carries an age label. | Simplest thing that meets US-P4; ADR-03 lists SQLite / key-value for the passenger app, which stays deferred until a story needs it (offline start, saved trips). |
+| 9 | **Tests:** unit tests (models and contract, status texts from `status-fixtures.json`, time formatting, age labels) and widget tests against a fake backend (`MockClient` from the `http` package, like ops-web's fakes). Tests are written in the same commit as the code. | CLAUDE.md §5.6 and ADR-08. |
+
+**What the app never does (CLAUDE.md §3, Q4):** calculate delay, ETA or status. It shows what the backend sends, formatted by the shared fixtures, plus an age label counted by the app's own stopwatch (S-17), never by comparing the phone clock with a server time.
+
+**Contract tests:** one test parses every file in `shared/events/` and every journey / station example used by the fake backend into the Dart models; a missing or renamed field must fail a test. Parsing is strict about fields the screens need (a missing one throws) and ignores unknown fields (API contract §1).
+
+**Consequences:** more typing than generated models, paid back by readable code and no build step. The Dart models can drift from the backend; the contract tests and the regenerated `openapi.yaml` are the guard. Android only needs cleartext HTTP in **debug** builds to reach `10.0.2.2` (release builds use HTTPS).
 
 ## Cross-cutting decisions
 
