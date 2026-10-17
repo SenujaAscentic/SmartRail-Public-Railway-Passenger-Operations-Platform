@@ -88,7 +88,11 @@ paths:
             type: string
       responses:
         '200':
-          description: OK
+          description: 'A Server-Sent Events stream. Frames: `snapshot` (data: JourneySnapshot), `resync` (data: StreamResync, no id), and the live events StopStatusChanged, DelayChanged and DataFreshnessChanged (data: StreamEvent; id = the stream sequence). Comment lines (`: keep-alive`) are heartbeats.'
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/StreamEvent'
         '400':
           description: Bad Request
           content:
@@ -434,6 +438,163 @@ components:
           type: string
         seating:
           type: string
+    DataFreshnessChangedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - DataFreshnessChanged
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - from
+            - to
+            - lastSeenAt
+            - lastStationId
+          type: object
+          properties:
+            from:
+              enum:
+                - NotStarted
+                - Live
+                - Stale
+                - Lost
+                - Ended
+              type: string
+            to:
+              enum:
+                - NotStarted
+                - Live
+                - Stale
+                - Lost
+                - Ended
+              type: string
+            lastSeenAt:
+              type:
+                - 'null'
+                - string
+              format: date-time
+            lastStationId:
+              type:
+                - 'null'
+                - string
+              format: uuid
+    DelayChangedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - DelayChanged
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - delayMinutes
+            - previousDelayMinutes
+            - stops
+          type: object
+          properties:
+            delayMinutes:
+              type: integer
+              format: int32
+            previousDelayMinutes:
+              type: integer
+              format: int32
+            stops:
+              type: array
+              items:
+                required:
+                  - stationId
+                  - expectedArrival
+                  - expectedDeparture
+                type: object
+                properties:
+                  stationId:
+                    type: string
+                    format: uuid
+                  expectedArrival:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  expectedDeparture:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
     JourneyDetailFreshnessResponse:
       required:
         - tracking
@@ -579,6 +740,105 @@ components:
           type:
             - 'null'
             - string
+    JourneySnapshot:
+      required:
+        - journeyId
+        - serviceDate
+        - lineId
+        - delayMinutes
+        - tracking
+        - lastSeenAt
+        - lastPosition
+        - stops
+        - sequence
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        lineId:
+          type: string
+          format: uuid
+        delayMinutes:
+          type: integer
+          format: int32
+        tracking:
+          enum:
+            - NotStarted
+            - Live
+            - Stale
+            - Lost
+            - Ended
+          type: string
+        lastSeenAt:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        lastPosition:
+          required:
+            - latitude
+            - longitude
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: double
+            longitude:
+              type: number
+              format: double
+        stops:
+          type: array
+          items:
+            required:
+              - stationId
+              - sequence
+              - status
+              - actualArrival
+              - actualDeparture
+              - expectedArrival
+              - expectedDeparture
+            type: object
+            properties:
+              stationId:
+                type: string
+                format: uuid
+              sequence:
+                type: integer
+                format: int32
+              status:
+                enum:
+                  - Scheduled
+                  - Arrived
+                  - Departed
+                  - Passed
+                type: string
+              actualArrival:
+                type:
+                  - 'null'
+                  - string
+                format: date-time
+              actualDeparture:
+                type:
+                  - 'null'
+                  - string
+                format: date-time
+              expectedArrival:
+                type:
+                  - 'null'
+                  - string
+                format: date-time
+              expectedDeparture:
+                type:
+                  - 'null'
+                  - string
+                format: date-time
+        sequence:
+          type: integer
+          format: int64
     JourneyStatusResponse:
       required:
         - kind
@@ -941,6 +1201,101 @@ components:
         code:
           type: string
         name:
+          type: string
+    StopStatusChangedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - StopStatusChanged
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - sequence
+            - from
+            - to
+            - at
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            sequence:
+              type: integer
+              format: int32
+            from:
+              enum:
+                - Scheduled
+                - Arrived
+                - Departed
+                - Passed
+              type: string
+            to:
+              enum:
+                - Scheduled
+                - Arrived
+                - Departed
+                - Passed
+              type: string
+            at:
+              type: string
+              format: date-time
+    StreamEvent:
+      oneOf:
+        - $ref: '#/components/schemas/StopStatusChangedEvent'
+        - $ref: '#/components/schemas/DelayChangedEvent'
+        - $ref: '#/components/schemas/DataFreshnessChangedEvent'
+      description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
+      discriminator:
+        propertyName: type
+        mapping:
+          StopStatusChanged: '#/components/schemas/StopStatusChangedEvent'
+          DelayChanged: '#/components/schemas/DelayChangedEvent'
+          DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'
+    StreamResync:
+      required:
+        - reason
+      type: object
+      properties:
+        reason:
           type: string
     TrainSetResponse:
       required:

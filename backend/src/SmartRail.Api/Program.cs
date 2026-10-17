@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
+using SmartRail.Api.OpenApi;
 using SmartRail.Identity;
 using SmartRail.LiveOperations;
 using SmartRail.Network;
@@ -13,7 +14,12 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 // JSON numbers are numbers: the ASP.NET default also accepts "12" as a number, and then the API description says
 // "number or string" for every numeric field, which would give every client a union type to handle.
-builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
+// Enums are sent by name, and the API description then lists the names ("Scheduled", "Arrived", ...) instead of numbers.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 // Order matters: LiveOperations' start-up check needs the network data that Network loads first.
 builder.Services.AddNetworkModule(builder.Configuration);
@@ -21,6 +27,8 @@ builder.Services.AddLiveOperationsModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);   // after Network: its seed needs the station IDs
 builder.Services.AddOpenApi(options =>
 {
+    options.AddStreamEventSchemas();   // the live events and the snapshot, for the apps' generated types
+
     // The server URL would be copied from whichever request produced the file; clients choose their own.
     options.AddDocumentTransformer((document, context, cancellationToken) =>
     {

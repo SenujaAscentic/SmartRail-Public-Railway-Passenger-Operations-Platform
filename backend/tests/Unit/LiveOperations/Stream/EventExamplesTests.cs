@@ -148,6 +148,35 @@ public class EventExamplesTests
         Assert.Equal(Shape.Of(Example("resync")), Shape.Of(JsonDocument.Parse(StreamHandler.ResyncData).RootElement));
     }
 
+    // ---- the examples fit the records the API description is generated from ----
+
+    private static readonly JsonSerializerOptions Strict = new(EventJson.Options) { UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
+
+    // An example with a field the record lacks (or the reverse) would mean the generated app types disagree with the wire.
+    [Theory]
+    [InlineData("StopStatusChanged", typeof(StopStatusChangedEvent))]
+    [InlineData("DelayChanged", typeof(DelayChangedEvent))]
+    [InlineData("DataFreshnessChanged", typeof(DataFreshnessChangedEvent))]
+    [InlineData("snapshot", typeof(JourneySnapshot))]
+    [InlineData("resync", typeof(StreamResync))]
+    public void Examples_fit_the_schema_records_exactly(string name, Type schemaType)
+    {
+        var example = Example(name);
+
+        var parsed = example.Deserialize(schemaType, Strict);   // throws on a field the record does not have
+
+        Assert.Equal(Shape.Of(example), Shape.Of(JsonSerializer.SerializeToElement(parsed, schemaType, EventJson.Options)));
+    }
+
+    [Theory]
+    [InlineData("StopStatusChanged")]
+    [InlineData("DelayChanged")]
+    [InlineData("DataFreshnessChanged")]
+    public void The_type_of_each_event_example_is_its_own_name(string name)
+    {
+        Assert.Equal(name, Example(name).GetProperty("type").GetString());
+    }
+
     // The shape of a JSON value: every property path with its kind. Arrays are looked at through all their items together,
     // so an optional field that only some items have (an origin has no arrival) is still part of the shape.
     // Strings are told apart by what they hold (guid, date-time, date), because clients parse them differently.
