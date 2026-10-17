@@ -13,7 +13,7 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build -w @smartrail/tokens && npm run build -w @smartrail/ops-web"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
