@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { App } from "../App.tsx";
 import { ServicesProvider } from "../services-context.tsx";
 import { createServices, type Services } from "../services.ts";
+import { sse, type Responder } from "./sse.ts";
 
 // A fake backend for the screen tests: the requests the app makes are answered from `routes`, keyed "METHOD /path".
 // The real session, the real typed client and the real middleware run; only the network is replaced.
@@ -40,10 +41,18 @@ export function fakeBackend(overrides: Routes = {}) {
     return route();
   };
 
-  const services: Services = createServices({ baseUrl: "http://localhost", fetch, now: () => clock.now });
+  // The event stream: tests set `stream.responder`; by default it is open and quiet. `signals` shows whether the page closed it.
+  const stream = { responder: sse("", { hold: true }) as Responder, requests: [] as { url: string; headers: Record<string, string> }[], signals: [] as AbortSignal[] };
+  const streamFetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+    stream.requests.push({ url: String(input), headers: { ...(init.headers as Record<string, string>) } });
+    if (init.signal) stream.signals.push(init.signal);
+    return stream.responder(init);
+  };
+
+  const services: Services = createServices({ baseUrl: "http://localhost", fetch, now: () => clock.now, streamFetch });
   const calls = (key: string) => requests.filter((r) => `${r.method} ${new URL(r.url).pathname}` === key);
 
-  return { services, routes, clock, requests, calls, tokenResponse };
+  return { services, routes, clock, requests, calls, tokenResponse, stream };
 }
 
 export function renderApp(services: Services, path = "/") {

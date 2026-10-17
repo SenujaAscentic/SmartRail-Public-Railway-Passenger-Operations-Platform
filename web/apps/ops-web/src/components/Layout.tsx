@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { Link, Outlet } from "react-router";
 import { SessionBar } from "./SessionBar.tsx";
 
 // The frame of every page: a skip link for keyboard users, a banner, and ONE main landmark that each page fills.
@@ -10,7 +10,9 @@ export function Layout() {
         Skip to main content
       </a>
       <header className="app-header">
-        <span className="app-name">SmartRail Operations</span>
+        <Link className="app-name" to="/">
+          SmartRail Operations
+        </Link>
         <SessionBar />
       </header>
       <main id="main" tabIndex={-1}>

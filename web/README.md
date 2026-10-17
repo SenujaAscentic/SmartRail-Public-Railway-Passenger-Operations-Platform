@@ -20,6 +20,12 @@ Start the backend too (`dotnet run --project backend/src/SmartRail.Api`, it list
 The dev server answers `/api` itself and forwards it to the backend, so the page and the API share one origin
 (the staff refresh cookie is HttpOnly and SameSite=Strict, so it needs that). Another backend address: set `BACKEND_URL`.
 
+## The live page needs the Main Line's id (development only)
+
+The stream requires a filter, and the live page asks for the Main Line (`lineIds`). Until the backend has `GET /lines`, the id is a
+development setting: copy `apps/ops-web/.env.example` to `apps/ops-web/.env.local`, set `VITE_MAIN_LINE_ID`, restart the dev server.
+Read the id from the database once the backend has started: `SELECT "Id" FROM network."Lines";`.
+
 ## Checks
 
 ```
@@ -32,3 +38,5 @@ After the backend API changes: run the backend tests with `UPDATE_OPENAPI=1`, th
 `npm run api:generate -w @smartrail/api-client`, and commit the changed `schema.d.ts`.
 
 Every dependency is pinned to an exact version and install scripts are off (`web/.npmrc`).
+
+CI (`.github/workflows/ci.yml`, job `web`) runs `npm ci`, `api:check`, `typecheck`, `test` and `build`.

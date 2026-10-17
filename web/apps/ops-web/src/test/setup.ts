@@ -1,5 +1,8 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
-// Remove what a test rendered, so the next test starts with an empty page.
-afterEach(cleanup);
+// Remove what a test rendered and any environment setting a test changed, so the next test starts clean.
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+});

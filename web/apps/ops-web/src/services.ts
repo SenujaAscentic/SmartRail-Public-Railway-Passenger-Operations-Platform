@@ -6,10 +6,12 @@ import { Session } from "./session/session.ts";
 export interface Services {
   session: Session;
   api: ApiClient;
+  // The stream is read with fetch (not EventSource, which cannot send an Authorization header). Tests replace it.
+  streamFetch: typeof globalThis.fetch;
 }
 
-export function createServices(options: ApiClientOptions & { now?: () => number } = {}): Services {
-  const { now, ...clientOptions } = options;
+export function createServices(options: ApiClientOptions & { now?: () => number; streamFetch?: typeof globalThis.fetch } = {}): Services {
+  const { now, streamFetch, ...clientOptions } = options;
 
   // The session talks to sign-in, refresh and sign-out through a PLAIN client: those calls must not go through the
   // bearer middleware (which asks the session for a token), or they would wait for themselves.
@@ -17,5 +19,5 @@ export function createServices(options: ApiClientOptions & { now?: () => number 
 
   const api = createApiClient(clientOptions);
   api.use(bearerMiddleware(session));
-  return { session, api };
+  return { session, api, streamFetch: streamFetch ?? ((input, init) => globalThis.fetch(input, init)) };
 }
