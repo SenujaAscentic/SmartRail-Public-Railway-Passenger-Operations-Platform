@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
@@ -9,6 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // One clock for the whole application; tests replace it with a fixed one.
 builder.Services.AddSingleton(TimeProvider.System);
+
+// JSON numbers are numbers: the ASP.NET default also accepts "12" as a number, and then the API description says
+// "number or string" for every numeric field, which would give every client a union type to handle.
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
 
 // Order matters: LiveOperations' start-up check needs the network data that Network loads first.
 builder.Services.AddNetworkModule(builder.Configuration);

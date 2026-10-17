@@ -57,6 +57,7 @@ internal sealed class NetworkSeeder(NetworkDbContext db, ILogger<NetworkSeeder> 
             station.Latitude = row.Latitude;
             station.Longitude = row.Longitude;
             station.ZoneRadiusM = data.ZoneRadiusM;
+            station.IsCateringStation = row.IsCateringStation;
 
             // Platforms are numbered 1 to N; the seed only knows how many a station has.
             for (var number = 1; number <= row.Platforms; number++)

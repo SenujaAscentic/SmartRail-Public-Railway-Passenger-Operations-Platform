@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SmartRail.Network.Features.GetLines;
+using SmartRail.Network.Features.GetStation;
 using SmartRail.Network.Features.SearchStations;
 using SmartRail.Network.Persistence;
 using SmartRail.Network.Seed;
@@ -28,6 +30,7 @@ public static class NetworkModule
         services.AddScoped<NetworkSeeder>();
         services.AddScoped<INetworkSchedule, NetworkScheduleReader>();   // the one door other modules use
         services.AddScoped<IStationDirectory, StationDirectory>();   // the door Identity uses to find station IDs
+        services.AddScoped<INetworkCatalog, NetworkCatalog>();       // the door LiveOperations uses for names and train sets
         services.AddHostedService<NetworkStartupService>();
 
         return services;
@@ -37,6 +40,8 @@ public static class NetworkModule
     public static IEndpointRouteBuilder MapNetworkEndpoints(this IEndpointRouteBuilder routes)
     {
         SearchStationsEndpoint.Map(routes);
+        GetStationEndpoint.Map(routes);
+        GetLinesEndpoint.Map(routes);
         return routes;
     }
 }

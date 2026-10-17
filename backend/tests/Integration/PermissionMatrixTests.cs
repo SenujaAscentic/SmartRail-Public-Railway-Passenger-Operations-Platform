@@ -78,6 +78,18 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
         { "Driver", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
         { "DriverCab", "GET", "/api/v1/stream", HttpStatusCode.BadRequest },
+
+        // GET /lines and GET /stations/{id}: Public. An unknown station is 404 for every role (never 401 or 403: the endpoint is public).
+        { "Anonymous", "GET", "/api/v1/lines", HttpStatusCode.OK },
+        { "Controller", "GET", "/api/v1/lines", HttpStatusCode.OK },
+        { "StationManager", "GET", "/api/v1/lines", HttpStatusCode.OK },
+        { "Driver", "GET", "/api/v1/lines", HttpStatusCode.OK },
+        { "DriverCab", "GET", "/api/v1/lines", HttpStatusCode.OK },
+        { "Anonymous", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "Controller", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "StationManager", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "Driver", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+        { "DriverCab", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
     };
 
     [Theory]

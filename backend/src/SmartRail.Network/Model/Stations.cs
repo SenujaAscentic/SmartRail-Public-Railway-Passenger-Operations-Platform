@@ -9,6 +9,7 @@ internal class Station
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public int ZoneRadiusM { get; set; }                // detection zone around the station (R-04)
+    public bool IsCateringStation { get; set; }         // the seed marks catering stations in stop_types; the app shows it (US-P8)
     public List<Platform> Platforms { get; set; } = [];
 }
 

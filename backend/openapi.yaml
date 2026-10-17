@@ -29,6 +29,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/stations/{stationId}':
+    get:
+      tags:
+        - Network
+      operationId: GetStation
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationResponse'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/lines:
+    get:
+      tags:
+        - Network
+      operationId: GetLines
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LineResponse'
   /api/v1/stream:
     get:
       tags:
@@ -310,6 +348,25 @@ components:
         serverTime:
           type: string
           format: date-time
+    LineResponse:
+      required:
+        - lineId
+        - code
+        - name
+        - routes
+      type: object
+      properties:
+        lineId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteResponse'
     PasswordSignInRequest:
       required:
         - staffNumber
@@ -324,6 +381,16 @@ components:
           type:
             - 'null'
             - string
+    PlatformResponse:
+      required:
+        - number
+        - inService
+      type: object
+      properties:
+        number:
+          type: string
+        inService:
+          type: boolean
     ProblemDetails:
       required:
         - code
@@ -339,11 +406,9 @@ components:
             - 'null'
             - string
         status:
-          pattern: '^-?(?:0|[1-9]\d*)$'
           type:
             - 'null'
             - integer
-            - string
           format: int32
         detail:
           type:
@@ -372,6 +437,54 @@ components:
           type:
             - 'null'
             - string
+    RouteResponse:
+      required:
+        - routeId
+        - code
+        - direction
+        - name
+        - stations
+      type: object
+      properties:
+        routeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        direction:
+          type: string
+        name:
+          type: string
+        stations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteStationResponse'
+    RouteStationResponse:
+      required:
+        - stationId
+        - code
+        - name
+        - distanceKm
+        - latitude
+        - longitude
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        distanceKm:
+          type: number
+          format: double
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
     StaffMeResponse:
       required:
         - name
@@ -388,6 +501,36 @@ components:
             - 'null'
             - string
           format: uuid
+    StationResponse:
+      required:
+        - stationId
+        - code
+        - name
+        - latitude
+        - longitude
+        - cateringStation
+        - platforms
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        cateringStation:
+          type: boolean
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformResponse'
     StationSummary:
       required:
         - id
