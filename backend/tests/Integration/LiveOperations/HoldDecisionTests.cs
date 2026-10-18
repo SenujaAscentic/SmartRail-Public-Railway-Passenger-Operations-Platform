@@ -86,6 +86,24 @@ public class HoldDecisionTests(ApiFixture api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_hold_response_and_the_stream_snapshot_carry_the_reason_as_code_and_note_and_the_snapshot_holds_the_same_journey_detail()
+    {
+        var id = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Day);
+        var kandy = await Station("KDT");
+        var held = await Hold(id, 0, kandy, 10);
+        var reason = (await Body(held)).GetProperty("hold").GetProperty("reason");
+        Assert.Equal("Congestion", reason.GetProperty("code").GetString());
+        Assert.Equal("Waiting for the platform", reason.GetProperty("note").GetString());
+
+        using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
+        var snapshot = (await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!.Json;
+
+        // The snapshot's `journey` is, byte for byte, what GET /journeys/{id} answers: hold, reason, platforms, version, freshness.
+        Assert.Equal((await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct)).GetRawText(), snapshot.GetProperty("journey").GetRawText());
+        Assert.Equal(1, snapshot.GetProperty("journey").GetProperty("version").GetInt32());
+    }
+
+    [Fact]
     public async Task A_hold_needs_a_station_and_minutes_and_a_known_reason()
     {
         var id = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Day);

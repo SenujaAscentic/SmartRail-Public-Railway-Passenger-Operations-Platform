@@ -548,6 +548,7 @@ export interface components {
             tracking: string;
             /** Format: date-time */
             updatedAt: null | string;
+            lastStationName: null | string;
             lastPosition: null | components["schemas"]["PositionResponse"];
         };
         JourneyDetailResponse: {
@@ -649,6 +650,7 @@ export interface components {
             stationId: string;
             /** Format: int32 */
             minutes: null | number;
+            reason: null | components["schemas"]["JourneyReasonResponse"];
         };
         JourneyReasonResponse: {
             code: string;
@@ -722,6 +724,111 @@ export interface components {
                 /** Format: date-time */
                 expectedDeparture: null | string;
             }[];
+            journey: {
+                /** Format: uuid */
+                journeyId: string;
+                serviceNumber: string;
+                name: string;
+                trainType: string;
+                /** Format: date */
+                serviceDate: string;
+                status: {
+                    kind: string;
+                    /** Format: int32 */
+                    delayMinutes: null | number;
+                };
+                from: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    /** Format: date-time */
+                    scheduledDeparture: null | string;
+                    /** Format: date-time */
+                    expectedDeparture: null | string;
+                    platform: string;
+                    previousPlatform: null | string;
+                };
+                to: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    /** Format: date-time */
+                    scheduledArrival: null | string;
+                    /** Format: date-time */
+                    expectedArrival: null | string;
+                };
+                freshness: {
+                    tracking: string;
+                    /** Format: date-time */
+                    updatedAt: null | string;
+                    lastStationName: null | string;
+                    lastPosition: {
+                        /** Format: double */
+                        latitude: number;
+                        /** Format: double */
+                        longitude: number;
+                        /** Format: double */
+                        speedKmh: number;
+                        /** Format: uuid */
+                        lastStationId: string;
+                        /** Format: uuid */
+                        nextStationId: string;
+                        /** Format: double */
+                        fractionToNext: number;
+                    };
+                };
+                hold: {
+                    /** Format: uuid */
+                    stationId: string;
+                    /** Format: int32 */
+                    minutes: null | number;
+                    reason: {
+                        code: string;
+                        note: null | string;
+                    };
+                };
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+                /** Format: int32 */
+                version: number;
+                stops: {
+                    /** Format: int32 */
+                    sequence: number;
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    callType: string;
+                    status: string;
+                    isAdded: boolean;
+                    /** Format: date-time */
+                    scheduledArrival: null | string;
+                    /** Format: date-time */
+                    expectedArrival: null | string;
+                    /** Format: date-time */
+                    actualArrival: null | string;
+                    /** Format: date-time */
+                    scheduledDeparture: null | string;
+                    /** Format: date-time */
+                    expectedDeparture: null | string;
+                    /** Format: date-time */
+                    actualDeparture: null | string;
+                    plannedPlatform: string;
+                    platform: string;
+                    previousPlatform: null | string;
+                }[];
+                trainSet: {
+                    code: string;
+                    traction: string;
+                    coaches: {
+                        /** Format: int32 */
+                        position: number;
+                        class: string;
+                        seating: string;
+                    }[];
+                };
+            };
             /** Format: int64 */
             sequence: number;
         };

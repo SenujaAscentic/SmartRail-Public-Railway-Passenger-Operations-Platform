@@ -37,5 +37,97 @@
       "expectedArrival": "2026-10-14T07:34:00Z"
     }
   ],
+  "journey": {
+    "journeyId": "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01",
+    "serviceNumber": "1001",
+    "name": "Kandy Express",
+    "trainType": "Express",
+    "serviceDate": "2026-10-14",
+    "status": { "kind": "Late", "delayMinutes": 4 },
+    "from": {
+      "stationId": "3f1b6a52-8c0d-4e7a-b1f4-2d9c5e7a0b13",
+      "name": "Colombo Fort",
+      "scheduledDeparture": "2026-10-14T06:00:00Z",
+      "expectedDeparture": "2026-10-14T06:01:00Z",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    "to": {
+      "stationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+      "name": "Kandy",
+      "scheduledArrival": "2026-10-14T07:30:00Z",
+      "expectedArrival": "2026-10-14T07:34:00Z"
+    },
+    "freshness": {
+      "tracking": "Live",
+      "updatedAt": "2026-10-14T06:50:00Z",
+      "lastStationName": "Rambukkana",
+      "lastPosition": {
+        "latitude": 7.2906,
+        "longitude": 80.6337,
+        "speedKmh": 62.5,
+        "lastStationId": "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+        "nextStationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+        "fractionToNext": 0.42
+      }
+    },
+    "hold": null,
+    "reason": null,
+    "version": 0,
+    "stops": [
+      {
+        "sequence": 1,
+        "stationId": "3f1b6a52-8c0d-4e7a-b1f4-2d9c5e7a0b13",
+        "name": "Colombo Fort",
+        "callType": "Stop",
+        "status": "Departed",
+        "isAdded": false,
+        "scheduledArrival": null,
+        "expectedArrival": null,
+        "actualArrival": null,
+        "scheduledDeparture": "2026-10-14T06:00:00Z",
+        "expectedDeparture": "2026-10-14T06:01:00Z",
+        "actualDeparture": "2026-10-14T06:01:00Z",
+        "plannedPlatform": "1",
+        "platform": "1",
+        "previousPlatform": null
+      },
+      {
+        "sequence": 2,
+        "stationId": "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+        "name": "Rambukkana",
+        "callType": "Stop",
+        "status": "Arrived",
+        "isAdded": false,
+        "scheduledArrival": "2026-10-14T06:40:00Z",
+        "expectedArrival": "2026-10-14T06:44:00Z",
+        "actualArrival": "2026-10-14T06:44:00Z",
+        "scheduledDeparture": "2026-10-14T06:42:00Z",
+        "expectedDeparture": "2026-10-14T06:46:00Z",
+        "actualDeparture": null,
+        "plannedPlatform": "2",
+        "platform": "2",
+        "previousPlatform": null
+      },
+      {
+        "sequence": 3,
+        "stationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+        "name": "Kandy",
+        "callType": "Stop",
+        "status": "Scheduled",
+        "isAdded": false,
+        "scheduledArrival": "2026-10-14T07:30:00Z",
+        "expectedArrival": "2026-10-14T07:34:00Z",
+        "actualArrival": null,
+        "scheduledDeparture": null,
+        "expectedDeparture": null,
+        "actualDeparture": null,
+        "plannedPlatform": "3",
+        "platform": "3",
+        "previousPlatform": null
+      }
+    ],
+    "trainSet": null
+  },
   "sequence": 1051
 }

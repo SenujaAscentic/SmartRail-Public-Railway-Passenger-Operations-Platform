@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
 using SmartRail.LiveOperations.Domain;
+using SmartRail.LiveOperations.Features.JourneyViews;
 using SmartRail.LiveOperations.Features.StreamEvents;
 using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Stream;
+using SmartRail.Network;
 using Xunit;
 
 namespace SmartRail.UnitTests.LiveOperations.Stream;
@@ -221,7 +223,10 @@ public class EventExamplesTests
     [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
-        var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(Journey(), sequence: 1), EventJson.Options);
+        var journey = Journey();
+        var names = new Dictionary<Guid, string> { [S1] = "Colombo Fort", [S2] = "Rambukkana", [S3] = "Kandy" };
+        var detail = JourneyViewBuilder.Detail(journey, names, new ServiceDetails("1001", "Express"), trainSet: null);
+        var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(journey, sequence: 1, detail), EventJson.Options);
 
         Assert.Equal(Shape.Of(Example("snapshot")), Shape.Of(real));
     }

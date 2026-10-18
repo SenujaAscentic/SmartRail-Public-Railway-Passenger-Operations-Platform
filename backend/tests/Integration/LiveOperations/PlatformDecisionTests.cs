@@ -108,7 +108,7 @@ public class PlatformDecisionTests(ApiFixture api) : IAsyncLifetime
         await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct);
         var response = await Change(id, kandy, "2", version: Version);   // no hold
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);   // warned, not blocked
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));   // warned, not blocked
         Assert.Equal(JsonValueKind.Null, (await Body(response)).GetProperty("hold").ValueKind);
         var changed = (await NextOf(stream, "PlatformChanged")).GetProperty("payload");
         Assert.Equal("Late", changed.GetProperty("leadTimeLevel").GetString());
@@ -125,7 +125,7 @@ public class PlatformDecisionTests(ApiFixture api) : IAsyncLifetime
 
         var response = await Change(id, kandy, "2", version: Version, setHold: true, holdMinutes: 6);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
         var body = await Body(response);
         Assert.Equal(kandy, body.GetProperty("hold").GetProperty("stationId").GetGuid());
         Assert.Equal(6, body.GetProperty("hold").GetProperty("minutes").GetInt32());

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartRail.LiveOperations.Domain;
+using SmartRail.LiveOperations.Features.JourneyViews;
 using SmartRail.LiveOperations.Persistence;
 using SmartRail.LiveOperations.Stream;
 
@@ -18,6 +19,9 @@ public sealed record JourneySnapshot(
     DateTime? LastSeenAt,
     SnapshotPosition? LastPosition,
     IReadOnlyList<SnapshotStop> Stops,
+    // The same public journey detail as GET /journeys/{id} (hold, reason, platforms, version, last position, freshness): added 18 Oct so a
+    // reconnecting app does not have to ask again. The flat fields above stay for the apps that already read them.
+    JourneyDetailResponse Journey,
     long Sequence);
 
 // The same fields as GET /journeys/{id} freshness.lastPosition and the TrainPositionUpdated payload.
@@ -33,7 +37,7 @@ public sealed record SnapshotStop(
     DateTime? ExpectedArrival,
     DateTime? ExpectedDeparture);
 
-internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider clock)
+internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider clock, JourneyDetailReader detailReader)
 {
     private static readonly TimeZoneInfo Colombo = TimeZoneInfo.FindSystemTimeZoneById(LiveOperationsModule.TimeZoneId);
 
@@ -55,10 +59,16 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
             .OrderBy(j => j.ServiceDate).ThenBy(j => j.Id)
             .ToListAsync(cancellationToken);
 
-        return journeys.Select(j => ToSnapshot(j, sequence)).ToList();
+        var snapshots = new List<JourneySnapshot>();
+        foreach (var journey in journeys)
+        {
+            snapshots.Add(ToSnapshot(journey, sequence, await detailReader.BuildAsync(journey, cancellationToken, tolerant: true)));
+        }
+
+        return snapshots;
     }
 
-    internal static JourneySnapshot ToSnapshot(OperationalJourney journey, long sequence)
+    internal static JourneySnapshot ToSnapshot(OperationalJourney journey, long sequence, JourneyDetailResponse detail)
     {
         var delay = journey.CurrentDelay.Value;
         var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon
@@ -71,6 +81,7 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
             journey.Stops.OrderBy(s => s.Sequence).Select(s => new SnapshotStop(
                 s.StationId, s.Sequence, s.Status, s.ActualArrival, s.ActualDeparture,
                 s.ExpectedArrival(delay), s.ExpectedDeparture(delay))).ToList(),
+            detail,
             sequence);
     }
 }

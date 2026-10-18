@@ -55,7 +55,8 @@ internal static class JourneyViewBuilder
         return new JourneyDetailResponse(
             journey.Id, service.Number, Name(names[stops[^1].StationId], service.TrainType), service.TrainType, journey.ServiceDate,
             Status(journey), From(journey, stops[0], names), To(journey, stops[^1], names),
-            new JourneyDetailFreshnessResponse(journey.Tracking.ToString(), journey.LastPositionAt, position),
+            new JourneyDetailFreshnessResponse(
+                journey.Tracking.ToString(), journey.LastPositionAt, position is null ? null : names.GetValueOrDefault(position.LastStationId), position),
             Hold(journey), Reason(journey), journey.ControlVersion,
             stops.Select(s => new JourneyStopResponse(
                 s.Sequence, s.StationId, names[s.StationId], s.CallType.ToString(), s.Status.ToString(), IsAdded: false,
@@ -67,7 +68,9 @@ internal static class JourneyViewBuilder
     }
 
     private static JourneyHoldResponse? Hold(OperationalJourney journey) =>
-        journey.Hold is { } hold ? new JourneyHoldResponse(hold.StationId, hold.Minutes) : null;
+        journey.Hold is { } hold
+            ? new JourneyHoldResponse(hold.StationId, hold.Minutes, hold.Reason is { } r ? new JourneyReasonResponse(r.Code, r.Note) : null)
+            : null;
 
     private static JourneyReasonResponse? Reason(OperationalJourney journey) =>
         journey.Reason is { } reason ? new JourneyReasonResponse(reason.Code, reason.Note) : null;
