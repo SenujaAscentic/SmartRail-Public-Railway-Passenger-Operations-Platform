@@ -44,6 +44,9 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid");
 
+                    b.Property<double?>("FractionToNext")
+                        .HasColumnType("double precision");
+
                     b.Property<double?>("LastLatitude")
                         .HasColumnType("double precision");
 
@@ -53,7 +56,16 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<DateTime?>("LastPositionAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double?>("LastSpeedKmh")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("LastStationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("LineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("NextStationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("ServiceDate")

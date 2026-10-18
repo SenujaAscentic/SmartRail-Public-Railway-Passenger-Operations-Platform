@@ -142,9 +142,13 @@ public sealed class OperationalJourney
     }
 
     // Announces where the train is (event TrainPositionUpdated). Called by the position slice once per accepted batch, with the latest
-    // accepted fix. It changes no state: the position itself was recorded by RecordPosition.
-    public void AnnouncePosition(DateTime at, GeoPoint location, double speedKmh, Guid lastStationId, Guid nextStationId, double fractionToNext) =>
-        _events.Add(new TrainPositionUpdated(Id, at, location, speedKmh, lastStationId, nextStationId, Math.Clamp(fractionToNext, 0, 1)));
+    // accepted fix. The position itself was recorded by RecordPosition; this keeps the announced fields next to it and raises the event.
+    public void AnnouncePosition(DateTime at, GeoPoint location, double speedKmh, Guid lastStationId, Guid nextStationId, double fractionToNext)
+    {
+        var fraction = Math.Clamp(fractionToNext, 0, 1);
+        (LastSpeedKmh, LastStationId, NextStationId, FractionToNext) = (speedKmh, lastStationId, nextStationId, fraction);
+        _events.Add(new TrainPositionUpdated(Id, at, location, speedKmh, lastStationId, nextStationId, fraction));
+    }
 
     // The driver pressed End (domain model 4.2: Running -> Completed). The data is over: tracking becomes Ended (R-06 stops ageing it).
     public EndResult End(DateTime now)
@@ -192,6 +196,13 @@ public sealed class OperationalJourney
     public DateTime? LastPositionAt { get; private set; }   // UTC, corrected
     public double? LastLatitude { get; private set; }
     public double? LastLongitude { get; private set; }
+
+    // The last position that was announced (TrainPositionUpdated): speed, the stations around the train and how far it is between
+    // them. Kept so the read endpoints can show the same fields without the apps computing anything. All null until one is announced.
+    public double? LastSpeedKmh { get; private set; }
+    public Guid? LastStationId { get; private set; }
+    public Guid? NextStationId { get; private set; }
+    public double? FractionToNext { get; private set; }
 
     // Events raised since the last save. The saving slice writes them to the outbox, then calls ClearDomainEvents.
     public IReadOnlyList<IDomainEvent> DomainEvents => _events;

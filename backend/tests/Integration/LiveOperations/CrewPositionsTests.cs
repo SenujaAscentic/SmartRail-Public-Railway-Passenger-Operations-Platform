@@ -231,6 +231,26 @@ public class CrewPositionsTests(ApiFixture api) : IAsyncLifetime
         Assert.DoesNotContain("TrainPositionUpdated", await EventTypes(id));
     }
 
+    [Fact]
+    public async Task The_journey_detail_shows_the_last_announced_position_with_the_same_fields_as_the_event_and_null_before_any()
+    {
+        var id = await RunningJourney();
+        var kandy = (await RealJourneys.StationsAsync(api.Factory.Services, "KDT"))["KDT"];
+        var peradeniya = (await RealJourneys.StationsAsync(api.Factory.Services, "PDA"))["PDA"];
+
+        var before = await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct);
+        Assert.Equal(JsonValueKind.Null, before.GetProperty("freshness").GetProperty("lastPosition").ValueKind);
+
+        await Result(await PostFixes(id, await CabToken(), null, Fix(await Along(0.5), Now, speed: 62.5)));
+
+        var position = (await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct)).GetProperty("freshness").GetProperty("lastPosition");
+        Assert.Equal(kandy, position.GetProperty("lastStationId").GetGuid());
+        Assert.Equal(peradeniya, position.GetProperty("nextStationId").GetGuid());
+        Assert.Equal(0.5, position.GetProperty("fractionToNext").GetDouble(), precision: 2);
+        Assert.Equal(62.5, position.GetProperty("speedKmh").GetDouble());
+        Assert.Equal((await Along(0.5)).Lat, position.GetProperty("latitude").GetDouble(), precision: 6);
+    }
+
     // ---- repeats and validation ----
 
     [Fact]

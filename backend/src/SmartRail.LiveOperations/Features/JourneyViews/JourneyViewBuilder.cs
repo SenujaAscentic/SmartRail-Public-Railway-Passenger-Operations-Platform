@@ -42,7 +42,10 @@ internal static class JourneyViewBuilder
     {
         var stops = journey.Stops.OrderBy(s => s.Sequence).ToList();
         var delay = journey.CurrentDelay.Value;
-        var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon ? new PositionResponse(lat, lon) : null;
+        var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon
+            && journey.LastSpeedKmh is { } speed && journey.LastStationId is { } last && journey.NextStationId is { } next && journey.FractionToNext is { } fraction
+            ? new PositionResponse(lat, lon, speed, last, next, fraction)
+            : null;
 
         return new JourneyDetailResponse(
             journey.Id, service.Number, Name(names[stops[^1].StationId], service.TrainType), service.TrainType, journey.ServiceDate,

@@ -2,7 +2,7 @@ using System.Globalization;
 namespace SmartRail.Simulator;
 
 // A cab tablet for demonstrations. Example (the API running in Development with the demo clock set to just before the train leaves):
-//   dotnet run --project backend/src/SmartRail.Simulator -- --device CAB-01 --driver DRV-01 --service 1001 --from KDY --to FOT
+//   dotnet run --project backend/src/SmartRail.Simulator -- --device CAB-01 --driver DRV-01 --service 1001 --from FOT --to KDT
 // Secrets are read from the environment, never from the command line or a file:
 //   SMARTRAIL_CAB_SECRET (the tablet's secret)   SMARTRAIL_DEMO_PASSWORD (the seeded demo password)
 // Options: --api <url> --journey <id> --date yyyy-MM-dd --scenario normal|stop|gap --delay <minutes> --speed <n>

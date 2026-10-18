@@ -18,7 +18,9 @@ public sealed record JourneyToResponse(Guid StationId, string Name, DateTime? Sc
 // How fresh the position data is (R-06). UpdatedAt is when the last accepted position was recorded; null before any.
 public sealed record JourneyFreshnessResponse(string Tracking, DateTime? UpdatedAt);
 
-public sealed record PositionResponse(double Latitude, double Longitude);
+// The last announced position: the same fields as the TrainPositionUpdated event (the apps compute nothing).
+public sealed record PositionResponse(
+    double Latitude, double Longitude, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
 
 public sealed record JourneyDetailFreshnessResponse(string Tracking, DateTime? UpdatedAt, PositionResponse? LastPosition);
 
