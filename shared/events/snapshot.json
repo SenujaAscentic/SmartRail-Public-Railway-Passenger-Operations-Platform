@@ -6,7 +6,14 @@
   "delayMinutes": 4,
   "tracking": "Live",
   "lastSeenAt": "2026-10-14T06:50:00Z",
-  "lastPosition": { "latitude": 7.2906, "longitude": 80.6337 },
+  "lastPosition": {
+    "latitude": 7.2906,
+    "longitude": 80.6337,
+    "speedKmh": 62.5,
+    "lastStationId": "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+    "nextStationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+    "fractionToNext": 0.42
+  },
   "stops": [
     {
       "stationId": "3f1b6a52-8c0d-4e7a-b1f4-2d9c5e7a0b13",

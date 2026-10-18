@@ -1042,12 +1042,28 @@ components:
           required:
             - latitude
             - longitude
+            - speedKmh
+            - lastStationId
+            - nextStationId
+            - fractionToNext
           type: object
           properties:
             latitude:
               type: number
               format: double
             longitude:
+              type: number
+              format: double
+            speedKmh:
+              type: number
+              format: double
+            lastStationId:
+              type: string
+              format: uuid
+            nextStationId:
+              type: string
+              format: uuid
+            fractionToNext:
               type: number
               format: double
         stops:

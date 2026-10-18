@@ -587,7 +587,7 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 39 | **Route is a straight line between stations**, so R-08's 500 m limit can reject real GPS on a long curved section. The simulator uses the same lines | Fine for the demo; real GPS needs a track shape in the seed (decision for Senuja) |
 | 40 | A deactivated tablet can no longer sign in, but a token it already holds works until it expires (15 min at most, T-12). R-07's text can be read as an immediate cutoff, and an ended crew session answers 401 (contract §6) where R-07's text says 403 | Left as documented; an immediate cutoff would need a device check in `CabSessionCheck` (option for Senuja) |
 | 41 | Tests that start a second application (own clock or database) also run generation and the dispatcher there | Keep them few |
-| 42 | The stream **snapshot** carries `lastPosition` as latitude and longitude only, while `GET /journeys/{id}` now has the full fields. A client that reconnects gets the fraction from the next `TrainPositionUpdated` | Changing the snapshot shape needs your OK (event shape) |
+| 42 | The stream snapshot's `lastPosition` had only latitude and longitude | **Done (18 Oct, approved):** it carries the same six fields as `GET /journeys/{id}`; `shared/events/snapshot.json`, `openapi.yaml`, `schema.d.ts` updated; test compares the two |
 ---
 
 ## 9. Change log

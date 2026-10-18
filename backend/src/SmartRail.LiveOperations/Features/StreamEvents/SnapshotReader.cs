@@ -20,7 +20,8 @@ public sealed record JourneySnapshot(
     IReadOnlyList<SnapshotStop> Stops,
     long Sequence);
 
-public sealed record SnapshotPosition(double Latitude, double Longitude);
+// The same fields as GET /journeys/{id} freshness.lastPosition and the TrainPositionUpdated payload.
+public sealed record SnapshotPosition(double Latitude, double Longitude, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
 
 // Expected times are what R-02 / R-03 give now; once a stop has really happened they are the actual times.
 public sealed record SnapshotStop(
@@ -60,7 +61,10 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
     internal static JourneySnapshot ToSnapshot(OperationalJourney journey, long sequence)
     {
         var delay = journey.CurrentDelay.Value;
-        var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon ? new SnapshotPosition(lat, lon) : null;
+        var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon
+            && journey.LastSpeedKmh is { } speed && journey.LastStationId is { } last && journey.NextStationId is { } next && journey.FractionToNext is { } fraction
+            ? new SnapshotPosition(lat, lon, speed, last, next, fraction)
+            : null;
 
         return new JourneySnapshot(
             journey.Id, journey.ServiceDate, journey.LineId, journey.Status, journey.DelayMinutes, journey.Tracking, journey.LastPositionAt, position,

@@ -465,6 +465,14 @@ export interface components {
                 latitude: number;
                 /** Format: double */
                 longitude: number;
+                /** Format: double */
+                speedKmh: number;
+                /** Format: uuid */
+                lastStationId: string;
+                /** Format: uuid */
+                nextStationId: string;
+                /** Format: double */
+                fractionToNext: number;
             };
             stops: {
                 /** Format: uuid */

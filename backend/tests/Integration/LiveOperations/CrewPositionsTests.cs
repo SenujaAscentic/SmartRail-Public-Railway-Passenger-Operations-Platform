@@ -251,6 +251,21 @@ public class CrewPositionsTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal((await Along(0.5)).Lat, position.GetProperty("latitude").GetDouble(), precision: 6);
     }
 
+    [Fact]
+    public async Task The_stream_snapshot_shows_the_last_announced_position_with_the_same_fields_as_the_journey_detail()
+    {
+        var id = await RunningJourney();
+        await Result(await PostFixes(id, await CabToken(), null, Fix(await Along(0.5), Now, speed: 62.5)));
+
+        using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
+        var snapshot = (await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!;
+
+        var detail = (await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct)).GetProperty("freshness").GetProperty("lastPosition");
+        var position = snapshot.Json.GetProperty("lastPosition");
+        Assert.Equal(detail.GetRawText(), position.GetRawText());
+        Assert.Equal(62.5, position.GetProperty("speedKmh").GetDouble());
+    }
+
     // ---- repeats and validation ----
 
     [Fact]
