@@ -88,6 +88,22 @@ public class PublicProjectionTests
         Assert.DoesNotContain("crewSessionId", json);
     }
 
+    // Where the train is, is exactly what a passenger wants to see: all of it is public.
+    [Fact]
+    public void A_train_position_is_public_in_full()
+    {
+        var payload = new JsonObject
+        {
+            ["location"] = new JsonObject { ["latitude"] = 7.29, ["longitude"] = 80.63 },
+            ["speedKmh"] = 62.5, ["lastStationId"] = S1.ToString(), ["nextStationId"] = S2.ToString(), ["fractionToNext"] = 0.42,
+            ["crewSessionId"] = Guid.NewGuid().ToString(),
+        };
+
+        var projected = PublicProjection.Of(Envelope("TrainPositionUpdated", payload), 11)!;
+
+        Assert.Equal(["fractionToNext", "lastStationId", "location", "nextStationId", "speedKmh"], projected.Payload.Select(p => p.Key).Order());
+    }
+
     [Fact]
     public void An_ended_journey_keeps_its_reason()
     {

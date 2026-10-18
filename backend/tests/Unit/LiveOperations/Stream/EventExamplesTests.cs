@@ -79,6 +79,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
     {
@@ -107,6 +108,7 @@ public class EventExamplesTests
         journey.RecordPosition(
             new PositionSample(new GeoPoint(7.2906, 80.6337), 40, At(6, 50), At(6, 50), TimeSpan.Zero, 0, new Dictionary<Guid, double>()),
             At(6, 50));
+        journey.AnnouncePosition(At(6, 50), new GeoPoint(7.2906, 80.6337), 62.5, S2, S3, 0.42);
         return journey;
     }
 
@@ -149,6 +151,12 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void TrainPositionUpdated_as_sent_has_the_shape_of_its_example()
+    {
+        Assert.Equal(Shape.Of(Example("TrainPositionUpdated")), Shape.Of(RealEvent<TrainPositionUpdated>(Journey())));
+    }
+
+    [Fact]
     public void JourneyStarted_as_sent_has_the_shape_of_its_example_and_an_empty_payload()
     {
         var real = RealEvent<JourneyStarted>(Lifecycle());
@@ -188,6 +196,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged", typeof(DataFreshnessChangedEvent))]
     [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
     [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
+    [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
     public void Examples_fit_the_schema_records_exactly(string name, Type schemaType)
@@ -205,6 +214,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {
         Assert.Equal(name, Example(name).GetProperty("type").GetString());

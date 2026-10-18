@@ -31,6 +31,10 @@ public sealed record EmptyPayload;
 
 public sealed record JourneyEndedPayload(JourneyEndReason Reason);
 
+public sealed record GeoLocation(double Latitude, double Longitude);
+
+public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
+
 public sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
 
 public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);

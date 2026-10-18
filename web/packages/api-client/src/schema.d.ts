@@ -704,9 +704,47 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
+        };
+        TrainPositionUpdatedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "TrainPositionUpdated";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                location: {
+                    /** Format: double */
+                    latitude: number;
+                    /** Format: double */
+                    longitude: number;
+                };
+                /** Format: double */
+                speedKmh: number;
+                /** Format: uuid */
+                lastStationId: string;
+                /** Format: uuid */
+                nextStationId: string;
+                /** Format: double */
+                fractionToNext: number;
+            };
         };
         TrainSetResponse: {
             code: string;

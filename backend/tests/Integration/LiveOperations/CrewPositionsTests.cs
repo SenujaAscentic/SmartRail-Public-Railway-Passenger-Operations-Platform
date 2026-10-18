@@ -182,6 +182,55 @@ public class CrewPositionsTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal(2, types.Count(t => t == "StopStatusChanged"));   // Arrived, then Departed
     }
 
+    // ---- the stream hears the train move ----
+
+    [Fact]
+    public async Task One_TrainPositionUpdated_is_announced_per_batch_with_the_stations_around_the_latest_fix()
+    {
+        var id = await RunningJourney();
+        var token = await CabToken();
+        using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
+        await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct);   // the snapshot
+        var kandy = (await RealJourneys.StationsAsync(api.Factory.Services, "KDT"))["KDT"];
+        var peradeniya = (await RealJourneys.StationsAsync(api.Factory.Services, "PDA"))["PDA"];
+
+        // 100 seconds apart and 15% of the way (about a kilometre) each: a plausible 38 km/h, so R-08 keeps all three.
+        var result = await Result(await PostFixes(id, token, null,
+            Fix(await Along(0.20), Now, speed: 50),
+            Fix(await Along(0.50), Now.AddSeconds(200), speed: 62.5),    // the latest: halfway from Kandy to Peradeniya
+            Fix(await Along(0.35), Now.AddSeconds(100), speed: 55)));
+        Assert.Equal(3, result.Accepted);
+
+        var types = new List<string>();
+        SseFrame? position = null;
+        while (position is null)
+        {
+            var frame = (await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!;
+            types.Add(frame.Event!);
+            position = frame.Event == "TrainPositionUpdated" ? frame : null;
+        }
+
+        var payload = position.Json.GetProperty("payload");
+        Assert.Equal(kandy, payload.GetProperty("lastStationId").GetGuid());
+        Assert.Equal(peradeniya, payload.GetProperty("nextStationId").GetGuid());
+        Assert.Equal(0.5, payload.GetProperty("fractionToNext").GetDouble(), precision: 2);
+        Assert.Equal(62.5, payload.GetProperty("speedKmh").GetDouble());
+        Assert.DoesNotContain("source", position.Data!, StringComparison.OrdinalIgnoreCase);
+        Assert.Single((await EventTypes(id)), t => t == "TrainPositionUpdated");   // one for the batch, not one per fix
+    }
+
+    [Fact]
+    public async Task A_batch_in_which_nothing_is_accepted_announces_no_position()
+    {
+        var id = await RunningJourney();
+        var token = await CabToken();
+        var kandy = await Along(0);
+
+        await Result(await PostFixes(id, token, null, Fix((kandy.Lat + 0.1, kandy.Lng), Now)));   // 11 km off the route
+
+        Assert.DoesNotContain("TrainPositionUpdated", await EventTypes(id));
+    }
+
     // ---- repeats and validation ----
 
     [Fact]

@@ -1661,6 +1661,7 @@ components:
         - $ref: '#/components/schemas/DataFreshnessChangedEvent'
         - $ref: '#/components/schemas/JourneyStartedEvent'
         - $ref: '#/components/schemas/JourneyEndedEvent'
+        - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
         propertyName: type
@@ -1670,6 +1671,7 @@ components:
           DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'
           JourneyStarted: '#/components/schemas/JourneyStartedEvent'
           JourneyEnded: '#/components/schemas/JourneyEndedEvent'
+          TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:
       required:
         - reason
@@ -1677,6 +1679,83 @@ components:
       properties:
         reason:
           type: string
+    TrainPositionUpdatedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - TrainPositionUpdated
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - location
+            - speedKmh
+            - lastStationId
+            - nextStationId
+            - fractionToNext
+          type: object
+          properties:
+            location:
+              required:
+                - latitude
+                - longitude
+              type: object
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                longitude:
+                  type: number
+                  format: double
+            speedKmh:
+              type: number
+              format: double
+            lastStationId:
+              type: string
+              format: uuid
+            nextStationId:
+              type: string
+              format: uuid
+            fractionToNext:
+              type: number
+              format: double
     TrainSetResponse:
       required:
         - code

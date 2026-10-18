@@ -124,6 +124,7 @@ internal sealed class CrewPositionsHandler(
         var now = clock.GetUtcNow().UtcDateTime;
         var accepted = 0;
         var discarded = new List<DiscardedPosition>();
+        ValidPosition? latest = null;   // the newest accepted fix: the one the stream announces
 
         foreach (var position in positions.OrderBy(p => ClockCorrection.EventTime(p.GpsTime, p.DeviceTime, caller.ClockOffset)))
         {
@@ -136,11 +137,21 @@ internal sealed class CrewPositionsHandler(
             if (verdict == PositionVerdict.Accepted)
             {
                 accepted++;
+                latest = position;
             }
             else
             {
                 discarded.Add(new DiscardedPosition(position.Index, verdict.ToString()));
             }
+        }
+
+        // One TrainPositionUpdated per batch that moved the train, not one per fix: a tablet that was in a tunnel sends a long batch.
+        if (latest is not null)
+        {
+            var progress = route.ProgressOf(latest.Location);
+            journey.AnnouncePosition(
+                ClockCorrection.EventTime(latest.GpsTime, latest.DeviceTime, caller.ClockOffset), latest.Location, latest.SpeedKmh,
+                progress.LastStationId, progress.NextStationId, progress.FractionToNext);
         }
 
         return new PositionBatchResult(accepted, discarded.OrderBy(d => d.Index).ToList());

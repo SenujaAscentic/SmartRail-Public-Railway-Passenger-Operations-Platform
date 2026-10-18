@@ -141,6 +141,11 @@ public sealed class OperationalJourney
         return StartResult.Started;
     }
 
+    // Announces where the train is (event TrainPositionUpdated). Called by the position slice once per accepted batch, with the latest
+    // accepted fix. It changes no state: the position itself was recorded by RecordPosition.
+    public void AnnouncePosition(DateTime at, GeoPoint location, double speedKmh, Guid lastStationId, Guid nextStationId, double fractionToNext) =>
+        _events.Add(new TrainPositionUpdated(Id, at, location, speedKmh, lastStationId, nextStationId, Math.Clamp(fractionToNext, 0, 1)));
+
     // The driver pressed End (domain model 4.2: Running -> Completed). The data is over: tracking becomes Ended (R-06 stops ageing it).
     public EndResult End(DateTime now)
     {

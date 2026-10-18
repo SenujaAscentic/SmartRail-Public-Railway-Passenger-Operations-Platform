@@ -23,6 +23,12 @@ internal static class EventMapper
             journey, eventId, "DataFreshnessChanged", e.At, Source.Gps, RemainingStations(journey),
             new DataFreshnessChangedPayload(e.From, e.To, e.LastSeenAt, LastKnownStation(journey))),
 
+        // Only the two stations around the train care where it is; a map follows the journey id. Source Gps: it is a GPS fix.
+        TrainPositionUpdated e => Envelope(
+            journey, eventId, "TrainPositionUpdated", e.At, Source.Gps, [e.LastStationId, e.NextStationId],
+            new TrainPositionUpdatedPayload(
+                new GeoLocation(e.Location.Latitude, e.Location.Longitude), e.SpeedKmh, e.LastStationId, e.NextStationId, e.FractionToNext)),
+
         // Every stop's display shows a running or finished train, so both events name all the stops.
         JourneyStarted e => Envelope(
             journey, eventId, "JourneyStarted", e.At, Source.Crew, AllStations(journey),

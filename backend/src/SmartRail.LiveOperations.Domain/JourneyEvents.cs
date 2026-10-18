@@ -13,6 +13,11 @@ public interface IDomainEvent
 // no payload for this event.
 public sealed record JourneyStarted(Guid JourneyId, DateTime At, Guid DeviceId, Guid CrewSessionId) : IDomainEvent;
 
+// Where the train is, as the stream shows it: the latest accepted fix of a batch and its place along the route. The route is not
+// known to the Domain (it lives in Network), so the slice works out the two stations and the fraction and passes them in.
+public sealed record TrainPositionUpdated(
+    Guid JourneyId, DateTime At, GeoPoint Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext) : IDomainEvent;
+
 public sealed record JourneyEnded(Guid JourneyId, DateTime At, JourneyEndReason Reason) : IDomainEvent;
 
 // A stop changed status. Crew taps and GPS detections are the same event; Source says which (section 8.2).

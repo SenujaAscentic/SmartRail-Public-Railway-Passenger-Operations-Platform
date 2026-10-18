@@ -107,6 +107,18 @@ public class StartEndTests
     }
 
     [Fact]
+    public void Announcing_a_position_raises_the_event_changes_no_state_and_keeps_the_fraction_between_zero_and_one()
+    {
+        var journey = NewJourney();
+
+        journey.AnnouncePosition(At(6, 10), new GeoPoint(7, 80), 55, S1, S2, 1.7);
+
+        Assert.Equal([new TrainPositionUpdated(journey.Id, At(6, 10), new GeoPoint(7, 80), 55, S1, S2, 1.0)], journey.DomainEvents);
+        Assert.Equal(TrackingStatus.NotStarted, journey.Tracking);
+        Assert.Null(journey.LastPositionAt);   // the fix itself is recorded by RecordPosition, not here
+    }
+
+    [Fact]
     public void End_is_refused_for_a_journey_that_is_not_running()
     {
         var planned = NewJourney();

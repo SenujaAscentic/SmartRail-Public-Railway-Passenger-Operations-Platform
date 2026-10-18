@@ -132,6 +132,23 @@ public class EventMapperTests
     }
 
     [Fact]
+    public void A_train_position_names_the_two_stations_around_the_train_and_is_a_gps_fact()
+    {
+        var journey = NewJourney();
+        journey.AnnouncePosition(At(6, 50), new GeoPoint(7.2906, 80.6337), 62.5, S2, S3, 0.42);
+
+        var envelope = MapSingle<TrainPositionUpdated>(journey);
+
+        Assert.Equal("TrainPositionUpdated", envelope.Type);
+        Assert.Equal(Source.Gps, envelope.Source);
+        Assert.Equal(At(6, 50), envelope.OccurredAt);
+        Assert.Equal([S2, S3], envelope.StationIds);
+        Assert.Equal(
+            new TrainPositionUpdatedPayload(new GeoLocation(7.2906, 80.6337), 62.5, S2, S3, 0.42),
+            envelope.Payload.Deserialize<TrainPositionUpdatedPayload>(EventJson.Options));
+    }
+
+    [Fact]
     public void Journey_ended_says_why_it_ended()
     {
         var journey = NewJourney();
