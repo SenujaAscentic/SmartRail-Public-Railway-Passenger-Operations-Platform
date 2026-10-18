@@ -172,6 +172,27 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/terminate: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/stops/{stationId}/skip: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/skip", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/skip", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/skip", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/skip", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/skip", HttpStatusCode.Forbidden },
+
+        // GET /ops/stream: policy Staff (Controller, StationManager). Headers only: the stream never ends by itself.
+        { "Anonymous", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Unauthorized },
+        { "Controller", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "StationManager", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
+        { "Driver", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
+        { "DriverCab", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
     };
 
     [Theory]

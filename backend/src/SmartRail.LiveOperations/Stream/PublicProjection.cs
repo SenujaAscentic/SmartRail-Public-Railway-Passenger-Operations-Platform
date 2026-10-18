@@ -18,6 +18,8 @@ internal static class PublicProjection
         ["PlatformChanged"] = ["stationId", "platform", "previousPlatform", "leadTimeLevel", "holdSet"],   // not leadTimeMinutes: staff only
         ["JourneyCancelled"] = ["reason"],
         ["JourneyReinstated"] = [],
+        ["StopSkipped"] = ["stationId", "sequence"],
+        ["JourneyTerminatedEarly"] = ["atStationId", "reason"],
         ["JourneyHeld"] = ["stationId", "released", "minutes", "reason"],
         ["TrainPositionUpdated"] = ["location", "speedKmh", "lastStationId", "nextStationId", "fractionToNext"],
     };
@@ -42,9 +44,9 @@ internal static class PublicProjection
             }
         }
 
-        // `Source` is deliberately not copied.
+        // The source travels with the event but is never serialised (see PublicEvent); only the staff stream writes it.
         return new PublicEvent(
             envelope.EventId, sequence, envelope.Type, envelope.Version, envelope.OccurredAt,
-            envelope.JourneyId, envelope.ServiceDate, envelope.StationIds, envelope.LineId, payload);
+            envelope.JourneyId, envelope.ServiceDate, envelope.StationIds, envelope.LineId, payload, envelope.Source.ToString());
     }
 }

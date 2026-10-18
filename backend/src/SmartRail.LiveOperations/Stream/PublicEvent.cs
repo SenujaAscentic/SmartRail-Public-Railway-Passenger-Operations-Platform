@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace SmartRail.LiveOperations.Stream;
 
@@ -14,7 +15,10 @@ internal sealed record PublicEvent(
     DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds,
     Guid LineId,
-    JsonObject Payload);
+    JsonObject Payload,
+    // Who supplied the value (Controller, Crew, Gps, Schedule). Staff only (T-07): it is never written by the serialiser, so the public
+    // stream cannot send it. The staff stream (/ops/stream) adds it by hand.
+    [property: JsonIgnore] string? Source = null);
 
 // Where the dispatcher hands events to. The stream hub is the real one; tests put a failing one in front of it.
 internal interface IEventPublisher

@@ -106,7 +106,7 @@ public class PlatformDecisionTests(ApiFixture api) : IAsyncLifetime
 
         using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
         await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct);
-        var response = await Change(id, kandy, "2", version: Version);   // no hold
+        var response = await Change(id, kandy, "2", version: Version, acknowledged: true);   // no hold. Acknowledged: a journey left by another test class may sit on this platform (R-12 has its own tests)
 
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));   // warned, not blocked
         Assert.Equal(JsonValueKind.Null, (await Body(response)).GetProperty("hold").ValueKind);
@@ -123,7 +123,7 @@ public class PlatformDecisionTests(ApiFixture api) : IAsyncLifetime
         using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
         await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct);
 
-        var response = await Change(id, kandy, "2", version: Version, setHold: true, holdMinutes: 6);
+        var response = await Change(id, kandy, "2", version: Version, setHold: true, holdMinutes: 6, acknowledged: true);   // see above: R-12 is tested elsewhere
 
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
         var body = await Body(response);
