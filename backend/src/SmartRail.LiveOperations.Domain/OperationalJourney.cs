@@ -109,6 +109,10 @@ public sealed class OperationalJourney
     public DateOnly ServiceDate { get; private set; }
     public Guid TrainSetId { get; private set; }
     public Guid LineId { get; private set; }   // for the event stream: lets a client filter by line (domain model 8.1)
+
+    // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation. No decision
+    // exists yet, so it stays 0; it is here so the API can show it from the first day (apps' generated types must not change later).
+    public int ControlVersion { get; private set; }
     public JourneyStatus Status { get; private set; }
     public IReadOnlyList<JourneyStop> Stops => _stops;
 

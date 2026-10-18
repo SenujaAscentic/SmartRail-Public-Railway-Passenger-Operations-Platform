@@ -10,7 +10,7 @@ The specs are the source of truth. Code follows them, never the reverse.
 |---|---|
 | What a feature must do | `docs/define/user-stories.md` (acceptance criteria, ★ = must never fail), `docs/define/edge-cases.md` |
 | Scope (is it even in?) | `docs/define/moscow.md`. Not a Must / agreed Should → don't build it |
-| Entities, states, rules R-01–R-22, events | `docs/develop/01-domain-model.md` |
+| Entities, states, rules R-01–R-23, events | `docs/develop/01-domain-model.md` |
 | Endpoints, auth, errors, stream | `docs/develop/02-api-contract.md` |
 | Architecture rules and why | `docs/develop/03-architecture-principles.md` |
 | Threats and required controls | `docs/security/threat-model.md` |
@@ -36,8 +36,9 @@ One line (Main Line, both directions), one **Controller** role, station managers
 ## 4. Domain rules that are easy to get wrong
 
 - **Control version (R-18):** only **decisions** (delay, hold, release, cancel, reinstate, terminate, skip / unskip / add stop, platform change, controller time correction) bump `controlVersion` and require `expectedVersion`. GPS, detection, crew taps and ETA recalculation **must not** bump it. A stale decision → `409 VERSION_CONFLICT`.
-- **Source priority (R-05):** Controller > Crew > GPS > Schedule. The **server** sets `source` from the credential; never read it from a request body.
-- **Delay (R-01):** whole minutes, rounded **down**; negative = early. Predicted departures never earlier than scheduled (R-03).
+- **Source priority (R-05):** Controller > Crew > GPS > Schedule protects **one stop's time** (GPS cannot overwrite a crew tap at that stop). The **journey delay** follows the most recent stop event whatever its source; only a controller delay blocks it, until cleared. The **server** sets `source` from the credential; never read it from a request body.
+- **Delay (R-01):** whole minutes, rounded **toward zero**; negative = early. Predicted departures never earlier than scheduled (R-03).
+- **Overdue delay (R-23):** a tracked train that has not reached its next stop shows the larger of its last known delay and (now − scheduled time there), recalculated at least every 30 s; a controller delay wins. Apps never compute it.
 - **Lead time (R-11):** expected **arrival** − now (origin: expected departure − now). "Train will wait" text only when a hold is actually set.
 - **Positions (R-07, R-08):** only from a registered cab device with an active cab session on a running, assigned journey; discard older-than-last, > 500 m off route, > 120 km/h.
 - **Crew offline actions:** keep their recorded time; `clientActionId` makes repeats harmless; never overwrite newer or higher-priority values.

@@ -15,6 +15,7 @@ Decisions are collected in section 9.
 | Base path | `/api/v1`. Breaking changes need `/v2`; adding fields is not breaking (clients ignore unknown fields). |
 | Format | JSON, `camelCase`. Enums as strings (`"Cancelled"`, not `3`). |
 | Times | ISO 8601 in **UTC** (`2026-10-14T04:40:00Z`); apps format in Asia/Colombo (C-1). Service dates as `YYYY-MM-DD`. |
+| Server time | Every response carries an HTTP `Date` header taken from the **server's clock**, the same clock that stamps every time in the bodies. An app shows "updated X ago" as `Date` minus the time in the response (for example `freshness.updatedAt`), never by comparing with its own clock, which may be wrong. *(Added 18 Oct 2026.)* |
 | IDs | UUIDs. Service numbers (`"1005"`) and staff numbers are text, never used as IDs in URLs. |
 | Status values | The API sends **structured** status (`kind`, `delayMinutes`, `previousPlatform`, …); every app formats the text with the shared `status-fixtures.json` tests (C-4). |
 | Lists | Small lists are returned whole. Long lists (audit log, alerts history) use `?limit=&cursor=`; the response has `nextCursor`. |
@@ -68,6 +69,17 @@ Notation: **Who** = policy; **Story** = main story served.
 | `GET /stations/{stationId}/catering` | Public | Cached menu, hotline, opening hours, `available`; `"unavailable"` state if provider down | US-P8, F-3 |
 | `GET /notices/network` | Public | Network-wide incident banner (Should S-4) | S-4 |
 | `GET /stream?journeyIds=&stationIds=` | Public | **Public** event stream (section 4) | US-B5 |
+
+**Public read responses (decided 17 Oct 2026; the table above gives no shapes).** `JourneySummary` and `JourneyStop` are in section 5.
+
+| Endpoint | Response and rules |
+|---|---|
+| `GET /lines` | `[{ lineId, code, name, routes: [{ routeId, code, direction ("Up" or "Down"), name, stations: [{ stationId, code, name, distanceKm, latitude, longitude }] }] }]` |
+| `GET /stations/{stationId}` | `{ stationId, code, name, latitude, longitude, cateringStation, platforms: [{ number, inService }] }`. Unknown id: `404 NOT_FOUND` |
+| `GET /journeys/search` | `[JourneySummary]`. `from` and `to` are station IDs (required, different from each other); `date` defaults to today in Asia/Colombo. Only journeys that **stop** (call type Stop) at both stations, with `from` before `to`, running on `date`. Sorted by scheduled departure from `from`. `after` defaults to now for today and to the start of the day for other dates, and is compared with the **expected** departure at `from`, so a late train that has not left stays visible; when the date searched is **today** (Asia/Colombo), a train that has already left `from` (stop Departed or Passed) is hidden; other dates are not filtered by "now". `limit` default 10, maximum 50. Cancelled journeys are included with their status. `fares[]` (Should P-9) is not sent. An unknown station is `404 NOT_FOUND`; a malformed or equal `from` / `to` is `400 VALIDATION_FAILED` |
+| `GET /journeys/{journeyId}` | The `JourneySummary` fields plus `stops: [JourneyStop]` (**without `source`**: staff only, threat T-07), `trainSet: { code, traction, coaches: [{ position, class, seating }] }` and `freshness: { tracking, updatedAt, lastPosition: { latitude, longitude } or null }`. Unknown id: `404 NOT_FOUND` |
+
+**Fields that exist from the first day but are filled in later (so the app types generated from `openapi.yaml` never change):** `version` (the control version, R-18; `0` until the controller decisions exist), `hold`, `reason` and `previousPlatform` are always present and **null until the controller decisions exist** (Phase 3). `platform` is the planned platform until a platform change exists. `status.kind` can only be `NotStarted`, `OnTime`, `Late` or `Early` until cancel, terminate, hold and completion exist; it is `NotStarted` while no position has been accepted, so a train without data is never shown as on time.
 
 ### 3.2 Passenger account
 
@@ -158,10 +170,11 @@ Every write endpoint refuses a display token (`403`), tested in the permission m
 | Topic | Rule |
 |---|---|
 | Endpoints | `GET /stream` (public), `GET /ops/stream` (Controller, StationManager), `GET /crew/stream` (crew). Same format; different events and filters. |
-| Filters | `journeyIds`, `stationIds`, `lineIds` (comma-separated). Display: its station. Controller: whole line. |
+| Filters | `journeyIds`, `stationIds`, `lineIds` (comma-separated GUIDs). Display: its station. Controller: whole line. **At least one filter is required** (else `400 VALIDATION_FAILED`), **at most 50 ids per list**, and an event is sent when it matches **any** of the lists (a client lists everything it cares about on one connection). *(Added 17 Oct 2026.)* |
+| Snapshot | On connect, and after a `resync`, the server sends one `event: snapshot` per matching journey (by id; or today's journeys, and yesterday's still running past midnight, that call at a named station or run on a named line). Its `id` is the stream sequence the snapshot is current to; live events follow with higher sequences. Example: `shared/events/snapshot.json`. *(Added 17 Oct 2026: the public journey endpoints did not exist when this section was written.)* |
 | Message format | `id: <sequence>` · `event: <EventType>` · `data: <JSON envelope + payload>` (domain model 8.1–8.2). |
 | Heartbeat | Comment line every 15 s, so proxies keep the connection open and clients can detect silence. |
-| Resume | Client sends `Last-Event-ID`; the server replays missed events if still retained (last 24 h); otherwise sends `event: resync` and the client reloads its snapshot (journey or board) before continuing. |
+| Resume | Client sends `Last-Event-ID`; the server replays missed events if still retained (last 24 h) and sends **no** snapshot; otherwise it sends `event: resync` (with **no** `id`, so the client's last event id does not change) followed by the snapshots. A `Last-Event-ID` ahead of anything the server has sent, or older than what is kept, is treated as not resumable. A client that cannot keep up is disconnected and resumes the same way. |
 | Ordering | Sequence numbers increase; a client ignores an event with a lower sequence than its snapshot's. |
 
 **Who sees which events:**
@@ -187,7 +200,9 @@ Staff fields (source, override flags, staff IDs) are removed from public events.
   "from": { "stationId": "…", "name": "Colombo Fort", "scheduledDeparture": "…Z", "expectedDeparture": "…Z", "platform": "3", "previousPlatform": "1" },
   "to":   { "stationId": "…", "name": "Kandy", "scheduledArrival": "…Z", "expectedArrival": "…Z" },
   "freshness": { "tracking": "Live", "updatedAt": "…Z" },
-  "version": 12          // control version (R-18)
+  "hold": null,          // { "stationId": "…", "minutes": 5 or null } while the train is held (D-4); null until decisions exist
+  "reason": null,        // { "code": "SignalFault", "note": "near Ragama" } once a controller gives one; null until decisions exist
+  "version": 12          // control version (R-18); 0 until decisions exist
 }
 ```
 

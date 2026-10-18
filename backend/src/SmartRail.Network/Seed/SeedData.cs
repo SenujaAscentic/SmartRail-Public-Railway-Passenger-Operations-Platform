@@ -6,7 +6,7 @@ namespace SmartRail.Network.Seed;
 
 public sealed record StationSeed(
     int Sequence, string Code, string Name, decimal DistanceKm,
-    double Latitude, double Longitude, int Platforms, string DistanceSource);
+    double Latitude, double Longitude, int Platforms, string DistanceSource, bool IsCateringStation = false);
 
 public sealed record LineSeed(string Id, string Name);
 

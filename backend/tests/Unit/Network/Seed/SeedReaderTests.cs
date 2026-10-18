@@ -18,6 +18,15 @@ public class SeedReaderTests
         Assert.Contains("KDT", warning.Message);
     }
 
+    // stations.csv marks them in stop_types ("all trains; catering station"); Network turns that into a flag the app can show.
+    [Fact]
+    public void Catering_stations_are_read_from_stop_types()
+    {
+        var data = SeedReader.Read(SeedFolder.Find(configuredPath: null));
+
+        Assert.Equal(["PDA", "PLG"], data.Stations.Where(s => s.IsCateringStation).Select(s => s.Code).Order());
+    }
+
     [Fact]
     public void Real_seed_files_contain_the_agreed_amount_of_data()
     {

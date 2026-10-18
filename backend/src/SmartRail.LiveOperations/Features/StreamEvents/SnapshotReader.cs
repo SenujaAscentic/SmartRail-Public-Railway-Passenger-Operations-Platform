@@ -8,7 +8,7 @@ namespace SmartRail.LiveOperations.Features.StreamEvents;
 // The state of one journey as a client needs it to start (or restart) following the stream: public fields only (T-07),
 // so no source, no staff and no crew session. `Sequence` is the stream position the snapshot is current to: the client
 // ignores any event with a lower or equal sequence.
-internal sealed record JourneySnapshot(
+public sealed record JourneySnapshot(
     Guid JourneyId,
     DateOnly ServiceDate,
     Guid LineId,
@@ -19,10 +19,10 @@ internal sealed record JourneySnapshot(
     IReadOnlyList<SnapshotStop> Stops,
     long Sequence);
 
-internal sealed record SnapshotPosition(double Latitude, double Longitude);
+public sealed record SnapshotPosition(double Latitude, double Longitude);
 
 // Expected times are what R-02 / R-03 give now; once a stop has really happened they are the actual times.
-internal sealed record SnapshotStop(
+public sealed record SnapshotStop(
     Guid StationId,
     int Sequence,
     StopStatus Status,

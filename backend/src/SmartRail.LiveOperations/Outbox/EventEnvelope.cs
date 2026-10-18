@@ -20,14 +20,14 @@ internal sealed record EventEnvelope(
     Source Source,
     JsonObject Payload);
 
-// Payloads, version 1 (domain model 8.2).
-internal sealed record StopStatusChangedPayload(Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At);
+// Payloads, version 1 (domain model 8.2). Public, because the API description (openapi.yaml) is generated from them.
+public sealed record StopStatusChangedPayload(Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At);
 
-internal sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
+public sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
 
-internal sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);
+public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);
 
-internal sealed record DataFreshnessChangedPayload(TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, Guid? LastStationId);
+public sealed record DataFreshnessChangedPayload(TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, Guid? LastStationId);
 
 // One set of JSON rules for the outbox, the stream and the shared/events examples: camelCase, enums as their names,
 // and fields with no value left out.

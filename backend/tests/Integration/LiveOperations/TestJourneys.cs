@@ -30,6 +30,7 @@ internal sealed record TestJourney(Guid Id, Guid LineId, Guid Origin, Guid Middl
         var db = scope.ServiceProvider.GetRequiredService<LiveOperationsDbContext>();
         db.Journeys.Add(journey);
         await db.SaveChangesAsync();
+        JourneyCleanup.Remember(journey.Id);
 
         return new TestJourney(journey.Id, line, origin, middle, terminus, new DateTime(2026, 10, 14, 6, 40, 0, DateTimeKind.Utc));
     }
