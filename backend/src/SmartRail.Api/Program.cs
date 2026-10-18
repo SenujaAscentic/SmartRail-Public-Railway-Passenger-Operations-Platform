@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -93,6 +94,20 @@ builder.Services.AddOpenApi(options =>
 });
 
 var app = builder.Build();
+
+// Every response carries a Date header from OUR clock (TimeProvider). The passenger app shows "updated X ago" as
+// (Date - the time stored in the response), which only works if both come from the same clock; the host would use its own.
+// Kestrel adds a Date header only when the application has not set one, and the in-memory test server adds none at all.
+var clock = app.Services.GetRequiredService<TimeProvider>();
+app.Use((context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.Date = clock.GetUtcNow().ToString("r", CultureInfo.InvariantCulture);
+        return Task.CompletedTask;
+    });
+    return next(context);
+});
 
 // The API description, as YAML (ADR-09). backend/openapi.yaml is a committed copy of this; a test compares them.
 app.MapOpenApi("/openapi/{documentName}.yaml").AllowAnonymous();

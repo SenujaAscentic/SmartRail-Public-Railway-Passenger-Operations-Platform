@@ -51,8 +51,9 @@ internal static class SearchJourneysEndpoint
             .Select(j => (Journey: j, From: j.Stops.Single(s => s.StationId == query.From), To: j.Stops.Single(s => s.StationId == query.To)))
             .Where(m => m.From.Sequence < m.To.Sequence
                 && m.From.ScheduledDeparture is not null
-                // A train that has already left (or gone through) the departure station cannot be caught, whatever its time says.
-                && m.From.Status is not (StopStatus.Departed or StopStatus.Passed)
+                // Today only: a train that has already left (or gone through) the departure station cannot be caught, whatever
+                // its time says. Another date is not judged by "now", so it is listed as the timetable has it.
+                && (query.Date != today || m.From.Status is not (StopStatus.Departed or StopStatus.Passed))
                 // The EXPECTED departure, so a late train that has not left yet stays in the list.
                 && m.From.ExpectedDeparture(m.Journey.CurrentDelay.Value) >= afterUtc)
             .OrderBy(m => m.From.ScheduledDeparture)

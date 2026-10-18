@@ -149,16 +149,35 @@ public class JourneyReadTests(ApiFixture api) : IAsyncLifetime
         Assert.Empty(await Search("FOT", "KDT", day, "&after=" + Uri.EscapeDataString(Utc(day, 6, 15))));
     }
 
-    // A train that has already left the departure station cannot be caught, whatever the time says.
+    // TODAY only: a train that has already left the departure station cannot be caught, whatever the time says.
+    // The test clock is 10:00 in Colombo on 14 Oct 2026. Service 2003 is a weekend train, so journey generation does not make it
+    // for this Wednesday and the test can. It leaves Fort at 08:00; the controller's 180 min delay puts its expected departure at
+    // 11:00, AFTER "now", so only the status "left" can hide it from the search.
     [Fact]
-    public async Task A_train_that_has_already_left_the_departure_station_is_hidden()
+    public async Task Today_a_train_that_has_already_left_the_departure_station_is_hidden()
+    {
+        var today = new DateOnly(2026, 10, 14);
+        var stations = await RealJourneys.StationsAsync(api.Factory.Services, "FOT", "MDA");
+        await RealJourneys.CreateAsync(api.Factory.Services, "2003", today, j =>
+        {
+            j.SetControllerDelay(new Delay(180), At(today, 7, 0));
+            j.RecordCrewTime(stations["MDA"], StopEventKind.Arrival, At(today, 8, 3));   // at Maradana: Fort is inferred as left
+        });
+
+        Assert.Empty(await Search("FOT", "KDT", today));      // Fort: left, although the expected departure (11:00) is still ahead
+        Assert.Single(await Search("MDA", "KDT", today));     // Maradana: the train is there and has not left (expected 11:04)
+    }
+
+    // Any other date is not judged by "now": the timetable is listed as it is, whatever the train has done.
+    [Fact]
+    public async Task For_another_date_a_train_that_has_left_the_departure_station_is_still_listed()
     {
         var day = Day(9);
         var stations = await RealJourneys.StationsAsync(api.Factory.Services, "FOT", "MDA");
         await RealJourneys.CreateAsync(api.Factory.Services, "2001", day, j => j.RecordCrewTime(stations["MDA"], StopEventKind.Arrival, At(day, 6, 3)));
 
-        Assert.Empty(await Search("FOT", "KDT", day));                // Fort: left (inferred)
-        Assert.Single(await Search("MDA", "KDT", day));               // Maradana: the train is there and has not left
+        Assert.Single(await Search("FOT", "KDT", day));       // Fort: left (inferred), but this is not today
+        Assert.Single(await Search("MDA", "KDT", day));
     }
 
     [Fact]
@@ -205,6 +224,28 @@ public class JourneyReadTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, same.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         Assert.Equal("NOT_FOUND", (await unknown.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("code").GetString());
+    }
+
+    // The passenger app shows "updated X ago" as (Date header - freshness.updatedAt), so the Date must come from the same clock
+    // as the stored times (TimeProvider), not from the host. Every response has it, errors too.
+    [Fact]
+    public async Task Journey_responses_carry_a_Date_header_from_the_server_clock()
+    {
+        var id = await RealJourneys.CreateAsync(api.Factory.Services, "2001", Day(13));
+        var fort = await Station("FOT");
+        var kandy = await Station("KDT");
+
+        var search = await _client.GetAsync($"/api/v1/journeys/search?from={fort}&to={kandy}&date={Day(13):yyyy-MM-dd}", Ct);
+        var detail = await _client.GetAsync("/api/v1/journeys/" + id, Ct);
+        var missing = await _client.GetAsync("/api/v1/journeys/" + Guid.NewGuid(), Ct);
+
+        Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        foreach (var response in new[] { search, detail, missing })
+        {
+            Assert.Equal(api.Clock.GetUtcNow(), response.Headers.Date);   // 14 Oct 2026 04:30:00 GMT
+        }
     }
 
     // ---- detail ----
