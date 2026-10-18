@@ -1,6 +1,9 @@
+using System.Globalization;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
+using SmartRail.Api.OpenApi;
 using SmartRail.Identity;
 using SmartRail.LiveOperations;
 using SmartRail.Network;
@@ -10,12 +13,23 @@ var builder = WebApplication.CreateBuilder(args);
 // One clock for the whole application; tests replace it with a fixed one.
 builder.Services.AddSingleton(TimeProvider.System);
 
+// JSON numbers are numbers: the ASP.NET default also accepts "12" as a number, and then the API description says
+// "number or string" for every numeric field, which would give every client a union type to handle.
+// Enums are sent by name, and the API description then lists the names ("Scheduled", "Arrived", ...) instead of numbers.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
 // Order matters: LiveOperations' start-up check needs the network data that Network loads first.
 builder.Services.AddNetworkModule(builder.Configuration);
 builder.Services.AddLiveOperationsModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);   // after Network: its seed needs the station IDs
 builder.Services.AddOpenApi(options =>
 {
+    options.AddStreamEventSchemas();   // the live events and the snapshot, for the apps' generated types
+
     // The server URL would be copied from whichever request produced the file; clients choose their own.
     options.AddDocumentTransformer((document, context, cancellationToken) =>
     {
@@ -80,6 +94,20 @@ builder.Services.AddOpenApi(options =>
 });
 
 var app = builder.Build();
+
+// Every response carries a Date header from OUR clock (TimeProvider). The passenger app shows "updated X ago" as
+// (Date - the time stored in the response), which only works if both come from the same clock; the host would use its own.
+// Kestrel adds a Date header only when the application has not set one, and the in-memory test server adds none at all.
+var clock = app.Services.GetRequiredService<TimeProvider>();
+app.Use((context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.Date = clock.GetUtcNow().ToString("r", CultureInfo.InvariantCulture);
+        return Task.CompletedTask;
+    });
+    return next(context);
+});
 
 // The API description, as YAML (ADR-09). backend/openapi.yaml is a committed copy of this; a test compares them.
 app.MapOpenApi("/openapi/{documentName}.yaml").AllowAnonymous();

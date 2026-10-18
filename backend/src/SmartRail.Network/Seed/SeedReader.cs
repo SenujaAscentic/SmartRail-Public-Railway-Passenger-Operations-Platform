@@ -38,6 +38,8 @@ public static class SeedReader
         var longitude = Column("longitude");
         var platforms = Column("platforms");
         var distanceSource = Column("distance_source");
+        // Optional: a file without the column simply has no catering stations. The seed writes "catering station" among the stop types.
+        var stopTypes = header.IndexOf("stop_types");
 
         var stations = new List<StationSeed>();
         foreach (var line in lines.Skip(1))
@@ -51,7 +53,8 @@ public static class SeedReader
                 double.Parse(c[latitude], CultureInfo.InvariantCulture),
                 double.Parse(c[longitude], CultureInfo.InvariantCulture),
                 int.Parse(c[platforms], CultureInfo.InvariantCulture),
-                c[distanceSource]));
+                c[distanceSource],
+                stopTypes >= 0 && c[stopTypes].Contains("catering station", StringComparison.OrdinalIgnoreCase)));
         }
 
         return stations;

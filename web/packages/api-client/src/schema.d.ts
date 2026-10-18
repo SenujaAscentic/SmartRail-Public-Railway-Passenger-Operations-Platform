@@ -19,6 +19,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stations/{stationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetStation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetLines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream": {
         parameters: {
             query?: never;
@@ -28,6 +60,39 @@ export interface paths {
         };
         /** Public event stream (Server-Sent Events). Give at least one of journeyIds, stationIds, lineIds (comma-separated GUIDs); send Last-Event-ID to resume. */
         get: operations["StreamEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/journeys/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Direct journeys between two stations on a date. Past departures are hidden; cancelled journeys are included with their status. */
+        get: operations["SearchJourneys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/journeys/{journeyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetJourney"];
         put?: never;
         post?: never;
         delete?: never;
@@ -162,15 +227,251 @@ export interface components {
             /** Format: date-time */
             serverTime: string;
         };
+        CoachResponse: {
+            /** Format: int32 */
+            position: number;
+            class: string;
+            seating: string;
+        };
+        DataFreshnessChangedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DataFreshnessChanged";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** @enum {string} */
+                from: "NotStarted" | "Live" | "Stale" | "Lost" | "Ended";
+                /** @enum {string} */
+                to: "NotStarted" | "Live" | "Stale" | "Lost" | "Ended";
+                /** Format: date-time */
+                lastSeenAt: null | string;
+                /** Format: uuid */
+                lastStationId: null | string;
+            };
+        };
+        DelayChangedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DelayChanged";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: int32 */
+                delayMinutes: number;
+                /** Format: int32 */
+                previousDelayMinutes: number;
+                stops: {
+                    /** Format: uuid */
+                    stationId: string;
+                    /** Format: date-time */
+                    expectedArrival: null | string;
+                    /** Format: date-time */
+                    expectedDeparture: null | string;
+                }[];
+            };
+        };
+        JourneyDetailFreshnessResponse: {
+            tracking: string;
+            /** Format: date-time */
+            updatedAt: null | string;
+            lastPosition: null | components["schemas"]["PositionResponse"];
+        };
+        JourneyDetailResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            name: string;
+            trainType: string;
+            /** Format: date */
+            serviceDate: string;
+            status: components["schemas"]["JourneyStatusResponse"];
+            from: components["schemas"]["JourneyFromResponse"];
+            to: components["schemas"]["JourneyToResponse"];
+            freshness: components["schemas"]["JourneyDetailFreshnessResponse"];
+            hold: null | components["schemas"]["JourneyHoldResponse"];
+            reason: null | components["schemas"]["JourneyReasonResponse"];
+            /** Format: int32 */
+            version: number;
+            stops: components["schemas"]["JourneyStopResponse"][];
+            trainSet: null | components["schemas"]["TrainSetResponse"];
+        };
+        JourneyFreshnessResponse: {
+            tracking: string;
+            /** Format: date-time */
+            updatedAt: null | string;
+        };
+        JourneyFromResponse: {
+            /** Format: uuid */
+            stationId: string;
+            name: string;
+            /** Format: date-time */
+            scheduledDeparture: null | string;
+            /** Format: date-time */
+            expectedDeparture: null | string;
+            platform: string;
+            previousPlatform: null | string;
+        };
+        JourneyHoldResponse: {
+            /** Format: uuid */
+            stationId: string;
+            /** Format: int32 */
+            minutes: null | number;
+        };
+        JourneyReasonResponse: {
+            code: string;
+            note: null | string;
+        };
+        JourneySnapshot: {
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            /** Format: uuid */
+            lineId: string;
+            /** Format: int32 */
+            delayMinutes: number;
+            /** @enum {string} */
+            tracking: "NotStarted" | "Live" | "Stale" | "Lost" | "Ended";
+            /** Format: date-time */
+            lastSeenAt: null | string;
+            lastPosition: {
+                /** Format: double */
+                latitude: number;
+                /** Format: double */
+                longitude: number;
+            };
+            stops: {
+                /** Format: uuid */
+                stationId: string;
+                /** Format: int32 */
+                sequence: number;
+                /** @enum {string} */
+                status: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                /** Format: date-time */
+                actualArrival: null | string;
+                /** Format: date-time */
+                actualDeparture: null | string;
+                /** Format: date-time */
+                expectedArrival: null | string;
+                /** Format: date-time */
+                expectedDeparture: null | string;
+            }[];
+            /** Format: int64 */
+            sequence: number;
+        };
+        JourneyStatusResponse: {
+            kind: string;
+            /** Format: int32 */
+            delayMinutes: null | number;
+        };
+        JourneyStopResponse: {
+            /** Format: int32 */
+            sequence: number;
+            /** Format: uuid */
+            stationId: string;
+            name: string;
+            callType: string;
+            status: string;
+            isAdded: boolean;
+            /** Format: date-time */
+            scheduledArrival: null | string;
+            /** Format: date-time */
+            expectedArrival: null | string;
+            /** Format: date-time */
+            actualArrival: null | string;
+            /** Format: date-time */
+            scheduledDeparture: null | string;
+            /** Format: date-time */
+            expectedDeparture: null | string;
+            /** Format: date-time */
+            actualDeparture: null | string;
+            plannedPlatform: string;
+            platform: string;
+            previousPlatform: null | string;
+        };
+        JourneySummaryResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            name: string;
+            trainType: string;
+            /** Format: date */
+            serviceDate: string;
+            status: components["schemas"]["JourneyStatusResponse"];
+            from: components["schemas"]["JourneyFromResponse"];
+            to: components["schemas"]["JourneyToResponse"];
+            freshness: components["schemas"]["JourneyFreshnessResponse"];
+            hold: null | components["schemas"]["JourneyHoldResponse"];
+            reason: null | components["schemas"]["JourneyReasonResponse"];
+            /** Format: int32 */
+            version: number;
+        };
+        JourneyToResponse: {
+            /** Format: uuid */
+            stationId: string;
+            name: string;
+            /** Format: date-time */
+            scheduledArrival: null | string;
+            /** Format: date-time */
+            expectedArrival: null | string;
+        };
+        LineResponse: {
+            /** Format: uuid */
+            lineId: string;
+            code: string;
+            name: string;
+            routes: components["schemas"]["RouteResponse"][];
+        };
         PasswordSignInRequest: {
             staffNumber: null | string;
             password: null | string;
+        };
+        PlatformResponse: {
+            number: string;
+            inService: boolean;
+        };
+        PositionResponse: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
         };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
             /** Format: int32 */
-            status?: null | number | string;
+            status?: null | number;
             detail?: null | string;
             instance?: null | string;
             code: string;
@@ -182,17 +483,93 @@ export interface components {
         RefreshRequest: {
             refreshToken: null | string;
         };
+        RouteResponse: {
+            /** Format: uuid */
+            routeId: string;
+            code: string;
+            direction: string;
+            name: string;
+            stations: components["schemas"]["RouteStationResponse"][];
+        };
+        RouteStationResponse: {
+            /** Format: uuid */
+            stationId: string;
+            code: string;
+            name: string;
+            /** Format: double */
+            distanceKm: number;
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+        };
         StaffMeResponse: {
             name: string;
             role: string;
             /** Format: uuid */
             stationId: null | string;
         };
+        StationResponse: {
+            /** Format: uuid */
+            stationId: string;
+            code: string;
+            name: string;
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            cateringStation: boolean;
+            platforms: components["schemas"]["PlatformResponse"][];
+        };
         StationSummary: {
             /** Format: uuid */
             id: string;
             code: string;
             name: string;
+        };
+        StopStatusChangedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "StopStatusChanged";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                /** Format: int32 */
+                sequence: number;
+                /** @enum {string} */
+                from: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                /** @enum {string} */
+                to: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                /** Format: date-time */
+                at: string;
+            };
+        };
+        /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"];
+        StreamResync: {
+            reason: string;
+        };
+        TrainSetResponse: {
+            code: string;
+            traction: string;
+            coaches: components["schemas"]["CoachResponse"][];
         };
     };
     responses: never;
@@ -234,6 +611,57 @@ export interface operations {
             };
         };
     };
+    GetStation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineResponse"][];
+                };
+            };
+        };
+    };
     StreamEvents: {
         parameters: {
             query?: {
@@ -247,15 +675,92 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description A Server-Sent Events stream. Frames: `snapshot` (data: JourneySnapshot), `resync` (data: StreamResync, no id), and the live events StopStatusChanged, DelayChanged and DataFreshnessChanged (data: StreamEvent; id = the stream sequence). Comment lines (`: keep-alive`) are heartbeats. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["StreamEvent"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SearchJourneys: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                date?: string;
+                after?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JourneySummaryResponse"][];
+                };
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

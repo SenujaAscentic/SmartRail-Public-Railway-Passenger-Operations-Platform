@@ -54,6 +54,56 @@ public class OpenApiDocumentTests(ApiFixture api)
         Assert.Contains("required: true", yaml[at..Math.Min(yaml.Length, at + 80)]);
     }
 
+    // The apps generate their event types from these schemas (CLAUDE.md section 5, step 4).
+    [Fact]
+    public async Task The_description_defines_the_stream_events_the_snapshot_and_the_union()
+    {
+        var yaml = await ServedYaml();
+
+        foreach (var name in new[] { "StopStatusChangedEvent", "DelayChangedEvent", "DataFreshnessChangedEvent", "JourneySnapshot", "StreamResync", "StreamEvent" })
+        {
+            Assert.Contains($"\n    {name}:\n", yaml);
+        }
+
+        var union = Section(yaml, "StreamEvent");
+        Assert.Contains("propertyName: type", union);
+        Assert.Contains("StopStatusChanged: '#/components/schemas/StopStatusChangedEvent'", union);
+        Assert.Contains("DelayChanged: '#/components/schemas/DelayChangedEvent'", union);
+        Assert.Contains("DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'", union);
+
+        // Each event's `type` is its one value, so a client can tell the events apart.
+        Assert.Contains("enum:\n            - DelayChanged", Section(yaml, "DelayChangedEvent"));
+
+        // Statuses are named, not numbered, and the stream operation points at the union.
+        Assert.Contains("- Arrived", Section(yaml, "StopStatusChangedEvent"));
+        Assert.Contains("text/event-stream:\n              schema:\n                $ref: '#/components/schemas/StreamEvent'", yaml);
+    }
+
+    // A reference to a schema that is not defined breaks every generator, so check them all.
+    [Fact]
+    public async Task Every_schema_reference_points_to_a_defined_schema()
+    {
+        var yaml = await ServedYaml();
+
+        var referenced = System.Text.RegularExpressions.Regex.Matches(yaml, @"#/components/schemas/(\w+)")
+            .Select(m => m.Groups[1].Value).Distinct().ToList();
+
+        Assert.NotEmpty(referenced);
+        foreach (var name in referenced)
+        {
+            Assert.True(yaml.Contains($"\n    {name}:\n"), $"The description refers to the schema {name}, which it does not define.");
+        }
+    }
+
+    // The text of one entry of components.schemas.
+    private static string Section(string yaml, string schema)
+    {
+        var start = yaml.IndexOf($"\n    {schema}:\n", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"No schema {schema}.");
+        var next = System.Text.RegularExpressions.Regex.Match(yaml[(start + 1)..], @"\n    [A-Za-z]\w*:\n");
+        return next.Success ? yaml[start..(start + 1 + next.Index)] : yaml[start..];
+    }
+
     [Fact]
     public async Task The_description_has_no_servers_entry()
     {
