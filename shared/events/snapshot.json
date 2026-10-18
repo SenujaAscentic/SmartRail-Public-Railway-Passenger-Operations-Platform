@@ -2,6 +2,7 @@
   "journeyId": "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01",
   "serviceDate": "2026-10-14",
   "lineId": "5d1c8e0a-2b47-4f6a-9c33-71a0e4d8b2f6",
+  "status": "Running",
   "delayMinutes": 4,
   "tracking": "Live",
   "lastSeenAt": "2026-10-14T06:50:00Z",
