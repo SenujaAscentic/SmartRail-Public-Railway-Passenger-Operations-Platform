@@ -1,7 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tests run the simulator in the same process, against the test server. -->
+    <InternalsVisibleTo Include="SmartRail.UnitTests" />
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
 
 </Project>

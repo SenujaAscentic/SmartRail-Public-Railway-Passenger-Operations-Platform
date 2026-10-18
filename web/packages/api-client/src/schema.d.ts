@@ -85,6 +85,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/crew/journeys/{journeyId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The assigned driver starts the journey on the cab tablet, from 60 minutes before the scheduled departure. */
+        post: operations["StartJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crew/journeys/{journeyId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The assigned driver ends a running journey. */
+        post: operations["EndJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crew/journeys/{journeyId}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A batch of GPS fixes from the cab tablet of the assigned driver, for a running journey. Fixes that fail the checks (R-08) are listed, not stored. */
+        post: operations["PostPositions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/journeys/{journeyId}": {
         parameters: {
             query?: never;
@@ -233,6 +284,17 @@ export interface components {
             class: string;
             seating: string;
         };
+        CrewActionRequest: {
+            /** Format: uuid */
+            clientActionId: null | string;
+        };
+        CrewJourneyResult: {
+            /** Format: uuid */
+            journeyId: string;
+            status: string;
+            /** Format: date-time */
+            at: string;
+        };
         DataFreshnessChangedEvent: {
             /** Format: uuid */
             eventId: string;
@@ -301,6 +363,11 @@ export interface components {
                 }[];
             };
         };
+        DiscardedPosition: {
+            /** Format: int32 */
+            index: number;
+            reason: string;
+        };
         JourneyDetailFreshnessResponse: {
             tracking: string;
             /** Format: date-time */
@@ -325,6 +392,32 @@ export interface components {
             version: number;
             stops: components["schemas"]["JourneyStopResponse"][];
             trainSet: null | components["schemas"]["TrainSetResponse"];
+        };
+        JourneyEndedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyEnded";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** @enum {string} */
+                reason: "Driver" | "Terminus" | "Controller";
+            };
         };
         JourneyFreshnessResponse: {
             tracking: string;
@@ -359,6 +452,8 @@ export interface components {
             serviceDate: string;
             /** Format: uuid */
             lineId: string;
+            /** @enum {string} */
+            status: "Planned" | "Running" | "Completed";
             /** Format: int32 */
             delayMinutes: number;
             /** @enum {string} */
@@ -389,6 +484,29 @@ export interface components {
             }[];
             /** Format: int64 */
             sequence: number;
+        };
+        JourneyStartedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyStarted";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: Record<string, never>;
         };
         JourneyStatusResponse: {
             kind: string;
@@ -461,11 +579,43 @@ export interface components {
             number: string;
             inService: boolean;
         };
+        PositionBatchRequest: {
+            /** Format: uuid */
+            clientActionId: null | string;
+            positions: null | components["schemas"]["PositionRequest"][];
+        };
+        PositionBatchResult: {
+            /** Format: int32 */
+            accepted: number;
+            discarded: components["schemas"]["DiscardedPosition"][];
+        };
+        PositionRequest: {
+            /** Format: double */
+            lat: null | number;
+            /** Format: double */
+            lng: null | number;
+            /** Format: double */
+            speedKmh: null | number;
+            /** Format: double */
+            accuracyM: null | number;
+            /** Format: date-time */
+            gpsTime: null | string;
+            /** Format: date-time */
+            deviceTime: null | string;
+        };
         PositionResponse: {
             /** Format: double */
             latitude: number;
             /** Format: double */
             longitude: number;
+            /** Format: double */
+            speedKmh: number;
+            /** Format: uuid */
+            lastStationId: string;
+            /** Format: uuid */
+            nextStationId: string;
+            /** Format: double */
+            fractionToNext: number;
         };
         ProblemDetails: {
             type?: null | string;
@@ -562,9 +712,47 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
+        };
+        TrainPositionUpdatedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "TrainPositionUpdated";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                location: {
+                    /** Format: double */
+                    latitude: number;
+                    /** Format: double */
+                    longitude: number;
+                };
+                /** Format: double */
+                speedKmh: number;
+                /** Format: uuid */
+                lastStationId: string;
+                /** Format: uuid */
+                nextStationId: string;
+                /** Format: double */
+                fractionToNext: number;
+            };
         };
         TrainSetResponse: {
             code: string;
@@ -730,6 +918,201 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StartJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CrewActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrewJourneyResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    EndJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CrewActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrewJourneyResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PostPositions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PositionBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionBatchResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

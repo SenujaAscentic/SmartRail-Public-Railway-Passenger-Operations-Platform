@@ -235,7 +235,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | **R-04** | **Station zone detection** (radius 300 m): entered the zone and speed < 5 km/h for 20 s → Arrived; left the zone after Arrived → Departed; entered and left without meeting the stop condition → Passed. **Inference:** when a stop gets an actual time (arrival, departure or pass, from any source), every earlier stop still Scheduled is inferred, with **no time**: **Departed** if its call type is Stop (including the origin), **Passed** only if its call type is Pass. A missed detection must not leave R-23 measuring against a station the train has gone through, and "Passed" at a scheduled stop would tell passengers the train did not stop there. A late tap for an inferred stop records its time but leaves the status (until R-20). | S5-07, D-2, agreed 15 Oct |
 | **R-05** | **Source priority:** a stop's time set by a higher-priority source (Controller > Crew > GPS > Schedule) cannot be overwritten by a lower one **at the same stop** (GPS cannot overwrite a crew tap at that stop). The journey delay always follows the most recent stop event (R-01) whatever its source; only a controller delay blocks that, and it stays until the controller clears it. *(Clarified 15 Oct: without this, one crew tap would freeze the delay for the rest of the trip.)* | S5 source priority |
 | **R-06** | **Freshness:** 2 min without an accepted position → Stale; 10 min → Lost; any accepted position → Live. | A-26 |
-| **R-07** | **Position acceptance:** only from a registered cab device with an active cab session on a Running journey. Otherwise rejected (403). If the device's train set differs from the journey's, accept but warn (Should, S-11). | B-3, ADR-05 |
+| **R-07** | **Position acceptance:** only from a registered cab device with an active cab session on a Running journey. Otherwise rejected (403); the one exception is an ended crew session, which answers 401 (contract §6; approved by Senuja 18 Oct). If the device's train set differs from the journey's, accept but warn (Should, S-11). | B-3, ADR-05 |
 | **R-08** | **Position plausibility:** discard a position that is older than the last accepted one, more than 500 m from the route, or implies a speed above **120 km/h** since the last one (M-2, 12 Oct). Discarded positions are counted and logged, not stored as live. | S5 failure scenarios |
 | **R-09** | **Clock correction:** event time = GPS time when present; otherwise device time + the clock offset measured at session start. | ADR-05 |
 | **R-10** | **Unscheduled stop:** speed < 5 km/h for ≥ 3 min outside every station zone → one alert per stop, cleared when the train moves. | O-8 |
@@ -327,6 +327,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | AnnouncementPosted | announcementId, stationId, priority, text, validTo |
 | ProviderHealthChanged | from, to, pendingCount |
 
+- **Public `JourneyStarted` carries no payload** (clarified 18 Oct): the stored payload `deviceId, crewSessionId` is staff-only (T-07), so the public stream sends `{}`. `JourneyEnded { reason }` is public.
 - `StopStatusChanged` carries `source`, so a crew tap and a GPS detection are the same event type. The priority rule (R-05) lives only in the backend.
 - **No personal data in any event.** Staff are referenced by ID; names are fetched by authorised apps only.
 
@@ -423,6 +424,15 @@ Written as test names. You approve, remove or add names; then the AI implements 
 - `Platform_change_refused_for_departed_stop`
 - `Platform_change_refused_for_platform_not_at_station`
 
+**Start and End by the driver (US-C2, added 18 Oct)**
+- `Start_is_refused_more_than_60_minutes_before_departure`
+- `Start_is_allowed_exactly_60_minutes_before_departure`
+- `Start_is_allowed_after_the_scheduled_departure_a_late_start_is_still_a_start`
+- `Starting_is_not_a_controller_decision_and_tracking_waits_for_the_first_position`
+- `A_journey_that_is_running_or_completed_cannot_be_started_again`
+- `End_completes_a_running_journey_and_ends_the_tracking`
+- `End_is_refused_for_a_journey_that_is_not_running`
+
 **Journey actions and concurrency (R-14, R-15, R-18, R-19, R-21, R-22)**
 - `Skipping_a_stop_reduces_later_delay_by_its_scheduled_dwell`
 - `Skipping_a_stop_never_makes_an_on_time_train_early`
@@ -478,6 +488,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 | Added `Position` as a time-series table outside the aggregate. | Volume (every 10 s); the aggregate keeps only the latest. |
 | `PassengerTrip` removed from the backend model. | "I'm on this train" is a device-side mode (P-3); no passenger location is stored (A-10). |
 | Added Incident effects, Crew report, Crew message, Announcement, Audit entry, Outbox message. | Sections 9, 10, 11 and O-10. |
+| R-07: a position from an ended crew session answers 401, not 403. | Contract §6 (a session that has ended is an authentication failure); approved by Senuja 18 Oct. A deactivated tablet keeps working until its token expires (15 min at most, T-12), also accepted. |
 
 ## AI usage log
 

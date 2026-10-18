@@ -73,6 +73,45 @@ public class PublicProjectionTests
         Assert.Null(PublicProjection.Of(Envelope(type, new JsonObject { ["note"] = "private" }), 1));
     }
 
+    // T-07: which tablet and which cab session started a journey is staff information.
+    [Fact]
+    public void A_started_journey_is_public_but_its_device_and_cab_session_are_not()
+    {
+        var payload = new JsonObject { ["deviceId"] = Guid.NewGuid().ToString(), ["crewSessionId"] = Guid.NewGuid().ToString() };
+
+        var projected = PublicProjection.Of(Envelope("JourneyStarted", payload), 9)!;
+
+        Assert.Equal("JourneyStarted", projected.Type);
+        Assert.Empty(projected.Payload);
+        var json = JsonSerializer.Serialize(projected, EventJson.Options);
+        Assert.DoesNotContain("deviceId", json);
+        Assert.DoesNotContain("crewSessionId", json);
+    }
+
+    // Where the train is, is exactly what a passenger wants to see: all of it is public.
+    [Fact]
+    public void A_train_position_is_public_in_full()
+    {
+        var payload = new JsonObject
+        {
+            ["location"] = new JsonObject { ["latitude"] = 7.29, ["longitude"] = 80.63 },
+            ["speedKmh"] = 62.5, ["lastStationId"] = S1.ToString(), ["nextStationId"] = S2.ToString(), ["fractionToNext"] = 0.42,
+            ["crewSessionId"] = Guid.NewGuid().ToString(),
+        };
+
+        var projected = PublicProjection.Of(Envelope("TrainPositionUpdated", payload), 11)!;
+
+        Assert.Equal(["fractionToNext", "lastStationId", "location", "nextStationId", "speedKmh"], projected.Payload.Select(p => p.Key).Order());
+    }
+
+    [Fact]
+    public void An_ended_journey_keeps_its_reason()
+    {
+        var projected = PublicProjection.Of(Envelope("JourneyEnded", new JsonObject { ["reason"] = "Driver", ["note"] = "private" }), 10)!;
+
+        Assert.Equal(["reason"], projected.Payload.Select(p => p.Key));
+    }
+
     [Fact]
     public void Delay_change_keeps_the_remaining_stops_with_their_expected_times()
     {

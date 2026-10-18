@@ -44,6 +44,8 @@ internal sealed class OutboxInterceptor(TimeProvider clock) : SaveChangesInterce
             return;
         }
 
+        TouchJourneysWhoseStopsChanged(context);
+
         var createdAt = clock.GetUtcNow().UtcDateTime;
         foreach (var journey in JourneysWithEvents(context))
         {
@@ -60,6 +62,20 @@ internal sealed class OutboxInterceptor(TimeProvider clock) : SaveChangesInterce
                     Json = JsonSerializer.Serialize(envelope, EventJson.Options),
                     Status = OutboxStatus.Pending,
                 });
+            }
+        }
+    }
+
+    // The row version (xmin) lives on the journey row. A change that only touches a stop (an actual time, a status) would leave that
+    // row alone, and two such changes could then overwrite each other without a collision being seen. Marking one column of the
+    // journey as modified makes EF update the journey row too (with the same value), which bumps its version and checks it.
+    private static void TouchJourneysWhoseStopsChanged(DbContext context)
+    {
+        foreach (var entry in context.ChangeTracker.Entries<OperationalJourney>().Where(e => e.State == EntityState.Unchanged).ToList())
+        {
+            if (entry.Entity.Stops.Any(stop => context.Entry(stop).State != EntityState.Unchanged))
+            {
+                entry.Property(j => j.DelayMinutes).IsModified = true;
             }
         }
     }

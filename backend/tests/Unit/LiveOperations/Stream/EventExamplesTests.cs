@@ -77,6 +77,9 @@ public class EventExamplesTests
     [InlineData("StopStatusChanged")]
     [InlineData("DelayChanged")]
     [InlineData("DataFreshnessChanged")]
+    [InlineData("JourneyStarted")]
+    [InlineData("JourneyEnded")]
+    [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
     {
@@ -105,6 +108,7 @@ public class EventExamplesTests
         journey.RecordPosition(
             new PositionSample(new GeoPoint(7.2906, 80.6337), 40, At(6, 50), At(6, 50), TimeSpan.Zero, 0, new Dictionary<Guid, double>()),
             At(6, 50));
+        journey.AnnouncePosition(At(6, 50), new GeoPoint(7.2906, 80.6337), 62.5, S2, S3, 0.42);
         return journey;
     }
 
@@ -134,6 +138,39 @@ public class EventExamplesTests
         Assert.Equal(Shape.Of(Example("DataFreshnessChanged")), Shape.Of(RealEvent<DataFreshnessChanged>(Journey())));
     }
 
+    // A journey that was started and then ended, to produce the two lifecycle events.
+    private static OperationalJourney Lifecycle()
+    {
+        var journey = OperationalJourney.Plan(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(),
+            [new PlannedStop(1, S1, CallType.Stop, null, 360, "1"), new PlannedStop(2, S2, CallType.Stop, 400, null, "2")],
+            TimeZoneInfo.Utc, Guid.NewGuid());
+        journey.Start(At(5, 40), Guid.NewGuid(), Guid.NewGuid());
+        journey.End(At(6, 58));
+        return journey;
+    }
+
+    [Fact]
+    public void TrainPositionUpdated_as_sent_has_the_shape_of_its_example()
+    {
+        Assert.Equal(Shape.Of(Example("TrainPositionUpdated")), Shape.Of(RealEvent<TrainPositionUpdated>(Journey())));
+    }
+
+    [Fact]
+    public void JourneyStarted_as_sent_has_the_shape_of_its_example_and_an_empty_payload()
+    {
+        var real = RealEvent<JourneyStarted>(Lifecycle());
+
+        Assert.Equal(Shape.Of(Example("JourneyStarted")), Shape.Of(real));
+        Assert.Empty(real.GetProperty("payload").EnumerateObject());   // no device, no cab session (T-07)
+    }
+
+    [Fact]
+    public void JourneyEnded_as_sent_has_the_shape_of_its_example()
+    {
+        Assert.Equal(Shape.Of(Example("JourneyEnded")), Shape.Of(RealEvent<JourneyEnded>(Lifecycle())));
+    }
+
     [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
@@ -157,6 +194,9 @@ public class EventExamplesTests
     [InlineData("StopStatusChanged", typeof(StopStatusChangedEvent))]
     [InlineData("DelayChanged", typeof(DelayChangedEvent))]
     [InlineData("DataFreshnessChanged", typeof(DataFreshnessChangedEvent))]
+    [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
+    [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
+    [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
     public void Examples_fit_the_schema_records_exactly(string name, Type schemaType)
@@ -172,6 +212,9 @@ public class EventExamplesTests
     [InlineData("StopStatusChanged")]
     [InlineData("DelayChanged")]
     [InlineData("DataFreshnessChanged")]
+    [InlineData("JourneyStarted")]
+    [InlineData("JourneyEnded")]
+    [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {
         Assert.Equal(name, Example(name).GetProperty("type").GetString());

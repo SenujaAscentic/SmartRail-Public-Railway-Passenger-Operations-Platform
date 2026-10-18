@@ -1,0 +1,21 @@
+{
+  "eventId": "c4a91e07-3d58-4b26-9f10-7e2a6d8b0c53",
+  "sequence": 1062,
+  "type": "TrainPositionUpdated",
+  "version": 1,
+  "occurredAt": "2026-10-14T06:50:10Z",
+  "journeyId": "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01",
+  "serviceDate": "2026-10-14",
+  "stationIds": [
+    "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+    "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35"
+  ],
+  "lineId": "5d1c8e0a-2b47-4f6a-9c33-71a0e4d8b2f6",
+  "payload": {
+    "location": { "latitude": 7.2906, "longitude": 80.6337 },
+    "speedKmh": 62.5,
+    "lastStationId": "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+    "nextStationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+    "fractionToNext": 0.42
+  }
+}

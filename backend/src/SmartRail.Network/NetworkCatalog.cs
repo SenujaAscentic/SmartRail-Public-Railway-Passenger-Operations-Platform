@@ -16,6 +16,22 @@ internal sealed class NetworkCatalog(NetworkDbContext db) : INetworkCatalog
             .Where(s => serviceIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => new ServiceDetails(s.Number, s.TrainType.ToString()), cancellationToken);
 
+    public async Task<IReadOnlyList<RoutePoint>> GetRouteAsync(Guid serviceId, CancellationToken cancellationToken)
+    {
+        var routeId = await db.Services.AsNoTracking().Where(s => s.Id == serviceId).Select(s => (Guid?)s.RouteId).SingleOrDefaultAsync(cancellationToken);
+        if (routeId is null)
+        {
+            return [];
+        }
+
+        return await (
+            from routeStation in db.RouteStations.AsNoTracking()
+            where routeStation.RouteId == routeId
+            join station in db.Stations.AsNoTracking() on routeStation.StationId equals station.Id
+            orderby routeStation.Sequence
+            select new RoutePoint(station.Id, station.Latitude, station.Longitude)).ToListAsync(cancellationToken);
+    }
+
     public async Task<TrainSetDetails?> GetTrainSetAsync(Guid trainSetId, CancellationToken cancellationToken)
     {
         var trainSet = await db.TrainSets.AsNoTracking().Include(t => t.Coaches).SingleOrDefaultAsync(t => t.Id == trainSetId, cancellationToken);

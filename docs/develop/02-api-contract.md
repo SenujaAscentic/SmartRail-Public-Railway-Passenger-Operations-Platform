@@ -77,7 +77,7 @@ Notation: **Who** = policy; **Story** = main story served.
 | `GET /lines` | `[{ lineId, code, name, routes: [{ routeId, code, direction ("Up" or "Down"), name, stations: [{ stationId, code, name, distanceKm, latitude, longitude }] }] }]` |
 | `GET /stations/{stationId}` | `{ stationId, code, name, latitude, longitude, cateringStation, platforms: [{ number, inService }] }`. Unknown id: `404 NOT_FOUND` |
 | `GET /journeys/search` | `[JourneySummary]`. `from` and `to` are station IDs (required, different from each other); `date` defaults to today in Asia/Colombo. Only journeys that **stop** (call type Stop) at both stations, with `from` before `to`, running on `date`. Sorted by scheduled departure from `from`. `after` defaults to now for today and to the start of the day for other dates, and is compared with the **expected** departure at `from`, so a late train that has not left stays visible; when the date searched is **today** (Asia/Colombo), a train that has already left `from` (stop Departed or Passed) is hidden; other dates are not filtered by "now". `limit` default 10, maximum 50. Cancelled journeys are included with their status. `fares[]` (Should P-9) is not sent. An unknown station is `404 NOT_FOUND`; a malformed or equal `from` / `to` is `400 VALIDATION_FAILED` |
-| `GET /journeys/{journeyId}` | The `JourneySummary` fields plus `stops: [JourneyStop]` (**without `source`**: staff only, threat T-07), `trainSet: { code, traction, coaches: [{ position, class, seating }] }` and `freshness: { tracking, updatedAt, lastPosition: { latitude, longitude } or null }`. Unknown id: `404 NOT_FOUND` |
+| `GET /journeys/{journeyId}` | The `JourneySummary` fields plus `stops: [JourneyStop]` (**without `source`**: staff only, threat T-07), `trainSet: { code, traction, coaches: [{ position, class, seating }] }` and `freshness: { tracking, updatedAt, lastPosition: { latitude, longitude, speedKmh, lastStationId, nextStationId, fractionToNext } or null }` (`lastPosition` has the same fields as the `TrainPositionUpdated` payload; null until one has been announced; the apps compute nothing). Unknown id: `404 NOT_FOUND` |
 
 **Fields that exist from the first day but are filled in later (so the app types generated from `openapi.yaml` never change):** `version` (the control version, R-18; `0` until the controller decisions exist), `hold`, `reason` and `previousPlatform` are always present and **null until the controller decisions exist** (Phase 3). `platform` is the planned platform until a platform change exists. `status.kind` can only be `NotStarted`, `OnTime`, `Late` or `Early` until cancel, terminate, hold and completion exist; it is `NotStarted` while no position has been accepted, so a train without data is never shown as on time.
 
@@ -132,6 +132,27 @@ Notation: **Who** = policy; **Story** = main story served.
 | `POST /crew/journeys/{id}/reports` | CrewCab, CrewPhone | `{type, note? ≤ 200, occurredAt, location?, clientActionId}` | US-C5 |
 | `GET /crew/journeys/{id}/messages` · `POST /crew/messages/{id}/acknowledge` | CrewCab, CrewPhone | Acknowledge `{clientActionId}`; marks delivered on fetch | US-C6 |
 | `GET /crew/stream` | CrewCab, CrewPhone | Crew stream: own journeys' public events + instructions | US-C6 |
+
+**Start and End (decided 18 Oct 2026).** Body `{ "clientActionId": "<uuid>" }` (required: `400 VALIDATION_FAILED` without it). Answer `200 { "journeyId", "status", "at" }` where `status` is `Running` (start) or `Completed` (end). A repeat of the same `clientActionId` is answered `200` with the **identical original answer** and changes nothing (remembered for 48 h); the same id used for a different action or journey is `409 INVALID_STATE`. Errors:
+
+| Case | Answer |
+|---|---|
+| Not signed in with a cab session (a phone token, staff, nobody) | `401` / `403` from the policy |
+| A journey that is not assigned to this driver (R-17) | `403 OUT_OF_SCOPE`, logged with ids only |
+| Unknown or malformed journey id | `404 NOT_FOUND` |
+| Start more than 60 minutes before the scheduled departure (US-C2 AC2) | `422 RULE_VIOLATION` |
+| Start of a journey that is not Planned; End of one that is not Running | `409 INVALID_STATE` |
+
+Starting is not a controller decision: it does not change the control version (R-18). `Start` makes the journey `Running`; the tracking status stays `NotStarted` until the first position is accepted (domain model 4.4). `End` makes it `Completed` and the tracking `Ended`. Both are announced on the stream as `JourneyStarted` (public payload **empty**: the tablet and cab session are staff-only, T-07) and `JourneyEnded { reason }`.
+
+**Positions (decided 18 Oct 2026).** Body `{ "clientActionId": "<uuid>", "positions": [ { "lat", "lng", "speedKmh", "accuracyM"?, "gpsTime"?, "deviceTime" } ] }`, 1 to 100 fixes, times as UTC ISO 8601 (`gpsTime` is the time the GPS gave, `deviceTime` the tablet's own clock; R-09 uses `gpsTime`, else `deviceTime` corrected by the offset measured at cab sign-in). Answer `200 { "accepted": n, "discarded": [ { "index", "reason" } ] }`; a discarded fix is one that failed R-08 (`OlderThanLastAccepted`, `OffRoute`, `ImpliedSpeedTooHigh`) and is not used. The fixes are worked through **oldest first**, whatever their order in the request. A repeated `clientActionId` is answered with the identical original answer and changes nothing. A badly shaped body is `400 VALIDATION_FAILED` with the field named (`positions[2].lat`). How each part of **R-07** is answered:
+
+| R-07 clause | Answer |
+|---|---|
+| A registered cab device with an active cab session | The token itself is refused: `401 UNAUTHENTICATED` once the session has ended (section 6). A tablet that is unknown or deactivated cannot sign in, so it has no token. (A tablet deactivated *after* it signed in keeps its token for at most one access-token life, 15 min: threat T-12.) A token without a cab session (a phone, staff) is `403` |
+| The journey's assigned driver | `403 OUT_OF_SCOPE`, logged with ids only; also when the journey has no driver |
+| A journey that is Running | `403 FORBIDDEN` (R-07 says 403), for Planned and Completed journeys alike |
+| Unknown or malformed journey id | `404 NOT_FOUND` |
 
 The **simulator** signs in as a seeded cab device and uses exactly these endpoints (US-B3).
 
@@ -223,7 +244,7 @@ Staff fields (source, override flags, staff IDs) are removed from public events.
 "OnTime" | "Late" | "Early" | "Cancelled" | "TerminatedEarly" | "Held" | "NotStarted" | "Completed"
 ```
 
-`Held` is a display status computed from the hold flag (D-4); the journey's own state machine is unchanged.
+`Held` is a display status computed from the hold flag (D-4); the journey's own state machine is unchanged. `Completed` appears when the driver has ended the journey (18 Oct).
 
 ---
 

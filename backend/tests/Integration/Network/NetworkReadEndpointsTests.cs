@@ -131,6 +131,25 @@ public class NetworkReadEndpointsTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task The_catalog_gives_a_services_route_as_stations_in_order_with_coordinates()
+    {
+        using var scope = api.Factory.Services.CreateScope();
+        var schedule = await scope.ServiceProvider.GetRequiredService<INetworkSchedule>().GetScheduleAsync(Ct);
+        var up = schedule.Services.Single(s => s.Number == "1001");     // Fort to Kandy
+        var down = schedule.Services.Single(s => s.Number == "1002");   // Kandy to Fort
+        var catalog = scope.ServiceProvider.GetRequiredService<INetworkCatalog>();
+
+        var upRoute = await catalog.GetRouteAsync(up.Id, Ct);
+        var downRoute = await catalog.GetRouteAsync(down.Id, Ct);
+
+        Assert.Equal(11, upRoute.Count);
+        Assert.Equal(up.Stops.Select(s => s.StationId), upRoute.Select(p => p.StationId));   // the route is the same stations the service calls at, in order
+        Assert.Equal(upRoute.Select(p => p.StationId).Reverse(), downRoute.Select(p => p.StationId));
+        Assert.All(upRoute, p => { Assert.InRange(p.Latitude, 5, 10); Assert.InRange(p.Longitude, 79, 82); });
+        Assert.Empty(await catalog.GetRouteAsync(Guid.NewGuid(), Ct));
+    }
+
+    [Fact]
     public async Task The_catalog_describes_a_train_set_and_its_coaches()
     {
         using var scope = api.Factory.Services.CreateScope();

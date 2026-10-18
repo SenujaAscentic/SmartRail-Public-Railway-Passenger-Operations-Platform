@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartRail.LiveOperations.Domain;
+using SmartRail.LiveOperations.Features.Idempotency;
 using SmartRail.LiveOperations.Outbox;
 
 namespace SmartRail.LiveOperations.Persistence;
@@ -12,6 +13,7 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
 
     public DbSet<OperationalJourney> Journeys => Set<OperationalJourney>();
     internal DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+    internal DbSet<ProcessedAction> ProcessedActions => Set<ProcessedAction>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -25,6 +27,10 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
             journey.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
             journey.Property(j => j.DelaySource).HasConversion<string>().HasMaxLength(20);
             journey.Property(j => j.Tracking).HasConversion<string>().HasMaxLength(20);
+
+            // The row version (R-18 rowVersion): Postgres changes the system column xmin on every update, and EF refuses an update
+            // when someone else saved first. A shadow property, so the Domain project stays free of EF.
+            journey.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             // The database itself guarantees a service runs at most once per date (A-13): no duplicates, whatever the code does.
             journey.HasIndex(j => new { j.ServiceId, j.ServiceDate }).IsUnique();
@@ -43,6 +49,17 @@ internal class LiveOperationsDbContext(DbContextOptions<LiveOperationsDbContext>
                 stop.Property(s => s.ActualDepartureSource).HasConversion<string>().HasMaxLength(20);
             });
             journey.Navigation(j => j.Stops).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        model.Entity<ProcessedAction>(action =>
+        {
+            action.ToTable("ProcessedActions");
+            action.HasKey(a => a.ClientActionId);
+            action.Property(a => a.ClientActionId).ValueGeneratedNever();
+            action.Property(a => a.Kind).HasMaxLength(20);
+            // "json", not "jsonb": a repeat must get back the exact text it was first answered with (jsonb would reorder the keys).
+            action.Property(a => a.ResultJson).HasColumnType("json");
+            action.HasIndex(a => a.CreatedAt);   // the 48-hour clean-up
         });
 
         // The stream sequence (contract section 4). A database sequence never goes back, even after old rows are deleted,

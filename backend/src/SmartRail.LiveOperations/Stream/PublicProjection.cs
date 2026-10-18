@@ -13,6 +13,9 @@ internal static class PublicProjection
         ["StopStatusChanged"] = ["stationId", "sequence", "from", "to", "at"],
         ["DelayChanged"] = ["delayMinutes", "previousDelayMinutes", "stops"],
         ["DataFreshnessChanged"] = ["from", "to", "lastSeenAt", "lastStationId"],
+        ["JourneyStarted"] = [],            // the stored payload (device, cab session) is staff-only: nothing of it is public
+        ["JourneyEnded"] = ["reason"],
+        ["TrainPositionUpdated"] = ["location", "speedKmh", "lastStationId", "nextStationId", "fractionToNext"],
     };
 
     // The event types the public stream sends. Each has an example in shared/events (CLAUDE.md section 5, step 5).

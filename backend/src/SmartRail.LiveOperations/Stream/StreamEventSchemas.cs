@@ -21,5 +21,17 @@ public sealed record DataFreshnessChangedEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, DataFreshnessChangedPayload Payload);
 
+public sealed record JourneyStartedEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, EmptyPayload Payload);
+
+public sealed record JourneyEndedEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, JourneyEndedPayload Payload);
+
+public sealed record TrainPositionUpdatedEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, TrainPositionUpdatedPayload Payload);
+
 // `event: resync`: the client cannot be caught up from the log and must start again from the snapshots that follow.
 public sealed record StreamResync(string Reason);

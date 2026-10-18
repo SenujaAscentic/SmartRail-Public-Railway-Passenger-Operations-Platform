@@ -41,6 +41,12 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("FractionToNext")
+                        .HasColumnType("double precision");
+
                     b.Property<double?>("LastLatitude")
                         .HasColumnType("double precision");
 
@@ -50,7 +56,16 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<DateTime?>("LastPositionAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double?>("LastSpeedKmh")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("LastStationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("LineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("NextStationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("ServiceDate")
@@ -72,12 +87,45 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<Guid>("TrainSetId")
                         .HasColumnType("uuid");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceId", "ServiceDate")
                         .IsUnique();
 
                     b.ToTable("Journeys", "ops");
+                });
+
+            modelBuilder.Entity("SmartRail.LiveOperations.Features.Idempotency.ProcessedAction", b =>
+                {
+                    b.Property<Guid>("ClientActionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JourneyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.HasKey("ClientActionId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("ProcessedActions", "ops");
                 });
 
             modelBuilder.Entity("SmartRail.LiveOperations.Outbox.OutboxEvent", b =>

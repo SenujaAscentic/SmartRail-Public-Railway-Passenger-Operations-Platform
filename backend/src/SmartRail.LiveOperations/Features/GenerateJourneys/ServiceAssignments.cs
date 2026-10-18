@@ -4,11 +4,11 @@ using SmartRail.Network;
 namespace SmartRail.LiveOperations.Features.GenerateJourneys;
 
 // Which train set runs each service, from shared/seed/service-assignments.json.
-// The file also names a driver per service; it stays unused until journeys get their crew (the guard role is deferred, 14 Oct).
+// The file also names a driver per service (the guard role is deferred, 14 Oct); ReadDrivers returns those.
 public static class ServiceAssignments
 {
     private sealed record File(List<Row> Assignments);
-    private sealed record Row(string ServiceNumber, string TrainSetCode);
+    private sealed record Row(string ServiceNumber, string TrainSetCode, string? DriverStaffNumber = null);
 
     // Returns service number -> train set code.
     public static IReadOnlyDictionary<string, string> Read(string seedFolder)
@@ -27,6 +27,18 @@ public static class ServiceAssignments
         }
 
         return byService;
+    }
+
+    // Returns service number -> the driver's staff number, for the services that name one.
+    public static IReadOnlyDictionary<string, string> ReadDrivers(string seedFolder)
+    {
+        var path = Path.Combine(seedFolder, "service-assignments.json");
+        var file = JsonSerializer.Deserialize<File>(System.IO.File.ReadAllText(path), new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                   ?? throw new InvalidDataException($"{path}: the file is empty.");
+
+        return file.Assignments
+            .Where(a => !string.IsNullOrWhiteSpace(a.DriverStaffNumber))
+            .ToDictionary(a => a.ServiceNumber, a => a.DriverStaffNumber!.Trim());
     }
 
     // Everything that would stop journeys being generated correctly. An empty list means the assignments are usable.

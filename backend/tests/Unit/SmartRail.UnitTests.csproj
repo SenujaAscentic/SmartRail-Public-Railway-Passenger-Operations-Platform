@@ -6,6 +6,8 @@
     <ProjectReference Include="..\..\src\SmartRail.Network\SmartRail.Network.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.Identity\SmartRail.Identity.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Api\SmartRail.Api.csproj" />
+    <ProjectReference Include="..\..\src\SmartRail.Simulator\SmartRail.Simulator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

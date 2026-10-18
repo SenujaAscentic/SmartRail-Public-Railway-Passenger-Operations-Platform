@@ -103,6 +103,27 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
         { "Driver", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
         { "DriverCab", "GET", "/api/v1/journeys/00000000-0000-0000-0000-000000000001", HttpStatusCode.NotFound },
+
+        // POST /crew/journeys/{id}/start and /end: CrewCab only (a driver with a cab session). The test posts an empty body, so a
+        // DriverCab caller gets past the policy and is answered 400 (no clientActionId). A phone token (Driver) is refused, so is staff.
+        { "Anonymous", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/start", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/start", HttpStatusCode.Forbidden },
+        { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/start", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/start", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/start", HttpStatusCode.BadRequest },
+        { "Anonymous", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Forbidden },
+        { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.BadRequest },
+
+        // POST /crew/journeys/{id}/positions: CrewCab only (R-07, threat T-19). Empty body: a DriverCab caller gets past the policy and is
+        // answered 400; a phone token (Driver), staff and nobody are refused. Who may post for WHICH journey is in CrewPositionsR07Tests.
+        { "Anonymous", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.BadRequest },
     };
 
     [Theory]

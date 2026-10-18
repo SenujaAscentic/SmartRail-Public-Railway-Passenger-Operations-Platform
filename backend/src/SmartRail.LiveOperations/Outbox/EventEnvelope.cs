@@ -23,6 +23,18 @@ internal sealed record EventEnvelope(
 // Payloads, version 1 (domain model 8.2). Public, because the API description (openapi.yaml) is generated from them.
 public sealed record StopStatusChangedPayload(Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At);
 
+// JourneyStarted: what the staff side keeps (which tablet, which cab session). NEVER public (T-07): the public stream sends no payload.
+internal sealed record JourneyStartedPayload(Guid DeviceId, Guid CrewSessionId);
+
+// What a public event with nothing to say beyond its type carries: an empty object.
+public sealed record EmptyPayload;
+
+public sealed record JourneyEndedPayload(JourneyEndReason Reason);
+
+public sealed record GeoLocation(double Latitude, double Longitude);
+
+public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
+
 public sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
 
 public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);
