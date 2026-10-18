@@ -1,7 +1,14 @@
 namespace SmartRail.LiveOperations.Domain;
 
-// Only what daily generation (US-B2) needs. Delay, hold, tracking and the other statuses come with their own rules.
-public enum JourneyStatus { Planned }
+// Domain model 4.2. Cancelled and TerminatedEarly come with the controller decisions (Phase 3).
+public enum JourneyStatus { Planned, Running, Completed }
+
+// Why a journey ended (domain model 8.2): the driver pressed End; the train reached the terminus; the controller ended it.
+public enum JourneyEndReason { Driver, Terminus, Controller }
+
+public enum StartResult { Started, TooEarly, WrongState }
+
+public enum EndResult { Ended, WrongState }
 
 public enum CallType { Stop, Pass }
 
@@ -110,6 +117,69 @@ public sealed class OperationalJourney
     public Guid TrainSetId { get; private set; }
     public Guid LineId { get; private set; }   // for the event stream: lets a client filter by line (domain model 8.1)
 
+    // US-C2 AC2 and contract 3.4: "Start journey" is allowed from 60 minutes before the scheduled departure.
+    public static readonly TimeSpan StartsBefore = TimeSpan.FromMinutes(60);
+
+    // The driver pressed Start on the cab tablet (domain model 4.2: Planned -> Running only from the cab tablet; the slice has
+    // already checked the caller is the assigned driver with a cab session). Starting is not a controller decision, so it does
+    // not touch the control version (R-18). Tracking stays NotStarted until the first position arrives (domain model 4.4).
+    public StartResult Start(DateTime now, Guid deviceId, Guid crewSessionId)
+    {
+        if (Status != JourneyStatus.Planned)
+        {
+            return StartResult.WrongState;
+        }
+
+        var first = _stops.OrderBy(s => s.Sequence).First();
+        if ((first.ScheduledDeparture ?? first.ScheduledArrival) is { } departure && now < departure - StartsBefore)
+        {
+            return StartResult.TooEarly;
+        }
+
+        Status = JourneyStatus.Running;
+        _events.Add(new JourneyStarted(Id, now, deviceId, crewSessionId));
+        return StartResult.Started;
+    }
+
+    // Announces where the train is (event TrainPositionUpdated). Called by the position slice once per accepted batch, with the latest
+    // accepted fix. The position itself was recorded by RecordPosition; this keeps the announced fields next to it and raises the event.
+    public void AnnouncePosition(DateTime at, GeoPoint location, double speedKmh, Guid lastStationId, Guid nextStationId, double fractionToNext)
+    {
+        var fraction = Math.Clamp(fractionToNext, 0, 1);
+        (LastSpeedKmh, LastStationId, NextStationId, FractionToNext) = (speedKmh, lastStationId, nextStationId, fraction);
+        _events.Add(new TrainPositionUpdated(Id, at, location, speedKmh, lastStationId, nextStationId, fraction));
+    }
+
+    // The driver pressed End (domain model 4.2: Running -> Completed). The data is over: tracking becomes Ended (R-06 stops ageing it).
+    public EndResult End(DateTime now)
+    {
+        if (Status != JourneyStatus.Running)
+        {
+            return EndResult.WrongState;
+        }
+
+        Status = JourneyStatus.Completed;
+        _events.Add(new JourneyEnded(Id, now, JourneyEndReason.Driver));
+        SetTracking(TrackingStatus.Ended, now);
+        return EndResult.Ended;
+    }
+
+    // The driver who runs this journey: the id of their account, which is the `sub` of their tokens. Null while none is assigned.
+    // R-07 accepts positions only from this driver. The id comes from service-assignments.json (staff number -> account).
+    public Guid? DriverId { get; private set; }
+
+    // Sets the driver only where none is set; a driver already assigned is never replaced here. Returns whether it was set.
+    public bool AssignDriver(Guid driverId)
+    {
+        if (DriverId is not null)
+        {
+            return false;
+        }
+
+        DriverId = driverId;
+        return true;
+    }
+
     // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation. No decision
     // exists yet, so it stays 0; it is here so the API can show it from the first day (apps' generated types must not change later).
     public int ControlVersion { get; private set; }
@@ -126,6 +196,13 @@ public sealed class OperationalJourney
     public DateTime? LastPositionAt { get; private set; }   // UTC, corrected
     public double? LastLatitude { get; private set; }
     public double? LastLongitude { get; private set; }
+
+    // The last position that was announced (TrainPositionUpdated): speed, the stations around the train and how far it is between
+    // them. Kept so the read endpoints can show the same fields without the apps computing anything. All null until one is announced.
+    public double? LastSpeedKmh { get; private set; }
+    public Guid? LastStationId { get; private set; }
+    public Guid? NextStationId { get; private set; }
+    public double? FractionToNext { get; private set; }
 
     // Events raised since the last save. The saving slice writes them to the outbox, then calls ClearDomainEvents.
     public IReadOnlyList<IDomainEvent> DomainEvents => _events;
@@ -366,7 +443,7 @@ public sealed class OperationalJourney
     // date in the given time zone (Asia/Colombo); they are converted to UTC here, once, and never again.
     public static OperationalJourney Plan(
         Guid id, Guid serviceId, DateOnly serviceDate, Guid trainSetId,
-        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone, Guid lineId)
+        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone, Guid lineId, Guid? driverId = null)
     {
         var journey = new OperationalJourney
         {
@@ -375,6 +452,7 @@ public sealed class OperationalJourney
             ServiceDate = serviceDate,
             TrainSetId = trainSetId,
             LineId = lineId,
+            DriverId = driverId,
             Status = JourneyStatus.Planned,
         };
 

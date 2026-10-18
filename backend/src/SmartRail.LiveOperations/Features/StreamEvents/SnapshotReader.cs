@@ -12,6 +12,7 @@ public sealed record JourneySnapshot(
     Guid JourneyId,
     DateOnly ServiceDate,
     Guid LineId,
+    JourneyStatus Status,
     int DelayMinutes,
     TrackingStatus Tracking,
     DateTime? LastSeenAt,
@@ -62,7 +63,7 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
         var position = journey.LastLatitude is { } lat && journey.LastLongitude is { } lon ? new SnapshotPosition(lat, lon) : null;
 
         return new JourneySnapshot(
-            journey.Id, journey.ServiceDate, journey.LineId, journey.DelayMinutes, journey.Tracking, journey.LastPositionAt, position,
+            journey.Id, journey.ServiceDate, journey.LineId, journey.Status, journey.DelayMinutes, journey.Tracking, journey.LastPositionAt, position,
             journey.Stops.OrderBy(s => s.Sequence).Select(s => new SnapshotStop(
                 s.StationId, s.Sequence, s.Status, s.ActualArrival, s.ActualDeparture,
                 s.ExpectedArrival(delay), s.ExpectedDeparture(delay))).ToList(),

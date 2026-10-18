@@ -23,6 +23,21 @@ internal static class EventMapper
             journey, eventId, "DataFreshnessChanged", e.At, Source.Gps, RemainingStations(journey),
             new DataFreshnessChangedPayload(e.From, e.To, e.LastSeenAt, LastKnownStation(journey))),
 
+        // Only the two stations around the train care where it is; a map follows the journey id. Source Gps: it is a GPS fix.
+        TrainPositionUpdated e => Envelope(
+            journey, eventId, "TrainPositionUpdated", e.At, Source.Gps, [e.LastStationId, e.NextStationId],
+            new TrainPositionUpdatedPayload(
+                new GeoLocation(e.Location.Latitude, e.Location.Longitude), e.SpeedKmh, e.LastStationId, e.NextStationId, e.FractionToNext)),
+
+        // Every stop's display shows a running or finished train, so both events name all the stops.
+        JourneyStarted e => Envelope(
+            journey, eventId, "JourneyStarted", e.At, Source.Crew, AllStations(journey),
+            new JourneyStartedPayload(e.DeviceId, e.CrewSessionId)),
+
+        JourneyEnded e => Envelope(
+            journey, eventId, "JourneyEnded", e.At, e.Reason == JourneyEndReason.Controller ? Source.Controller : Source.Crew,
+            AllStations(journey), new JourneyEndedPayload(e.Reason)),
+
         _ => throw new NotSupportedException($"No stream mapping for the domain event {domainEvent.GetType().Name}."),
     };
 
@@ -34,6 +49,9 @@ internal static class EventMapper
 
     private static List<JourneyStop> Remaining(OperationalJourney journey) =>
         journey.Stops.Where(s => s.Status is StopStatus.Scheduled or StopStatus.Arrived).OrderBy(s => s.Sequence).ToList();
+
+    private static IReadOnlyList<Guid> AllStations(OperationalJourney journey) =>
+        journey.Stops.OrderBy(s => s.Sequence).Select(s => s.StationId).ToList();
 
     private static IReadOnlyList<Guid> RemainingStations(OperationalJourney journey) =>
         Remaining(journey).Select(s => s.StationId).ToList();

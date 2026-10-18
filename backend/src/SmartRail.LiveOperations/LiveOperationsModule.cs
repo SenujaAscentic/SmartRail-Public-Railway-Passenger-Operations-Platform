@@ -4,7 +4,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
+using SmartRail.LiveOperations.Features.CrewJourney;
+using SmartRail.LiveOperations.Features.CrewPositions;
 using SmartRail.LiveOperations.Features.GetJourney;
+using SmartRail.LiveOperations.Features.Idempotency;
+using SmartRail.LiveOperations.Features.RefreshTracking;
 using SmartRail.LiveOperations.Features.SearchJourneys;
 using SmartRail.LiveOperations.Features.StreamEvents;
 using SmartRail.LiveOperations.Outbox;
@@ -50,9 +54,14 @@ public static class LiveOperationsModule
             TimeSpan.FromSeconds(provider.GetRequiredService<IConfiguration>().GetValue("Stream:HeartbeatSeconds", 15))));
         services.AddScoped<SnapshotReader>();
         services.AddScoped<StreamHandler>();
+        services.AddScoped<TrackingRefresher>();
+        services.AddScoped<IdempotencyStore>();
+        services.AddScoped<CrewJourneyHandler>();
+        services.AddScoped<CrewPositionsHandler>();
 
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
         services.AddHostedService<JourneyGenerationService>();       // then generates now and every hour
+        services.AddHostedService<TrackingRefreshService>();         // R-06 and R-23: ages the data of tracked trains every 15 s
         services.AddHostedService<OutboxDispatcher>();               // sends saved events to the stream
 
         return services;
@@ -63,6 +72,8 @@ public static class LiveOperationsModule
     {
         StreamEndpoint.Map(routes);
         SearchJourneysEndpoint.Map(routes);
+        CrewJourneyEndpoints.Map(routes);
+        CrewPositionsEndpoint.Map(routes);
         GetJourneyEndpoint.Map(routes);
         return routes;
     }

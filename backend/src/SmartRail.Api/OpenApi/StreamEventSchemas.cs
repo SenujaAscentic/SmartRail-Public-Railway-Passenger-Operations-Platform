@@ -17,6 +17,9 @@ internal static class StreamEventSchemas
         (typeof(StopStatusChangedEvent), "StopStatusChanged"),
         (typeof(DelayChangedEvent), "DelayChanged"),
         (typeof(DataFreshnessChangedEvent), "DataFreshnessChanged"),
+        (typeof(JourneyStartedEvent), "JourneyStarted"),
+        (typeof(JourneyEndedEvent), "JourneyEnded"),
+        (typeof(TrainPositionUpdatedEvent), "TrainPositionUpdated"),
     ];
 
     public static OpenApiOptions AddStreamEventSchemas(this OpenApiOptions options)

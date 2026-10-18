@@ -45,13 +45,19 @@ public sealed class ApiFixture : IAsyncLifetime
     }
 
     // A fresh application against the same database. Extra settings can be added, for example Seed:Path.
-    public WebApplicationFactory<Program> CreateFactory(Action<IWebHostBuilder>? configure = null) =>
+    // useFixtureClock: false leaves the application on the clock its own settings choose (the demo clock tests need that).
+    // connectionString: a different database (see CreateDatabaseAsync) for a test whose application must not touch the shared one.
+    public WebApplicationFactory<Program> CreateFactory(Action<IWebHostBuilder>? configure = null, bool useFixtureClock = true, string? connectionString = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.ConfigureTestServices(services =>
             {
-                services.AddSingleton<TimeProvider>(Clock);
+                if (useFixtureClock)
+                {
+                    services.AddSingleton<TimeProvider>(Clock);
+                }
+
                 // A test can make the hand-over of one journey's events fail (see FaultInjectingPublisher).
                 services.AddSingleton<IEventPublisher>(provider => new FaultInjectingPublisher(provider.GetRequiredService<StreamHub>()));
             });
@@ -60,7 +66,7 @@ public sealed class ApiFixture : IAsyncLifetime
             {
                 var settings = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:SmartRail"] = _database.GetConnectionString(),
+                    ["ConnectionStrings:SmartRail"] = connectionString ?? _database.GetConnectionString(),
                     ["Jwt:SigningKey"] = JwtSigningKey,
                     ["Seed:DemoPassword"] = DemoPassword,
                     ["Stream:HeartbeatSeconds"] = "1",   // the real default is 15 s; a test should not wait that long
@@ -74,6 +80,19 @@ public sealed class ApiFixture : IAsyncLifetime
             });
             configure?.Invoke(builder);
         });
+
+    // An empty database of its own inside the same container. The application creates its tables and seed data in it when it starts.
+    public async Task<string> CreateDatabaseAsync(string name)
+    {
+        await using (var connection = new Npgsql.NpgsqlConnection(_database.GetConnectionString()))
+        {
+            await connection.OpenAsync();
+            await using var command = new Npgsql.NpgsqlCommand($"CREATE DATABASE \"{name}\"", connection);   // the name is a constant of the test
+            await command.ExecuteNonQueryAsync();
+        }
+
+        return new Npgsql.NpgsqlConnectionStringBuilder(_database.GetConnectionString()) { Database = name }.ConnectionString;
+    }
 
     public async ValueTask DisposeAsync()
     {

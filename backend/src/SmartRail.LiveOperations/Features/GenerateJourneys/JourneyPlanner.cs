@@ -12,10 +12,12 @@ public sealed class JourneyPlanner(TimeProvider clock, TimeZoneInfo timeZone)
     // trainSetCodeByServiceNumber: which train set runs each service (from service-assignments.json); the start-up
     // check guarantees every service has one that exists.
     // existing: journeys that are already stored; they are never planned again or changed (A-17).
+    // driverIdByServiceNumber: the account id of the driver of each service that has one (R-07 checks positions against it).
     public IReadOnlyList<OperationalJourney> Plan(
         NetworkSchedule schedule,
         IReadOnlyDictionary<string, string> trainSetCodeByServiceNumber,
-        IReadOnlySet<(Guid ServiceId, DateOnly ServiceDate)> existing)
+        IReadOnlySet<(Guid ServiceId, DateOnly ServiceDate)> existing,
+        IReadOnlyDictionary<string, Guid> driverIdByServiceNumber)
     {
         // "Today" is the date in Colombo, not in UTC: at 01:30 in Colombo it is still yesterday in UTC.
         var now = clock.GetUtcNow();
@@ -41,7 +43,8 @@ public sealed class JourneyPlanner(TimeProvider clock, TimeZoneInfo timeZone)
                     s.Sequence, s.StationId, ToDomain(s.CallType), s.ArrivalOffset, s.DepartureOffset, s.PlannedPlatform));
 
                 // The ID is time-ordered; the time comes from the injected clock like every other time in the code.
-                journeys.Add(OperationalJourney.Plan(Guid.CreateVersion7(now), service.Id, date, trainSetId, stops, timeZone, service.LineId));
+                journeys.Add(OperationalJourney.Plan(Guid.CreateVersion7(now), service.Id, date, trainSetId, stops, timeZone, service.LineId,
+                    driverIdByServiceNumber.TryGetValue(service.Number, out var driverId) ? driverId : null));
             }
         }
 

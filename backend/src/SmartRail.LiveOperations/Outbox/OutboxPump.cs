@@ -73,12 +73,16 @@ internal sealed class OutboxPump(IEventPublisher publisher, TimeProvider clock, 
     }
 
     // Dispatched and failed rows older than the retention are no longer needed for resume. Pending rows are never deleted.
+    // Crew actions remembered for repeats (ProcessedActions) are forgotten after their own, longer, retention in the same round.
     public async Task DeleteOldAsync(LiveOperationsDbContext db, CancellationToken cancellationToken)
     {
         var cutoff = clock.GetUtcNow().UtcDateTime - Retention;
         await db.OutboxEvents
             .Where(e => e.Status != OutboxStatus.Pending && e.CreatedAt < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
+
+        var actionsCutoff = clock.GetUtcNow().UtcDateTime - Features.Idempotency.IdempotencyStore.Retention;
+        await db.ProcessedActions.Where(a => a.CreatedAt < actionsCutoff).ExecuteDeleteAsync(cancellationToken);
     }
 
     // A constant SQL text with no input in it (CLAUDE.md section 6: no string-built SQL from outside values).

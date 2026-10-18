@@ -82,6 +82,7 @@ public static class IdentityModule
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemAuthorizationResultHandler>();
 
         services.AddScoped<IdentitySeeder>();
+        services.AddScoped<IStaffDirectory, StaffDirectory>();   // the door LiveOperations uses to find a driver's account id
         services.AddHostedService<IdentityStartupService>();
 
         return services;

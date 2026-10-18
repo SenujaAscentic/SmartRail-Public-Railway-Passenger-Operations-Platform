@@ -139,8 +139,12 @@ public class JourneyViewBuilderTests
         Assert.Equal(("DPS-01", "DieselPowerSet"), (before.TrainSet.Code, before.TrainSet.Traction));
 
         journey.RecordPosition(new PositionSample(new GeoPoint(7.29, 80.63), 40, At(6, 10), At(6, 10), TimeSpan.Zero, 0, new Dictionary<Guid, double>()), At(6, 10));
+        var recorded = JourneyViewBuilder.Detail(journey, Names, Service, trainSet);
+        Assert.Null(recorded.Freshness.LastPosition);   // recorded but not yet announced: no half-filled position
+
+        journey.AnnouncePosition(At(6, 10), new GeoPoint(7.29, 80.63), 40, S1, S2, 0.4);
         var after = JourneyViewBuilder.Detail(journey, Names, Service, trainSet);
-        Assert.Equal(new JourneyDetailFreshnessResponse("Live", At(6, 10), new PositionResponse(7.29, 80.63)), after.Freshness);
+        Assert.Equal(new JourneyDetailFreshnessResponse("Live", At(6, 10), new PositionResponse(7.29, 80.63, 40, S1, S2, 0.4)), after.Freshness);
     }
 
     // T-07: whatever the staff-side data holds, the public JSON has no source and no staff or crew fields.
