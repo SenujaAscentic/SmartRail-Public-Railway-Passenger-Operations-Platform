@@ -1,0 +1,27 @@
+name: smartrail_core
+description: "Shared code for the SmartRail Flutter apps: theme, status texts, time formatting, API models."
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.44.0"
+dependencies:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  # Noto Sans / Noto Sans Mono, bundled (SIL OFL 1.1, see fonts/OFL.txt). No google_fonts package.
+  fonts:
+    - family: NotoSans
+      fonts:
+        - asset: fonts/NotoSans-Regular.ttf
+        - asset: fonts/NotoSans-Bold.ttf
+          weight: 700
+    - family: NotoSansMono
+      fonts:
+        - asset: fonts/NotoSansMono-Regular.ttf
+        - asset: fonts/NotoSansMono-Bold.ttf
+          weight: 700
