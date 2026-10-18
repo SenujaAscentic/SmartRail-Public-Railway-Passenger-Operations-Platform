@@ -241,7 +241,8 @@ public class StreamTests(ApiFixture api) : IAsyncLifetime
         {
             var frame = frames.First(f => f.Event == type).Json;
             Assert.Equal(Names(Example(type)), Names(frame));
-            Assert.Equal(Names(Example(type).GetProperty("payload")), Names(frame.GetProperty("payload")));
+            // `reason` is in the example but only present when the controller set the delay; this delay came from a stop event.
+            Assert.Equal(Names(Example(type).GetProperty("payload")).Except(["reason"]), Names(frame.GetProperty("payload")));
         }
     }
 

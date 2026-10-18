@@ -144,7 +144,7 @@ public class JourneyViewBuilderTests
 
         journey.AnnouncePosition(At(6, 10), new GeoPoint(7.29, 80.63), 40, S1, S2, 0.4);
         var after = JourneyViewBuilder.Detail(journey, Names, Service, trainSet);
-        Assert.Equal(new JourneyDetailFreshnessResponse("Live", At(6, 10), new PositionResponse(7.29, 80.63, 40, S1, S2, 0.4)), after.Freshness);
+        Assert.Equal(new JourneyDetailFreshnessResponse("Live", At(6, 10), Names[S1], new PositionResponse(7.29, 80.63, 40, S1, S2, 0.4)), after.Freshness);
     }
 
     // T-07: whatever the staff-side data holds, the public JSON has no source and no staff or crew fields.

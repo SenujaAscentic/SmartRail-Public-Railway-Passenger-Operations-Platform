@@ -152,6 +152,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/delay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller sets the delay of a journey, with a reason. It stays until cleared (R-05). */
+        post: operations["SetDelay"];
+        /** The controller removes the delay they set; the delay of the latest stop event applies again. */
+        delete: operations["ClearDelay"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller holds the train at a station. Its expected departure follows the clock until it is released (R-22). */
+        post: operations["HoldJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/hold/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller lets a held train go. */
+        post: operations["ReleaseHold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller cancels a planned or running journey; its remaining stops are skipped (R-14). */
+        post: operations["CancelJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller reinstates a cancelled journey, only before its scheduled start (R-14). */
+        post: operations["ReinstateJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a platform change would do (lead time, hold recommended, conflicts) without changing anything. */
+        post: operations["PreviewPlatformChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller moves a stop to another platform. Under 5 minutes of notice is a warning, not a block; a hold is optional. */
+        post: operations["ChangePlatform"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -278,6 +398,12 @@ export interface components {
             /** Format: date-time */
             serverTime: string;
         };
+        CancelRequest: {
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
         CoachResponse: {
             /** Format: int32 */
             position: number;
@@ -361,17 +487,68 @@ export interface components {
                     /** Format: date-time */
                     expectedDeparture: null | string;
                 }[];
+                reason?: {
+                    code: string;
+                    note: null | string;
+                };
             };
+        };
+        DelayRequest: {
+            /** Format: int32 */
+            minutes: null | number;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
         DiscardedPosition: {
             /** Format: int32 */
             index: number;
             reason: string;
         };
+        HoldRequest: {
+            /** Format: uuid */
+            stationId: null | string;
+            /** Format: int32 */
+            minutes: null | number;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
+        JourneyCancelledEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyCancelled";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
+        };
         JourneyDetailFreshnessResponse: {
             tracking: string;
             /** Format: date-time */
             updatedAt: null | string;
+            lastStationName: null | string;
             lastPosition: null | components["schemas"]["PositionResponse"];
         };
         JourneyDetailResponse: {
@@ -435,15 +612,72 @@ export interface components {
             platform: string;
             previousPlatform: null | string;
         };
+        JourneyHeldEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyHeld";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                released: boolean;
+                /** Format: int32 */
+                minutes: null | number;
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
+        };
         JourneyHoldResponse: {
             /** Format: uuid */
             stationId: string;
             /** Format: int32 */
             minutes: null | number;
+            reason: null | components["schemas"]["JourneyReasonResponse"];
         };
         JourneyReasonResponse: {
             code: string;
             note: null | string;
+        };
+        JourneyReinstatedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyReinstated";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: Record<string, never>;
         };
         JourneySnapshot: {
             /** Format: uuid */
@@ -453,7 +687,7 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             /** @enum {string} */
-            status: "Planned" | "Running" | "Completed";
+            status: "Planned" | "Running" | "Completed" | "Cancelled";
             /** Format: int32 */
             delayMinutes: number;
             /** @enum {string} */
@@ -465,6 +699,14 @@ export interface components {
                 latitude: number;
                 /** Format: double */
                 longitude: number;
+                /** Format: double */
+                speedKmh: number;
+                /** Format: uuid */
+                lastStationId: string;
+                /** Format: uuid */
+                nextStationId: string;
+                /** Format: double */
+                fractionToNext: number;
             };
             stops: {
                 /** Format: uuid */
@@ -472,7 +714,7 @@ export interface components {
                 /** Format: int32 */
                 sequence: number;
                 /** @enum {string} */
-                status: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                status: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** Format: date-time */
                 actualArrival: null | string;
                 /** Format: date-time */
@@ -482,6 +724,111 @@ export interface components {
                 /** Format: date-time */
                 expectedDeparture: null | string;
             }[];
+            journey: {
+                /** Format: uuid */
+                journeyId: string;
+                serviceNumber: string;
+                name: string;
+                trainType: string;
+                /** Format: date */
+                serviceDate: string;
+                status: {
+                    kind: string;
+                    /** Format: int32 */
+                    delayMinutes: null | number;
+                };
+                from: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    /** Format: date-time */
+                    scheduledDeparture: null | string;
+                    /** Format: date-time */
+                    expectedDeparture: null | string;
+                    platform: string;
+                    previousPlatform: null | string;
+                };
+                to: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    /** Format: date-time */
+                    scheduledArrival: null | string;
+                    /** Format: date-time */
+                    expectedArrival: null | string;
+                };
+                freshness: {
+                    tracking: string;
+                    /** Format: date-time */
+                    updatedAt: null | string;
+                    lastStationName: null | string;
+                    lastPosition: {
+                        /** Format: double */
+                        latitude: number;
+                        /** Format: double */
+                        longitude: number;
+                        /** Format: double */
+                        speedKmh: number;
+                        /** Format: uuid */
+                        lastStationId: string;
+                        /** Format: uuid */
+                        nextStationId: string;
+                        /** Format: double */
+                        fractionToNext: number;
+                    };
+                };
+                hold: {
+                    /** Format: uuid */
+                    stationId: string;
+                    /** Format: int32 */
+                    minutes: null | number;
+                    reason: {
+                        code: string;
+                        note: null | string;
+                    };
+                };
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+                /** Format: int32 */
+                version: number;
+                stops: {
+                    /** Format: int32 */
+                    sequence: number;
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                    callType: string;
+                    status: string;
+                    isAdded: boolean;
+                    /** Format: date-time */
+                    scheduledArrival: null | string;
+                    /** Format: date-time */
+                    expectedArrival: null | string;
+                    /** Format: date-time */
+                    actualArrival: null | string;
+                    /** Format: date-time */
+                    scheduledDeparture: null | string;
+                    /** Format: date-time */
+                    expectedDeparture: null | string;
+                    /** Format: date-time */
+                    actualDeparture: null | string;
+                    plannedPlatform: string;
+                    platform: string;
+                    previousPlatform: null | string;
+                }[];
+                trainSet: {
+                    code: string;
+                    traction: string;
+                    coaches: {
+                        /** Format: int32 */
+                        position: number;
+                        class: string;
+                        seating: string;
+                    }[];
+                };
+            };
             /** Format: int64 */
             sequence: number;
         };
@@ -575,6 +922,66 @@ export interface components {
             staffNumber: null | string;
             password: null | string;
         };
+        PlatformChangedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "PlatformChanged";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                platform: string;
+                previousPlatform: string;
+                /** @enum {string} */
+                leadTimeLevel: "Normal" | "ShortNotice" | "Late";
+                holdSet: boolean;
+            };
+        };
+        PlatformChangeRequest: {
+            platform: null | string;
+            setHold: null | boolean;
+            /** Format: int32 */
+            holdMinutes: null | number;
+            conflictsAcknowledged: null | boolean;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
+        PlatformConflictResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            platform: string;
+            /** Format: date-time */
+            expectedArrival: null | string;
+            /** Format: date-time */
+            expectedDeparture: null | string;
+        };
+        PlatformPreviewRequest: {
+            platform: null | string;
+        };
+        PlatformPreviewResponse: {
+            /** Format: int32 */
+            leadTimeMinutes: number;
+            leadTimeLevel: string;
+            holdRecommended: boolean;
+            conflicts: components["schemas"]["PlatformConflictResponse"][];
+        };
         PlatformResponse: {
             number: string;
             inService: boolean;
@@ -626,6 +1033,9 @@ export interface components {
             instance?: null | string;
             code: string;
             requestId: string;
+            /** Format: int32 */
+            currentVersion?: number;
+            journey?: Record<string, never>;
             errors?: {
                 [key: string]: string[];
             };
@@ -704,15 +1114,15 @@ export interface components {
                 /** Format: int32 */
                 sequence: number;
                 /** @enum {string} */
-                from: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                from: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** @enum {string} */
-                to: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                to: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** Format: date-time */
                 at: string;
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
         };
@@ -758,6 +1168,10 @@ export interface components {
             code: string;
             traction: string;
             coaches: components["schemas"]["CoachResponse"][];
+        };
+        VersionRequest: {
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
     };
     responses: never;
@@ -1144,6 +1558,441 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetDelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["DelayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ClearDelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HoldJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["HoldRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleaseHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReinstateJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewPlatformChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PlatformPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ChangePlatform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PlatformChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

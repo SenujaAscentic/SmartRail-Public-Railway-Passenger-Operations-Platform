@@ -16,6 +16,7 @@ internal class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext>
     public DbSet<CabDevice> CabDevices => Set<CabDevice>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<CabSession> CabSessions => Set<CabSession>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -48,6 +49,17 @@ internal class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext>
             // A new sign-in ends the old session first; this index catches two sign-ins racing each other.
             e.HasIndex(x => x.AccountId).IsUnique().HasFilter("\"EndedAt\" IS NULL").HasDatabaseName("UX_CabSessions_ActivePerDriver");
             e.HasIndex(x => x.DeviceId).IsUnique().HasFilter("\"EndedAt\" IS NULL").HasDatabaseName("UX_CabSessions_ActivePerDevice");
+        });
+
+        model.Entity<AuditEntry>(e =>
+        {
+            e.Property(x => x.ActorRole).HasMaxLength(20);
+            e.Property(x => x.Action).HasMaxLength(50);
+            e.Property(x => x.TargetType).HasMaxLength(30);
+            e.Property(x => x.Reason).HasMaxLength(50);
+            e.Property(x => x.Summary).HasMaxLength(300);
+            e.Property(x => x.RequestId).HasMaxLength(100);
+            e.HasIndex(x => new { x.TargetType, x.TargetId, x.At });   // "what happened to this journey", newest last
         });
 
         model.Entity<RefreshToken>(e =>

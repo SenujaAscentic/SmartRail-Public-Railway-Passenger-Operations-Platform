@@ -24,6 +24,7 @@
         "stationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
         "expectedArrival": "2026-10-14T07:34:00Z"
       }
-    ]
+    ],
+    "reason": { "code": "SignalFailure", "note": "Signal fault near Ragama" }
   }
 }

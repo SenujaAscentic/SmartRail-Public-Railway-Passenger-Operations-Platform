@@ -32,6 +32,13 @@ internal sealed class NetworkCatalog(NetworkDbContext db) : INetworkCatalog
             select new RoutePoint(station.Id, station.Latitude, station.Longitude)).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PlatformDetails>> GetPlatformsAsync(Guid stationId, CancellationToken cancellationToken) =>
+        await db.Platforms.AsNoTracking()
+            .Where(p => p.StationId == stationId)
+            .OrderBy(p => p.Number)
+            .Select(p => new PlatformDetails(p.Number, p.InService))
+            .ToListAsync(cancellationToken);
+
     public async Task<TrainSetDetails?> GetTrainSetAsync(Guid trainSetId, CancellationToken cancellationToken)
     {
         var trainSet = await db.TrainSets.AsNoTracking().Include(t => t.Coaches).SingleOrDefaultAsync(t => t.Id == trainSetId, cancellationToken);

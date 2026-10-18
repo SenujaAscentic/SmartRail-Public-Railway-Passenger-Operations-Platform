@@ -100,16 +100,16 @@ Notation: **Who** = policy; **Story** = main story served.
 | `GET /staff/me` | Staff | `{name, role, stationId}` for UI defaults; `stationId` is the station manager's station, `null` for the controller (whole line). Agreed 15 Oct | US-O1 |
 | `GET /ops/dashboard?stationId=&fromStationId=&toStationId=` | Controller | Alerts (severity, newest first), disrupted journeys by lateness, running journeys for line view, provider health | US-O2, O-3, F-4 |
 | `GET /ops/journeys/{journeyId}` | Controller | Journey detail **plus** staff-only fields: source per value, override flags, GPS-contradicts-override warning, crew, messages | US-O3, O-4 |
-| `POST /ops/journeys/{id}/delay` | Controller | `{minutes, reasonCode, note?, expectedVersion}` → sets a controller delay (R-05) | US-O4 |
-| `DELETE /ops/journeys/{id}/delay` | Controller | Clear the controller override; GPS / crew values apply again | US-O3 |
-| `POST /ops/journeys/{id}/hold` · `POST …/hold/release` | Controller | `{stationId, minutes, reason, expectedVersion}` (R-22) | US-O4 |
-| `POST /ops/journeys/{id}/cancel` · `POST …/reinstate` | Controller | `{reasonCode, note?, incidentId?, expectedVersion}`; reinstate only before scheduled start (R-14) | US-O4 |
+| `POST /ops/journeys/{id}/delay` | Controller | `{minutes, reasonCode, note?, expectedVersion}` → sets a controller delay (R-05). `minutes` 0 to 1440. **Reason codes (18 Oct): `SignalFailure`, `TrackWork`, `TrainFault`, `Weather`, `CrewShortage`, `Congestion`, `Other`; note: plain text, at most 300 characters.** **Every decision answers `200` with the public journey detail (new `version`)** | US-O4 |
+| `DELETE /ops/journeys/{id}/delay` | Controller | `{expectedVersion}` in the body. Clear the controller override; the delay of the latest stop event applies again. `409 INVALID_STATE` if there is none | US-O3 |
+| `POST /ops/journeys/{id}/hold` · `POST …/hold/release` | Controller | `{stationId, minutes (1 to 240), reasonCode?, note?, expectedVersion}` (R-22). **`reason` became `reasonCode` + `note`, both optional (18 Oct).** Release: `{expectedVersion}`. One hold at a time; the hold ends by itself when the train leaves | US-O4 |
+| `POST /ops/journeys/{id}/cancel` · `POST …/reinstate` | Controller | Cancel: `{reasonCode, note?, expectedVersion}` (**no `incidentId` yet**); reinstate: `{expectedVersion}`, only before the scheduled start (R-14), else `409 INVALID_STATE`. The public status kind is `Cancelled`; remaining stops are `Skipped` | US-O4 |
 | `POST /ops/journeys/{id}/terminate` | Controller | `{atStationId, reasonCode, expectedVersion}` | US-O4 |
 | `POST /ops/journeys/{id}/stops/{stationId}/skip` · `…/unskip` | Controller | R-15, R-21, D-6 | US-O4 |
 | `POST /ops/journeys/{id}/stops` | Controller | Add stop `{stationId, platform, expectedArrival?, expectedVersion}`; time estimated if omitted (D-5) | US-O4 |
 | `POST /ops/journeys/{id}/impact-preview` | Controller | `{action, …}` → what will be affected (stations, displays, catering, saved-trip passengers count) **without changing anything**; feeds the confirmation dialog | US-O4 |
-| `POST /ops/journeys/{id}/stops/{stationId}/platform/preview` | Controller | `{platform}` → `leadTimeMinutes`, `leadTimeLevel`, `holdRecommended`, `conflicts[]` (R-11, R-12); changes nothing (C-5) | US-O5 |
-| `POST /ops/journeys/{id}/stops/{stationId}/platform` | Controller | `{platform, setHold, holdMinutes?, conflictsAcknowledged, expectedVersion}`; refused `422 CONFLICT_NOT_ACKNOWLEDGED` if a conflict exists and was not acknowledged | US-O5 |
+| `POST /ops/journeys/{id}/stops/{stationId}/platform/preview` | Controller | `{platform}` → `leadTimeMinutes`, `leadTimeLevel` (`Normal`, `ShortNotice`, `Late`), `holdRecommended`, `conflicts[]` `{journeyId, serviceNumber, platform, expectedArrival, expectedDeparture}` (R-11, R-12); changes nothing (C-5) | US-O5 |
+| `POST /ops/journeys/{id}/stops/{stationId}/platform` | Controller | `{platform, setHold, holdMinutes?, conflictsAcknowledged, expectedVersion}`; refused `422 CONFLICT_NOT_ACKNOWLEDGED` (with `conflicts[]`) if a conflict exists and was not acknowledged. `holdMinutes` (1 to 240) is required with `setHold`. **Under 5 minutes of notice is not refused** (warning, hold recommended; 18 Oct). A platform that does not exist or is out of service, or the platform the stop already has: `422 RULE_VIOLATION`. A station that is not a stop of the journey: `404`. The stop must be Scheduled or Arrived (R-13), else `409 INVALID_STATE` | US-O5 |
 | `PUT /ops/journeys/{id}/stops/{stationId}/times` | Controller | Correct actual arrival / departure (source = Controller) | US-O3 |
 | `GET /ops/journeys/{id}/messages` · `POST /ops/journeys/{id}/messages` | Controller | Send `{kind: Info\|Instruction, templateId?, text}`; per-recipient status sent / delivered / acknowledged | US-O7 |
 | `GET /ops/crew-reports?status=New` · `POST /ops/crew-reports/{id}/dismiss` | Controller | Dismiss with `{reason}` | US-O6 |
@@ -255,7 +255,7 @@ Every error is Problem Details with a stable `code`:
 ```json
 { "type": "https://smartrail.example/errors/version-conflict", "title": "Journey was changed by someone else",
   "status": 409, "code": "VERSION_CONFLICT", "detail": "Changed by R. Perera 4 s ago",
-  "currentVersion": 13, "requestId": "…" }
+  "currentVersion": 13, "journey": { "…": "the public journey detail as it is now" }, "requestId": "…" }
 ```
 
 | HTTP | `code` | When |

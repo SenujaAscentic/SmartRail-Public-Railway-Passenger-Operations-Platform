@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SmartRail.LiveOperations.Features.JourneyViews;
 
 // The PUBLIC view of a journey (contract section 5, threat T-07): no source, no staff and no crew fields. The same records
@@ -8,27 +10,30 @@ namespace SmartRail.LiveOperations.Features.JourneyViews;
 
 // kind: NotStarted, OnTime, Late, Early (and Cancelled, TerminatedEarly, Held, Completed once those states exist).
 // DelayMinutes is signed (negative = early); null for NotStarted, where there is nothing to say.
-public sealed record JourneyStatusResponse(string Kind, int? DelayMinutes);
+public sealed record JourneyStatusResponse(string Kind, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? DelayMinutes);
 
 public sealed record JourneyFromResponse(
-    Guid StationId, string Name, DateTime? ScheduledDeparture, DateTime? ExpectedDeparture, string Platform, string? PreviousPlatform);
+    Guid StationId, string Name, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ScheduledDeparture, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedDeparture, string Platform, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? PreviousPlatform);
 
-public sealed record JourneyToResponse(Guid StationId, string Name, DateTime? ScheduledArrival, DateTime? ExpectedArrival);
+public sealed record JourneyToResponse(Guid StationId, string Name, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ScheduledArrival, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedArrival);
 
 // How fresh the position data is (R-06). UpdatedAt is when the last accepted position was recorded; null before any.
-public sealed record JourneyFreshnessResponse(string Tracking, DateTime? UpdatedAt);
+public sealed record JourneyFreshnessResponse(string Tracking, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? UpdatedAt);
 
 // The last announced position: the same fields as the TrainPositionUpdated event (the apps compute nothing).
 public sealed record PositionResponse(
     double Latitude, double Longitude, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
 
-public sealed record JourneyDetailFreshnessResponse(string Tracking, DateTime? UpdatedAt, PositionResponse? LastPosition);
+// UpdatedAt is the time of the last ACCEPTED GPS position and nothing else (a controller decision does not touch it). LastStationName is
+// the station that position was just past ("Last seen 07:38 near Kelaniya", S-15); both are null before any position.
+public sealed record JourneyDetailFreshnessResponse(
+    string Tracking, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? UpdatedAt, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? LastStationName, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] PositionResponse? LastPosition);
 
-// A hold the controller set (D-4); minutes is the planned duration, if one was given.
-public sealed record JourneyHoldResponse(Guid StationId, int? Minutes);
+// A hold the controller set (D-4); minutes is the planned duration, if one was given; Reason is the same {code, note} as everywhere.
+public sealed record JourneyHoldResponse(Guid StationId, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? Minutes, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyReasonResponse? Reason);
 
 // The reason the controller gave, for passengers ("signal fault near Ragama"): a code and an optional plain-text note.
-public sealed record JourneyReasonResponse(string Code, string? Note);
+public sealed record JourneyReasonResponse(string Code, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note);
 
 // Search results, boards and saved trips.
 public sealed record JourneySummaryResponse(
@@ -41,8 +46,8 @@ public sealed record JourneySummaryResponse(
     JourneyFromResponse From,
     JourneyToResponse To,
     JourneyFreshnessResponse Freshness,
-    JourneyHoldResponse? Hold,
-    JourneyReasonResponse? Reason,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyHoldResponse? Hold,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyReasonResponse? Reason,
     int Version);
 
 public sealed record JourneyStopResponse(
@@ -52,15 +57,15 @@ public sealed record JourneyStopResponse(
     string CallType,
     string Status,
     bool IsAdded,
-    DateTime? ScheduledArrival,
-    DateTime? ExpectedArrival,
-    DateTime? ActualArrival,
-    DateTime? ScheduledDeparture,
-    DateTime? ExpectedDeparture,
-    DateTime? ActualDeparture,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ScheduledArrival,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedArrival,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ActualArrival,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ScheduledDeparture,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedDeparture,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ActualDeparture,
     string PlannedPlatform,
     string Platform,
-    string? PreviousPlatform);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? PreviousPlatform);
 
 public sealed record CoachResponse(int Position, string Class, string Seating);
 
@@ -77,8 +82,8 @@ public sealed record JourneyDetailResponse(
     JourneyFromResponse From,
     JourneyToResponse To,
     JourneyDetailFreshnessResponse Freshness,
-    JourneyHoldResponse? Hold,
-    JourneyReasonResponse? Reason,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyHoldResponse? Hold,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyReasonResponse? Reason,
     int Version,
     IReadOnlyList<JourneyStopResponse> Stops,
-    TrainSetResponse? TrainSet);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] TrainSetResponse? TrainSet);

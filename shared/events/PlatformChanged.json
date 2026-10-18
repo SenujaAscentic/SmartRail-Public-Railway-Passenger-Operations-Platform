@@ -1,0 +1,20 @@
+{
+  "eventId": "3a7d1c95-0e48-4b26-9f63-d5b2a8e71c04",
+  "sequence": 1100,
+  "type": "PlatformChanged",
+  "version": 1,
+  "occurredAt": "2026-10-14T07:21:00Z",
+  "journeyId": "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01",
+  "serviceDate": "2026-10-14",
+  "stationIds": [
+    "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35"
+  ],
+  "lineId": "5d1c8e0a-2b47-4f6a-9c33-71a0e4d8b2f6",
+  "payload": {
+    "stationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+    "platform": "5",
+    "previousPlatform": "2",
+    "leadTimeLevel": "Late",
+    "holdSet": true
+  }
+}
