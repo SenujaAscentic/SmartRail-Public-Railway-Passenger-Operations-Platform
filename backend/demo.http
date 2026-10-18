@@ -8,7 +8,7 @@
 # 4. Every decision needs the journey's current "version" as expectedVersion. "journey" shows it; every decision answer shows the new one.
 #    Sending an old version gives 409 VERSION_CONFLICT with the journey as it is now.
 
-@baseUrl = http://localhost:5099/api/v1
+@baseUrl = http://localhost:5045/api/v1
 @password = <the demo password>
 @journeyId = <journey id>
 @stationId = <station id>
@@ -101,4 +101,4 @@ Content-Type: application/json
 { "platform": "3", "setHold": false, "conflictsAcknowledged": true, "expectedVersion": {{version}} }
 
 ### watch the stream for this journey in a terminal instead:
-# curl.exe -sN "http://localhost:5099/api/v1/stream?journeyIds=<journey id>"
+# curl.exe -sN "http://localhost:5045/api/v1/stream?journeyIds=<journey id>"

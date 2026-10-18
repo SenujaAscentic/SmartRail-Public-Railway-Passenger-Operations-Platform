@@ -352,37 +352,32 @@ The cab tablet can now drive a journey: start it, send GPS, end it, and the publ
 | `Date` response header | The server's time from the injected clock on every response. The simulator reads it before signing in because the server refuses a tablet more than 24 hours off (US-C1); on a shifted demo clock the machine's own time is exactly that wrong |
 | `SmartRail.Simulator` | A cab tablet as a console program, using only the public API (no backend references, no new package). `TrainSimulator` signs in, finds the journey (`--journey`, or `--service` with `--from` / `--to` station codes), starts it 5 minutes before departure, sends one fix per tick along the timetable (`Timeline`), refreshes the token before it expires, keeps reporting for 1 minute at the terminus (R-04 needs 20 s slow inside the station) and ends the journey. `Timeline` is pure: where the train is at a time. Scenarios: `normal`, `stop` (halts mid-section, later afterwards), `gap` (no GPS for a while). `ISimulatorTime`: `RealSimulatorTime` waits for real (divided by speed), `InstantSimulatorTime` does not, so tests run a three-hour journey in seconds |
 
-**Demo runbook (smoke-tested over real HTTP on 18 Oct; PowerShell, from the repository root).** The values in `<...>` are secrets you choose; never put them in a file in the repository.
+**Demo runbook (matches section 7; PowerShell, from the repository root).** The database and the secrets are the ones of section 7 (`docker compose up -d`, `dotnet user-secrets set ...`, including `Seed:CabDevice:CAB-01:Token` and `CAB-03`). The ONLY demo settings are `Clock__Start` and, for rehearsals, `Clock__Speed`. The API runs on its default port **5045** (the passenger app and the ops-web proxy expect it), so there is no `--urls`. In Development the console shows only warnings from Entity Framework (`appsettings.Development.json`), so "Now listening" does not scroll away.
 
 ```powershell
-# 1. PostgreSQL (the smoke run used port 55432 and postgres:17)
-docker run -d --name smartrail-demo -e POSTGRES_PASSWORD=<pg-password> -e POSTGRES_USER=smartrail -e POSTGRES_DB=smartrail -p 55432:5432 postgres:17
+# 1. Database (once per session) and the API with the demo clock ~5 minutes before the departure (service 1001, Fort to Kandy, 06:30)
+docker compose up -d
+$env:Clock__Start = "2026-10-20T06:25:00+05:30"      # a time WITH an offset, on a WEEKDAY (Tuesday); 1001 does not run on a Sunday
+dotnet run --project backend/src/SmartRail.Api       # http://localhost:5045; Clock__Speed stays 1 (default)
 
-# 2. The API in Development with the demo clock ~5 min before the departure (service 1001, Fort -> Kandy, leaves 06:30 on a weekday), speed 1
-$env:ASPNETCORE_ENVIRONMENT = "Development"
-$env:ConnectionStrings__SmartRail = "Host=localhost;Port=55432;Database=smartrail;Username=smartrail;Password=<pg-password>"
-$env:Jwt__SigningKey = "<64 hex characters>"
-$env:Seed__DemoPassword = "<demo-password>"
-${env:Seed__CabDevice__CAB-01__Token} = "<cab-01-secret>"      # braces: the name contains hyphens
-${env:Seed__CabDevice__CAB-03__Token} = "<cab-03-secret>"
-$env:Clock__Start = "2026-10-20T06:25:00+05:30"                  # a time WITH an offset; Clock__Speed defaults to 1
-dotnet run --project backend/src/SmartRail.Api --urls http://localhost:5099
-
-# 3. The simulator (second terminal): normal scenario, service 1001 with DRV-01 on CAB-01
-$env:SMARTRAIL_CAB_SECRET = "<cab-01-secret>"
-$env:SMARTRAIL_DEMO_PASSWORD = "<demo-password>"
-dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5099 --device CAB-01 --driver DRV-01 --service 1001 --from FOT --to KDT
+# 2. The simulator (second terminal). The two values MUST equal the user-secrets: Seed:CabDevice:CAB-01:Token and Seed:DemoPassword
+$env:SMARTRAIL_CAB_SECRET = "<the Seed:CabDevice:CAB-01:Token value>"
+$env:SMARTRAIL_DEMO_PASSWORD = "<the Seed:DemoPassword value>"
+dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5045 --device CAB-01 --driver DRV-01 --service 1001 --from FOT --to KDT
 #   it prints the journey id: Journey 01a156ce-... : 11 stops, ...
 
-# 4. Watch the stream (third terminal). Without Last-Event-ID you get a snapshot, then live events. Last-Event-ID: 0 replays from the start.
-curl.exe -sN -H "Last-Event-ID: 0" "http://localhost:5099/api/v1/stream?journeyIds=<journey id>"
-curl.exe -s http://localhost:5099/api/v1/journeys/<journey id>     # status, stops and freshness.lastPosition
+# 3. Watch the stream (third terminal). Without Last-Event-ID you get a snapshot, then live events. Last-Event-ID: 0 replays from the start.
+curl.exe -sN -H "Last-Event-ID: 0" "http://localhost:5045/api/v1/stream?journeyIds=<journey id>"
+curl.exe -s http://localhost:5045/api/v1/journeys/<journey id>     # status, stops, freshness.lastPosition, hold, reason, version
 
-# 5. Stop scenario at 30x (rehearsal only): restart the API with a clock that leaves time to search, then the simulator with the same speed
-$env:Clock__Start = "2026-10-20T05:40:00+05:30"; $env:Clock__Speed = "30"      # (restart the API)
-$env:SMARTRAIL_CAB_SECRET = "<cab-03-secret>"
-dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5099 --device CAB-03 --driver DRV-03 --service 2001 --from FOT --to KDT --scenario stop --stop-minutes 10 --speed 30
+# 4. Stop scenario at 30x (rehearsal only, never for the real demo): stop the API, then
+$env:Clock__Start = "2026-10-20T05:40:00+05:30"; $env:Clock__Speed = "30"
+dotnet run --project backend/src/SmartRail.Api       # (the secrets of step 2 must be the ones for CAB-03 in the simulator window)
+$env:SMARTRAIL_CAB_SECRET = "<the Seed:CabDevice:CAB-03:Token value>"
+dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5045 --device CAB-03 --driver DRV-03 --service 2001 --from FOT --to KDT --scenario stop --stop-minutes 10 --speed 30
 ```
+
+**In the passenger app:** search the SAME date as the demo clock (the clock says 20 Oct, so search 20 Oct). Before the train has left, search from its origin (Colombo Fort); once it has left, search from a station AHEAD of the train, because search hides a train that has already left the departure station. The controller's requests are in `backend/demo.http` (port 5045).
 
 **Smoke run result (18 Oct).** *Normal, speed 1:* sign-in, journey 1001 found, started at 06:25 (server clock), `JourneyStarted`, `DataFreshnessChanged` (NotStarted to Live), `TrainPositionUpdated` every 10 s and `StopStatusChanged` (Scheduled to Arrived at Colombo Fort) appeared on the stream within seconds (`id 1` to `id 10` in the first 40 s); `GET /journeys/{id}` showed `lastPosition` with speed, last and next station and fraction. *Stop, speed 30:* the halt mid-section produced ten `DelayChanged` events, one a minute of simulated time, 0 to 1 up to 9 to 10 minutes (R-23: the overdue delay grows while the train is stopped); the simulator refreshed its token on its own several times during the run. **Things to know on demo day:** (a) `Clock__Start` needs an offset, and the clock keeps running, so start the simulator within a minute or two of starting the API; (b) search hides trains that have already left, so at speed 30 start the clock early enough (the first attempt at 05:55 was past 06:00 by the time the simulator searched); (c) a normal run at speed 1 takes as long as the timetable (about 3 hours), so for a short demo use `--journey` on a journey that is about to leave and stop the simulator with Ctrl+C when you have shown enough; (d) the journey id differs on every database.
 
@@ -607,9 +602,12 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 40 | A deactivated tablet can no longer sign in, but a token it already holds works until it expires (15 min at most, T-12). R-07's text can be read as an immediate cutoff, and an ended crew session answers 401 (contract §6) where R-07's text says 403 | Left as documented; an immediate cutoff would need a device check in `CabSessionCheck` (option for Senuja) |
 | 41 | Tests that start a second application (own clock or database) also run generation and the dispatcher there | Keep them few |
 | 42 | The stream snapshot's `lastPosition` had only latitude and longitude | **Done (18 Oct, approved):** it carries the same six fields as `GET /journeys/{id}`; `shared/events/snapshot.json`, `openapi.yaml`, `schema.d.ts` updated; test compares the two |
-| 43 | The stream snapshot carries no `hold`, `reason`, platforms or `version` | A reconnecting app reads `GET /journeys/{id}`; adding them is an event-shape change (needs your OK) |
-| 44 | **Flaky test:** `Batches_that_arrive_at_the_same_moment_do_not_lose_each_other_and_the_latest_fix_wins` sends 4 concurrent batches; `OptimisticRetry` allows 3 attempts, and with 4 writers the last can lose 3 times (failed 1 in 4 runs on 18 Oct) | Not changed: either 5 attempts or 3 concurrent batches; your decision (weakening a test / changing "retry x3") |
+| 43 | The stream snapshot carried no hold, reason, platforms or version | **Done (18 Oct, approved):** the snapshot has a `journey` field with exactly the public detail of `GET /journeys/{id}` (nulls written). The older flat fields stay until the apps stop reading them. A journey that points at something Network no longer has gets empty names in the snapshot and a warning in the log; `GET /journeys/{id}` stays strict |
+| 44 | Flaky concurrent-batches test | **Done (18 Oct):** a random 10 to 50 ms pause between row-version retries (still 3 attempts); the test passed 20 of 20 runs |
 | 45 | An audit entry can be lost if the process dies between the journey save and the audit save | Accepted 18 Oct |
+| 46 | Not reproduced: on two full runs, `PlatformDecisionTests.Under_5_minutes_...` (two tests) answered 422 and then passed in 8 later runs; the tests now print the response body when they fail, so the cause shows next time | Watch |
+| 47 | A hold on a train nobody has reported on does not move the times (R-22 follows the clock only while tracking runs) | Accepted 18 Oct |
+| 48 | `freshness.updatedAt` is the time of the last accepted GPS position and nothing else; `freshness.lastStationName` (new) is the station that position was just past | Answer to the passenger app, 18 Oct |
 ---
 
 ## 9. Change log
@@ -631,3 +629,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 18 Oct 2026 | **Phase 2b:** `JourneyStatus` Running / Completed, `Start` / `End`, `DriverId`; `POST /crew/journeys/{id}/start`, `/end`, `/positions`; `ProcessedActions` (48 h) and the `xmin` row version with retry; `RouteGeometry`; `RefreshTracking` (15 s); `IStaffDirectory` and the allowed pair LiveOperations -> Identity; events `JourneyStarted`, `JourneyEnded`, `TrainPositionUpdated`; demo clock (`Clock:Start`, `Clock:Speed`, Development only) and the `Date` header; `SmartRail.Simulator` (tablet, scenarios, in-process tests) and the G2 end-to-end test; contract §3.4 and R-23 |
 | 18 Oct 2026 | **After Phase 2b review:** `GET /journeys/{id}` `freshness.lastPosition` has speed, last / next station and fraction (migration `LastAnnouncedPosition`; contract §3.1; `openapi.yaml` and `schema.d.ts` regenerated; `/journeys/{id}` was already in both); R-07 ended session = 401 written into the domain model; demo runbook replaced by the commands of the real smoke run |
 | 18 Oct 2026 | **Phase 3a:** control version and `409 VERSION_CONFLICT`; delay set / clear with reason; hold / release (R-22); cancel / reinstate (R-14); platform change with lead time, hold option, conflicts and preview (R-11 to R-13); audit log (`IAuditLog`, migration `AuditEntries`); `INetworkCatalog.GetPlatformsAsync`; events `JourneyHeld`, `JourneyCancelled`, `JourneyReinstated`, `PlatformChanged`, `reason` on `DelayChanged`; snapshot `lastPosition` complete (open point 42); `backend/demo.http`; R-11 text changed (warning, not requirement) |
+| 18 Oct 2026 | **After Phase 3a review:** random backoff between retries; snapshot with the journey detail; hold response with reason; `freshness.lastStationName`; demo runbook matches section 7 (port 5045, weekday clock, EF logging at Warning) |
