@@ -10,6 +10,8 @@ namespace SmartRail.LiveOperations.Persistence;
 internal static class OptimisticRetry
 {
     public const int Attempts = 3;
+    private const int MinBackoffMilliseconds = 10;
+    private const int MaxBackoffMilliseconds = 50;
 
     // `work` must load what it needs itself (it runs again from scratch) and save once at the end.
     public static async Task<T> RunAsync<T>(LiveOperationsDbContext db, Func<Task<T>> work)
@@ -23,6 +25,10 @@ internal static class OptimisticRetry
             catch (Exception ex) when (attempt < Attempts && IsCollision(ex))
             {
                 db.ChangeTracker.Clear();   // forget everything loaded, including events that were never saved
+
+                // A short random pause, so that writers who collided do not collide again in step. Without it, four writers at once
+                // could keep beating one of them three times in a row. A real delay on purpose: it is scheduling, not business time.
+                await Task.Delay(Random.Shared.Next(MinBackoffMilliseconds, MaxBackoffMilliseconds + 1));
             }
         }
     }
