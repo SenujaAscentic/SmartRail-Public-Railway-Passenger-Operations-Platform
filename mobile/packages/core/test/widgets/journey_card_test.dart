@@ -99,4 +99,10 @@ void main() {
     expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
     expect(style.fontFamily, contains('NotoSansMono'));
   });
+
+  testWidgets('the times stay on one line next to a wide badge ("Not started")', (tester) async {
+    await pumpThemed(tester, card(status: const JourneyStatus(StatusKind.notStarted)));
+    // A 28 px line is about 40 px high; a wrapped one would be about twice that.
+    expect(tester.getSize(find.text('17:20 → 19:58')).height, lessThan(50));
+  });
 }

@@ -64,12 +64,14 @@ class JourneyCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // A Wrap, not a Row: the times never break across lines; a wide badge
+          // ("Not started") moves below them instead of squeezing them.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: spaceXs,
             children: [
-              Expanded(
-                child: Text('${formatTime(shownDeparture)} → ${formatTime(shownArrival)}', style: timeStyle),
-              ),
-              const SizedBox(width: spaceSm),
+              Text('${formatTime(shownDeparture)} → ${formatTime(shownArrival)}', style: timeStyle),
               notRunningToday
                   ? const StatusBadge.neutral(doesNotRunTodayText)
                   : StatusBadge.journey(status),

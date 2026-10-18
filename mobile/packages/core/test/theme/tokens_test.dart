@@ -86,6 +86,12 @@ void main() {
       expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
     });
 
+    test('focusColor is see-through, so highlighted list options stay readable', () {
+      for (final brightness in Brightness.values) {
+        expect(buildPassengerTheme(brightness).focusColor.a, lessThan(0.5));
+      }
+    });
+
     test('buttons are at least 48 px high', () {
       final theme = buildPassengerTheme(Brightness.light);
       expect(theme.filledButtonTheme.style!.minimumSize!.resolve({})!.height, 48);

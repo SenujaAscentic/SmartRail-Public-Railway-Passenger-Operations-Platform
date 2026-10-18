@@ -64,7 +64,9 @@ ThemeData buildPassengerTheme(Brightness brightness) {
     colorScheme: scheme,
     scaffoldBackgroundColor: c.background,
     textTheme: textTheme,
-    focusColor: c.focus,
+    // Material also uses focusColor to highlight list options (type-ahead), so it
+    // must be see-through or the option text becomes unreadable on solid blue.
+    focusColor: c.focus.withValues(alpha: 0.16),
     dividerColor: c.border,
     // Every tap target is at least 48 px (tokens.json -> touchTarget.passenger).
     materialTapTargetSize: MaterialTapTargetSize.padded,
