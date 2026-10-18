@@ -76,6 +76,7 @@ public static class LiveOperationsModule
     public static IEndpointRouteBuilder MapLiveOperationsEndpoints(this IEndpointRouteBuilder routes)
     {
         StreamEndpoint.Map(routes);
+        OpsStreamEndpoint.Map(routes);
         SearchJourneysEndpoint.Map(routes);
         CrewJourneyEndpoints.Map(routes);
         CrewPositionsEndpoint.Map(routes);

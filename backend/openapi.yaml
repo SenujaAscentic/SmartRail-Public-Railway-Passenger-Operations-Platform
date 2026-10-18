@@ -99,6 +99,36 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/ops/stream:
+    get:
+      tags:
+        - LiveOperations
+      summary: 'Staff event stream (Server-Sent Events): the public events plus `source`. Ends when the access token expires. A station manager sees only their own station.'
+      operationId: OpsStreamEvents
+      parameters:
+        - name: journeyIds
+          in: query
+          schema:
+            type: string
+        - name: stationIds
+          in: query
+          schema:
+            type: string
+        - name: lineIds
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/journeys/search:
     get:
       tags:

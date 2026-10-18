@@ -22,12 +22,34 @@ internal sealed record StreamSettings(TimeSpan Heartbeat);
 //
 // The heartbeat wait is a REAL timer (see OutboxDispatcher for why TimeProvider is not used for waiting).
 internal sealed class StreamHandler(
-    LiveOperationsDbContext db, StreamHub hub, SnapshotReader snapshots, StreamSettings settings, ILogger<StreamHandler> log)
+    LiveOperationsDbContext db, StreamHub hub, SnapshotReader snapshots, StreamSettings settings, TimeProvider clock, ILogger<StreamHandler> log)
 {
     // What a client is told when it cannot be caught up from the log (an example is in shared/events/resync.json).
     internal const string ResyncData = """{"reason":"The missed events are no longer kept."}""";
 
-    public async Task RunAsync(HttpContext http, StreamFilter filter, long? lastEventId, CancellationToken cancellationToken)
+    // `staff`: the staff stream (/ops/stream) writes each event's `source` too. `endsAt`: the end of the caller's session; the stream
+    // ends when it is reached, so a signed-out or expired session does not keep receiving (the client refreshes and reconnects).
+    public async Task RunAsync(
+        HttpContext http, StreamFilter filter, long? lastEventId, CancellationToken requestAborted, bool staff = false, DateTimeOffset? endsAt = null)
+    {
+        // The timer runs on the application's clock, so it follows the demo clock like the token it is waiting for.
+        using var expiry = endsAt is { } end
+            ? new CancellationTokenSource(end - clock.GetUtcNow() is { } left && left > TimeSpan.Zero ? left : TimeSpan.Zero, clock)
+            : new CancellationTokenSource();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(requestAborted, expiry.Token);
+        var cancellationToken = linked.Token;
+
+        try
+        {
+            await RunStreamAsync(http, filter, lastEventId, staff, cancellationToken);
+        }
+        catch (OperationCanceledException) when (expiry.IsCancellationRequested && !requestAborted.IsCancellationRequested)
+        {
+            // The session ended: that is a normal end of the stream, not an error.
+        }
+    }
+
+    private async Task RunStreamAsync(HttpContext http, StreamFilter filter, long? lastEventId, bool staff, CancellationToken cancellationToken)
     {
         var response = http.Response;
         response.ContentType = "text/event-stream";
@@ -46,7 +68,7 @@ internal sealed class StreamHandler(
         switch (ResumeDecision.Of(lastEventId, oldest, newest))
         {
             case ResumeAction.Resume:
-                await ReplayAsync(response, filter, lastEventId!.Value, covered, cancellationToken);
+                await ReplayAsync(response, filter, lastEventId!.Value, covered, staff, cancellationToken);
                 break;
 
             case ResumeAction.Resync:
@@ -60,7 +82,7 @@ internal sealed class StreamHandler(
                 break;
         }
 
-        await SendLiveAsync(response, subscription, covered, cancellationToken);
+        await SendLiveAsync(response, subscription, covered, staff, cancellationToken);
     }
 
     private async Task SendSnapshotsAsync(HttpResponse response, StreamFilter filter, long sequence, CancellationToken ct)
@@ -72,7 +94,7 @@ internal sealed class StreamHandler(
     }
 
     // The log keeps 24 h of dispatched events. Everything after what the client has, up to what is covered now, in order.
-    private async Task ReplayAsync(HttpResponse response, StreamFilter filter, long after, long upTo, CancellationToken ct)
+    private async Task ReplayAsync(HttpResponse response, StreamFilter filter, long after, long upTo, bool staff, CancellationToken ct)
     {
         var rows = await db.OutboxEvents.AsNoTracking()
             .Where(e => e.Status == OutboxStatus.Dispatched && e.Sequence > after && e.Sequence <= upTo)
@@ -85,12 +107,12 @@ internal sealed class StreamHandler(
             var publicEvent = envelope is null ? null : PublicProjection.Of(envelope, row.Sequence!.Value);
             if (publicEvent is not null && filter.Matches(publicEvent))
             {
-                await WriteEventAsync(response, publicEvent, ct);
+                await WriteEventAsync(response, publicEvent, staff, ct);
             }
         }
     }
 
-    private async Task SendLiveAsync(HttpResponse response, Subscription subscription, long covered, CancellationToken ct)
+    private async Task SendLiveAsync(HttpResponse response, Subscription subscription, long covered, bool staff, CancellationToken ct)
     {
         var lastSent = covered;
         while (!ct.IsCancellationRequested)
@@ -123,15 +145,24 @@ internal sealed class StreamHandler(
             {
                 if (publicEvent.Sequence > lastSent)
                 {
-                    await WriteEventAsync(response, publicEvent, ct);
+                    await WriteEventAsync(response, publicEvent, staff, ct);
                     lastSent = publicEvent.Sequence;
                 }
             }
         }
     }
 
-    private static Task WriteEventAsync(HttpResponse response, PublicEvent publicEvent, CancellationToken ct) =>
-        WriteAsync(response, SseFormat.Event(publicEvent.Sequence, publicEvent.Type, JsonSerializer.Serialize(publicEvent, EventJson.Options)), ct);
+    // The public stream sends the event as PublicEvent serialises it (no source). The staff stream adds `source` to the same object.
+    private static Task WriteEventAsync(HttpResponse response, PublicEvent publicEvent, bool staff, CancellationToken ct)
+    {
+        var json = JsonSerializer.SerializeToNode(publicEvent, EventJson.Options)!.AsObject();
+        if (staff && publicEvent.Source is { } source)
+        {
+            json["source"] = source;
+        }
+
+        return WriteAsync(response, SseFormat.Event(publicEvent.Sequence, publicEvent.Type, json.ToJsonString(EventJson.Options)), ct);
+    }
 
     private static async Task WriteAsync(HttpResponse response, string text, CancellationToken ct)
     {
