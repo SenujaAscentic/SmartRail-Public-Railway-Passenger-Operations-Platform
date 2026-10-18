@@ -10,9 +10,16 @@ public interface INetworkCatalog
     // What a journey shows about its service: number and train type. An id that does not exist is left out.
     Task<IReadOnlyDictionary<Guid, ServiceDetails>> GetServicesAsync(IReadOnlyCollection<Guid> serviceIds, CancellationToken cancellationToken);
 
+    // The stations of a service's route in order, with their coordinates, for judging where a GPS position is (R-08) and how far
+    // along the route the train is. Empty if the service is unknown. The route is these stations joined by straight lines: the seed
+    // has no track shape (logged 18 Oct), which is fine for the simulator and for short sections.
+    Task<IReadOnlyList<RoutePoint>> GetRouteAsync(Guid serviceId, CancellationToken cancellationToken);
+
     // A train set with its coaches, or null.
     Task<TrainSetDetails?> GetTrainSetAsync(Guid trainSetId, CancellationToken cancellationToken);
 }
+
+public sealed record RoutePoint(Guid StationId, double Latitude, double Longitude);
 
 public sealed record ServiceDetails(string Number, string TrainType);
 
