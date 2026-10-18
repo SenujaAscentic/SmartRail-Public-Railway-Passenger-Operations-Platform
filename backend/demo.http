@@ -1,0 +1,104 @@
+# Controller decisions for the demo, until the ops web exists. Open in VS Code with the "REST Client" extension
+# (humao.rest-client) or in Visual Studio; click "Send Request" above a request.
+#
+# 1. Start the API (see the demo runbook in docs/develop/04-backend-code-guide.md, section 4.15).
+# 2. Put the demo password in @password (it is the Seed:DemoPassword you started the API with). Do not commit it.
+# 3. Send "sign in". Then copy a journey id from "find journeys" (or from the simulator output) into @journeyId, and a station id
+#    from "journey" into @stationId.
+# 4. Every decision needs the journey's current "version" as expectedVersion. "journey" shows it; every decision answer shows the new one.
+#    Sending an old version gives 409 VERSION_CONFLICT with the journey as it is now.
+
+@baseUrl = http://localhost:5099/api/v1
+@password = <the demo password>
+@journeyId = <journey id>
+@stationId = <station id>
+@version = 0
+
+### sign in as the controller
+# @name signin
+POST {{baseUrl}}/auth/staff/sign-in
+Content-Type: application/json
+
+{ "staffNumber": "CTRL-01", "password": "{{password}}" }
+
+###
+@token = {{signin.response.body.accessToken}}
+
+### find journeys: lines and their stations (copy station ids from here)
+GET {{baseUrl}}/lines
+
+### the journey: status, stops, platforms, hold, reason and "version"
+GET {{baseUrl}}/journeys/{{journeyId}}
+
+### delay: 12 minutes late, with a reason (SignalFailure, TrackWork, TrainFault, Weather, CrewShortage, Congestion, Other)
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/delay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "minutes": 12, "reasonCode": "SignalFailure", "note": "Signal fault near Ragama", "expectedVersion": {{version}} }
+
+### clear the controller's delay (the delay of the latest stop event applies again)
+DELETE {{baseUrl}}/ops/journeys/{{journeyId}}/delay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "expectedVersion": {{version}} }
+
+### hold the train at a station for 10 minutes (reason is optional)
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/hold
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "stationId": "{{stationId}}", "minutes": 10, "reasonCode": "Congestion", "note": "Waiting for the platform", "expectedVersion": {{version}} }
+
+### release the hold
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/hold/release
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "expectedVersion": {{version}} }
+
+### cancel the journey (its remaining stops are skipped)
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reasonCode": "TrainFault", "note": "Engine failure", "expectedVersion": {{version}} }
+
+### reinstate a cancelled journey (only before its scheduled start)
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/reinstate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "expectedVersion": {{version}} }
+
+### platform change: preview first (lead time, hold recommended, conflicts); changes nothing
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/stops/{{stationId}}/platform/preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "platform": "3" }
+
+### platform change: normal (no hold)
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/stops/{{stationId}}/platform
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "platform": "3", "setHold": false, "conflictsAcknowledged": false, "expectedVersion": {{version}} }
+
+### platform change: late notice (under 5 minutes) WITH a hold, the "train will wait" case
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/stops/{{stationId}}/platform
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "platform": "3", "setHold": true, "holdMinutes": 6, "conflictsAcknowledged": false, "expectedVersion": {{version}} }
+
+### platform change: another train is expected there and you have seen the warning
+POST {{baseUrl}}/ops/journeys/{{journeyId}}/stops/{{stationId}}/platform
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "platform": "3", "setHold": false, "conflictsAcknowledged": true, "expectedVersion": {{version}} }
+
+### watch the stream for this journey in a terminal instead:
+# curl.exe -sN "http://localhost:5099/api/v1/stream?journeyIds=<journey id>"
