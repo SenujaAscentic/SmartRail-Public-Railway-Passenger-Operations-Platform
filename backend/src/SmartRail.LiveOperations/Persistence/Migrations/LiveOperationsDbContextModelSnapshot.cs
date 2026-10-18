@@ -47,6 +47,27 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<double?>("FractionToNext")
                         .HasColumnType("double precision");
 
+                    b.Property<int?>("HoldMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HoldReasonCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HoldReasonNote")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("HoldSetAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("HoldStationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LastDecisionAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastDecisionBy")
+                        .HasColumnType("uuid");
+
                     b.Property<double?>("LastLatitude")
                         .HasColumnType("double precision");
 
@@ -67,6 +88,12 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
 
                     b.Property<Guid?>("NextStationId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ReasonCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReasonNote")
+                        .HasColumnType("text");
 
                     b.Property<DateOnly>("ServiceDate")
                         .HasColumnType("date");
@@ -220,6 +247,13 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                                 .IsRequired()
                                 .HasMaxLength(10)
                                 .HasColumnType("character varying(10)");
+
+                            b1.Property<string>("Platform")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<string>("PreviousPlatform")
+                                .HasColumnType("text");
 
                             b1.Property<DateTime?>("ScheduledArrival")
                                 .HasColumnType("timestamp with time zone");

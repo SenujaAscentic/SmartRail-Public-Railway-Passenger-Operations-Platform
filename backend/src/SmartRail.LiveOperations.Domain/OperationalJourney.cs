@@ -1,19 +1,34 @@
 namespace SmartRail.LiveOperations.Domain;
 
-// Domain model 4.2. Cancelled and TerminatedEarly come with the controller decisions (Phase 3).
-public enum JourneyStatus { Planned, Running, Completed }
+// Domain model 4.2. TerminatedEarly comes with terminate (Phase 3b).
+public enum JourneyStatus { Planned, Running, Completed, Cancelled }
 
 // Why a journey ended (domain model 8.2): the driver pressed End; the train reached the terminus; the controller ended it.
 public enum JourneyEndReason { Driver, Terminus, Controller }
 
 public enum StartResult { Started, TooEarly, WrongState }
 
+// What became of a controller decision (domain model R-18). StaleVersion is checked first: if the journey changed since the
+// controller looked, they are told to look again, whatever else is wrong with the request.
+// UnknownStop: the station named in the decision is not a stop of this journey.
+// PlatformUnavailable: no such platform at the station, or it is out of service (R-13). SamePlatform: the stop is already there.
+public enum DecisionResult { Done, StaleVersion, InvalidState, UnknownStop, PlatformUnavailable, SamePlatform }
+
+// A platform change's result: the notice the passengers got (R-11) and whether a hold was set with it.
+public sealed record PlatformChangeOutcome(DecisionResult Result, PlatformLeadTime? LeadTime, bool HoldSet);
+
+// Why the controller did something (delay, cancel): one of the agreed codes and an optional plain-text note. Public (US-P4).
+public sealed record JourneyReason(string Code, string? Note);
+
+// A hold the controller put on the train at a station (domain model D-4, R-22). Minutes is the planned length.
+public sealed record JourneyHold(Guid StationId, int Minutes, JourneyReason? Reason, DateTime SetAt);
+
 public enum EndResult { Ended, WrongState }
 
 public enum CallType { Stop, Pass }
 
-// Domain model 4.3. Skipped comes with the skip / cancel decisions.
-public enum StopStatus { Scheduled, Arrived, Departed, Passed }
+// Domain model 4.3. Skipped: the controller cancelled the journey before the train got here (skip / unskip of a single stop is Phase 3b).
+public enum StopStatus { Scheduled, Arrived, Departed, Passed, Skipped }
 
 // What a crew member taps for a stop.
 public enum StopEventKind { Arrival, Departure }
@@ -31,6 +46,10 @@ public sealed class JourneyStop
     public DateTime? ScheduledArrival { get; private set; }     // UTC
     public DateTime? ScheduledDeparture { get; private set; }   // UTC
     public string PlannedPlatform { get; private set; } = "";
+
+    // The platform now (the plan until the controller changes it) and the one before the last change, null if never changed.
+    public string Platform { get; private set; } = "";
+    public string? PreviousPlatform { get; private set; }
 
     // What has happened at this stop. Values and their sources are plain columns (not value-object types) so that
     // EF Core maps them without any configuration in the Domain project.
@@ -69,6 +88,21 @@ public sealed class JourneyStop
         ActualDepartureSource = time.Source;
     }
 
+    internal void MoveToPlatform(string platform)
+    {
+        PreviousPlatform = Platform;
+        Platform = platform;
+    }
+
+    // A reinstated journey: the stops that were skipped by the cancellation are ahead of the train again.
+    internal void Unskip()
+    {
+        if (Status == StopStatus.Skipped)
+        {
+            Status = StopStatus.Scheduled;
+        }
+    }
+
     internal void SetZoneState(ZoneState state)
     {
         Zone = state.Phase;
@@ -83,6 +117,7 @@ public sealed class JourneyStop
             StopStatus.Arrived => Status == StopStatus.Scheduled,
             StopStatus.Departed => Status is StopStatus.Scheduled or StopStatus.Arrived,
             StopStatus.Passed => Status == StopStatus.Scheduled,
+            StopStatus.Skipped => Status == StopStatus.Scheduled,
             _ => false,
         };
         if (allowed)
@@ -102,6 +137,7 @@ public sealed class JourneyStop
         ScheduledArrival = arrival;
         ScheduledDeparture = departure;
         PlannedPlatform = plannedPlatform;
+        Platform = plannedPlatform;
     }
 }
 
@@ -180,9 +216,271 @@ public sealed class OperationalJourney
         return true;
     }
 
-    // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation. No decision
-    // exists yet, so it stays 0; it is here so the API can show it from the first day (apps' generated types must not change later).
+    // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation.
     public int ControlVersion { get; private set; }
+
+    // Who made the last decision and when: so a refused, stale decision can say "Changed by <name> a moment ago" (US-O4 AC6).
+    public Guid? LastDecisionBy { get; private set; }
+    public DateTime? LastDecisionAt { get; private set; }
+
+    // The reason of the delay the controller set (cleared with it). Two plain columns, see JourneyStop.
+    public string? ReasonCode { get; private set; }
+    public string? ReasonNote { get; private set; }
+    public JourneyReason? Reason => ReasonCode is null ? null : new JourneyReason(ReasonCode, ReasonNote);
+
+    // Every decision calls this once it is accepted: count it and remember who made it. (The version was checked by the caller.)
+    private void CountDecision(Guid actorId, DateTime now)
+    {
+        ControlVersion++;
+        LastDecisionBy = actorId;
+        LastDecisionAt = now;
+    }
+
+    private bool IsOpen => Status is JourneyStatus.Planned or JourneyStatus.Running;
+
+    // The hold, if any: plain columns like everything else (see JourneyStop).
+    public Guid? HoldStationId { get; private set; }
+    public int? HoldMinutes { get; private set; }
+    public string? HoldReasonCode { get; private set; }
+    public string? HoldReasonNote { get; private set; }
+    public DateTime? HoldSetAt { get; private set; }
+
+    public JourneyHold? Hold => HoldStationId is { } station
+        ? new JourneyHold(station, HoldMinutes!.Value, HoldReasonCode is null ? null : new JourneyReason(HoldReasonCode, HoldReasonNote), HoldSetAt!.Value)
+        : null;
+
+    // US-O4: hold the train at a station it has not left yet. Only one hold at a time; the terminus has no departure to hold.
+    public DecisionResult SetHoldByController(int expectedVersion, Guid stationId, int minutes, JourneyReason? reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        if (stop is null)
+        {
+            return DecisionResult.UnknownStop;
+        }
+
+        if (!IsOpen || Hold is not null || stop.Status is not (StopStatus.Scheduled or StopStatus.Arrived) || stop.ScheduledDeparture is null)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        PutHold(stationId, minutes, reason, now);
+        return DecisionResult.Done;
+    }
+
+    private void PutHold(Guid stationId, int minutes, JourneyReason? reason, DateTime now)
+    {
+        (HoldStationId, HoldMinutes, HoldSetAt) = (stationId, minutes, now);
+        (HoldReasonCode, HoldReasonNote) = (reason?.Code, reason?.Note);
+        _events.Add(new JourneyHeld(Id, stationId, Released: false, minutes, reason, Source.Controller, now));
+    }
+
+    // The notice a platform change at this stop would give if it were made now (R-11): the preview and the change both use it.
+    // Null if the station is not a stop of the journey.
+    public PlatformLeadTime? LeadTimeAt(Guid stationId, DateTime now)
+    {
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        var delay = CurrentDelay.Value;
+        return stop is null ? null : PlatformRules.LeadTime(stop.ExpectedArrival(delay), stop.ExpectedDeparture(delay), now);
+    }
+
+    // US-O5, R-11 and R-13: move a stop to another platform. Allowed for a stop that is Scheduled or Arrived, to a platform that
+    // exists and is in service at the station (the caller passes those). A lead time under 5 minutes is a warning, not a block;
+    // `holdMinutes` sets a hold at the same time, and only then is HoldSet true. One decision, one version.
+    public PlatformChangeOutcome ChangePlatformByController(
+        int expectedVersion, Guid stationId, string platform, IReadOnlyCollection<string> platformsInService, int? holdMinutes, Guid actorId, DateTime now)
+    {
+        PlatformChangeOutcome Refused(DecisionResult result) => new(result, null, false);
+
+        if (expectedVersion != ControlVersion)
+        {
+            return Refused(DecisionResult.StaleVersion);
+        }
+
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        if (stop is null)
+        {
+            return Refused(DecisionResult.UnknownStop);
+        }
+
+        if (!IsOpen || stop.Status is not (StopStatus.Scheduled or StopStatus.Arrived))
+        {
+            return Refused(DecisionResult.InvalidState);
+        }
+
+        if (!platformsInService.Contains(platform))
+        {
+            return Refused(DecisionResult.PlatformUnavailable);
+        }
+
+        if (platform == stop.Platform)
+        {
+            return Refused(DecisionResult.SamePlatform);
+        }
+
+        if (holdMinutes is not null && (Hold is not null || stop.ScheduledDeparture is null))
+        {
+            return Refused(DecisionResult.InvalidState);   // one hold at a time, and the terminus has no departure to hold
+        }
+
+        var leadTime = LeadTimeAt(stationId, now)!;
+        CountDecision(actorId, now);
+        var previous = stop.Platform;
+        stop.MoveToPlatform(platform);
+        _events.Add(new PlatformChanged(Id, stationId, platform, previous, leadTime.Level, leadTime.Minutes, HoldSet: holdMinutes is not null, now));
+        if (holdMinutes is { } minutes)
+        {
+            PutHold(stationId, minutes, reason: null, now);
+        }
+
+        return new PlatformChangeOutcome(DecisionResult.Done, leadTime, holdMinutes is not null);
+    }
+
+    // R-14: cancel a Planned or Running journey. Every stop the train has not reached becomes Skipped; a stop it is standing at keeps
+    // Arrived (that is what happened). A hold ends. The data is over, so tracking ends. The reason is public (US-P4).
+    public DecisionResult CancelByController(int expectedVersion, JourneyReason reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        Status = JourneyStatus.Cancelled;
+        (ReasonCode, ReasonNote) = (reason.Code, reason.Note);
+        foreach (var stop in _stops)
+        {
+            stop.TryMoveTo(StopStatus.Skipped);   // only Scheduled stops move; the others are history
+        }
+
+        if (Hold is not null)
+        {
+            EndHold(Source.Controller, now);
+        }
+
+        _events.Add(new JourneyCancelled(Id, reason, now));
+        SetTracking(TrackingStatus.Ended, now);
+        return DecisionResult.Done;
+    }
+
+    // R-14: reinstate a Cancelled journey, only before its scheduled start. It becomes Planned again and the driver starts it as usual.
+    public DecisionResult ReinstateByController(int expectedVersion, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        var first = _stops.OrderBy(s => s.Sequence).First();
+        var start = first.ScheduledDeparture ?? first.ScheduledArrival;
+        if (Status != JourneyStatus.Cancelled || (start is { } scheduledStart && now >= scheduledStart))
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        Status = JourneyStatus.Planned;
+        (ReasonCode, ReasonNote) = (null, null);
+        foreach (var stop in _stops)
+        {
+            stop.Unskip();
+        }
+
+        _events.Add(new JourneyReinstated(Id, now));
+        SetTracking(TrackingStatus.NotStarted, now);
+        return DecisionResult.Done;
+    }
+
+    // The controller lets the train go.
+    public DecisionResult ReleaseHoldByController(int expectedVersion, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen || Hold is null)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        EndHold(Source.Controller, now);
+        return DecisionResult.Done;
+    }
+
+    private void EndHold(Source source, DateTime at)
+    {
+        var station = HoldStationId!.Value;
+        (HoldStationId, HoldMinutes, HoldSetAt, HoldReasonCode, HoldReasonNote) = (null, null, null, null, null);
+        _events.Add(new JourneyHeld(Id, station, Released: true, null, null, source, at));
+    }
+
+    // R-22: while held, the expected departure from that station is max(scheduled, now), so the delay grows with the clock until the
+    // train goes. Stored with source Schedule like the overdue delay (R-23); a controller delay still wins (R-05).
+    private void ApplyHoldDelay(DateTime now)
+    {
+        if (Hold is not { } hold)
+        {
+            return;
+        }
+
+        var scheduled = _stops.First(s => s.StationId == hold.StationId).ScheduledDeparture!.Value;
+        var held = Delay.Between(scheduled, now);
+        if (held.Minutes > CurrentDelay.Value.Minutes)
+        {
+            SetDelay(CurrentDelay.Apply(held, Source.Schedule), now);
+        }
+    }
+
+    // US-O4: the controller sets the delay. R-05: it wins over crew and GPS until cleared. The event is sent even if the minutes are
+    // unchanged, because the reason is news.
+    public DecisionResult SetDelayByController(int expectedVersion, Delay delay, JourneyReason reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        (ReasonCode, ReasonNote) = (reason.Code, reason.Note);
+        SetDelay(CurrentDelay.Apply(delay, Source.Controller), now, reason, announceAlways: true);
+        return DecisionResult.Done;
+    }
+
+    // Clears the controller's delay (see ClearControllerDelay). Refused when there is none to clear.
+    public DecisionResult ClearDelayByController(int expectedVersion, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen || DelaySource != Source.Controller)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        (ReasonCode, ReasonNote) = (null, null);
+        SetDelay(CurrentDelay.ClearController(DelayFromLatestStopEvent()), now, reason: null, announceAlways: true);
+        return DecisionResult.Done;
+    }
     public JourneyStatus Status { get; private set; }
     public IReadOnlyList<JourneyStop> Stops => _stops;
 
@@ -281,6 +579,7 @@ public sealed class OperationalJourney
         {
             SetTracking(TrackingFreshness.Of(lastSeen, now), now);
             ApplyOverdueDelay(now);
+            ApplyHoldDelay(now);
         }
     }
 
@@ -390,18 +689,25 @@ public sealed class OperationalJourney
         if (stop.TryMoveTo(to))
         {
             _events.Add(new StopStatusChanged(Id, stop.StationId, stop.Sequence, from, to, at, source));
+
+            // The train has left the station it was held at: the hold is over. Not a decision, so the control version stays (R-18).
+            if (to is StopStatus.Departed or StopStatus.Passed && HoldStationId == stop.StationId)
+            {
+                EndHold(source, at);
+            }
         }
     }
 
     // Stores the delay; announces it only when the whole minutes changed (a change of source alone is not news).
-    private void SetDelay(SourcedDelay next, DateTime at)
+    // `announceAlways` is for the controller's decisions, whose reason is news even when the minutes stay the same.
+    private void SetDelay(SourcedDelay next, DateTime at, JourneyReason? reason = null, bool announceAlways = false)
     {
         var previous = CurrentDelay;
         DelayMinutes = next.Value.Minutes;
         DelaySource = next.Source;
-        if (next.Value != previous.Value)
+        if (announceAlways || next.Value != previous.Value)
         {
-            _events.Add(new DelayChanged(Id, next.Value.Minutes, previous.Value.Minutes, next.Source, at));
+            _events.Add(new DelayChanged(Id, next.Value.Minutes, previous.Value.Minutes, next.Source, at, reason));
         }
     }
 

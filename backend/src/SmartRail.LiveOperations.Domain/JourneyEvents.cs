@@ -24,8 +24,25 @@ public sealed record JourneyEnded(Guid JourneyId, DateTime At, JourneyEndReason 
 public sealed record StopStatusChanged(
     Guid JourneyId, Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At, Source Source) : IDomainEvent;
 
+// Reason is set only when the controller set the delay (or cleared it: then it is null); the passenger app shows why.
 public sealed record DelayChanged(
-    Guid JourneyId, int DelayMinutes, int PreviousDelayMinutes, Source Source, DateTime At) : IDomainEvent;
+    Guid JourneyId, int DelayMinutes, int PreviousDelayMinutes, Source Source, DateTime At, JourneyReason? Reason = null) : IDomainEvent;
+
+// The controller put a hold on the train at a station, or released it (also: the train left, which ends the hold). `Source` is
+// Controller for a decision and the source of the departure otherwise. Minutes and Reason are given when it is set.
+public sealed record JourneyHeld(
+    Guid JourneyId, Guid StationId, bool Released, int? Minutes, JourneyReason? Reason, Source Source, DateTime At) : IDomainEvent;
+
+// The controller cancelled the journey (R-14): every stop still ahead is skipped.
+public sealed record JourneyCancelled(Guid JourneyId, JourneyReason Reason, DateTime At) : IDomainEvent;
+
+// The controller reinstated a cancelled journey before its scheduled start: it runs again (US-O4 AC4).
+public sealed record JourneyReinstated(Guid JourneyId, DateTime At) : IDomainEvent;
+
+// The controller moved a stop to another platform (R-11). HoldSet is true only when a hold was really set with it: apps may say
+// "the train will wait" only then. LeadTimeMinutes is recorded for the audit and the staff (US-O5 AC2); it is not public.
+public sealed record PlatformChanged(
+    Guid JourneyId, Guid StationId, string Platform, string PreviousPlatform, LeadTimeLevel Level, int LeadTimeMinutes, bool HoldSet, DateTime At) : IDomainEvent;
 
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;

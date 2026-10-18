@@ -333,6 +333,389 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/ops/journeys/{journeyId}/delay':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller sets the delay of a journey, with a reason. It stays until cleared (R-05).'
+      operationId: SetDelay
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/DelayRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+    delete:
+      tags:
+        - LiveOperations
+      summary: The controller removes the delay they set; the delay of the latest stop event applies again.
+      operationId: ClearDelay
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/hold':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller holds the train at a station. Its expected departure follows the clock until it is released (R-22).
+      operationId: HoldJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/HoldRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/hold/release':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller lets a held train go.
+      operationId: ReleaseHold
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/cancel':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller cancels a planned or running journey; its remaining stops are skipped (R-14).
+      operationId: CancelJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/reinstate':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller reinstates a cancelled journey, only before its scheduled start (R-14).'
+      operationId: ReinstateJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'What a platform change would do (lead time, hold recommended, conflicts) without changing anything.'
+      operationId: PreviewPlatformChange
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/PlatformPreviewRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformPreviewResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller moves a stop to another platform. Under 5 minutes of notice is a warning, not a block; a hold is optional.'
+      operationId: ChangePlatform
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/PlatformChangeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -586,6 +969,26 @@ components:
         serverTime:
           type: string
           format: date-time
+    CancelRequest:
+      required:
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     CoachResponse:
       required:
         - position
@@ -782,6 +1185,44 @@ components:
                       - 'null'
                       - string
                     format: date-time
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
+    DelayRequest:
+      required:
+        - minutes
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        minutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     DiscardedPosition:
       required:
         - index
@@ -793,10 +1234,104 @@ components:
           format: int32
         reason:
           type: string
+    HoldRequest:
+      required:
+        - stationId
+        - minutes
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        stationId:
+          type:
+            - 'null'
+            - string
+          format: uuid
+        minutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
+    JourneyCancelledEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyCancelled
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - reason
+          type: object
+          properties:
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
     JourneyDetailFreshnessResponse:
       required:
         - tracking
         - updatedAt
+        - lastStationName
         - lastPosition
       type: object
       properties:
@@ -807,6 +1342,10 @@ components:
             - 'null'
             - string
           format: date-time
+        lastStationName:
+          type:
+            - 'null'
+            - string
         lastPosition:
           oneOf:
             - type: 'null'
@@ -967,10 +1506,85 @@ components:
           type:
             - 'null'
             - string
+    JourneyHeldEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyHeld
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - released
+            - minutes
+            - reason
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            released:
+              type: boolean
+            minutes:
+              type:
+                - 'null'
+                - integer
+              format: int32
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
     JourneyHoldResponse:
       required:
         - stationId
         - minutes
+        - reason
       type: object
       properties:
         stationId:
@@ -981,6 +1595,10 @@ components:
             - 'null'
             - integer
           format: int32
+        reason:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyReasonResponse'
     JourneyReasonResponse:
       required:
         - code
@@ -993,6 +1611,52 @@ components:
           type:
             - 'null'
             - string
+    JourneyReinstatedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyReinstated
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          type: object
     JourneySnapshot:
       required:
         - journeyId
@@ -1004,6 +1668,7 @@ components:
         - lastSeenAt
         - lastPosition
         - stops
+        - journey
         - sequence
       type: object
       properties:
@@ -1021,6 +1686,7 @@ components:
             - Planned
             - Running
             - Completed
+            - Cancelled
           type: string
         delayMinutes:
           type: integer
@@ -1042,12 +1708,28 @@ components:
           required:
             - latitude
             - longitude
+            - speedKmh
+            - lastStationId
+            - nextStationId
+            - fractionToNext
           type: object
           properties:
             latitude:
               type: number
               format: double
             longitude:
+              type: number
+              format: double
+            speedKmh:
+              type: number
+              format: double
+            lastStationId:
+              type: string
+              format: uuid
+            nextStationId:
+              type: string
+              format: uuid
+            fractionToNext:
               type: number
               format: double
         stops:
@@ -1075,6 +1757,7 @@ components:
                   - Arrived
                   - Departed
                   - Passed
+                  - Skipped
                 type: string
               actualArrival:
                 type:
@@ -1096,6 +1779,292 @@ components:
                   - 'null'
                   - string
                 format: date-time
+        journey:
+          required:
+            - journeyId
+            - serviceNumber
+            - name
+            - trainType
+            - serviceDate
+            - status
+            - from
+            - to
+            - freshness
+            - hold
+            - reason
+            - version
+            - stops
+            - trainSet
+          type: object
+          properties:
+            journeyId:
+              type: string
+              format: uuid
+            serviceNumber:
+              type: string
+            name:
+              type: string
+            trainType:
+              type: string
+            serviceDate:
+              type: string
+              format: date
+            status:
+              required:
+                - kind
+                - delayMinutes
+              type: object
+              properties:
+                kind:
+                  type: string
+                delayMinutes:
+                  type:
+                    - 'null'
+                    - integer
+                  format: int32
+            from:
+              required:
+                - stationId
+                - name
+                - scheduledDeparture
+                - expectedDeparture
+                - platform
+                - previousPlatform
+              type: object
+              properties:
+                stationId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                scheduledDeparture:
+                  type:
+                    - 'null'
+                    - string
+                  format: date-time
+                expectedDeparture:
+                  type:
+                    - 'null'
+                    - string
+                  format: date-time
+                platform:
+                  type: string
+                previousPlatform:
+                  type:
+                    - 'null'
+                    - string
+            to:
+              required:
+                - stationId
+                - name
+                - scheduledArrival
+                - expectedArrival
+              type: object
+              properties:
+                stationId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                scheduledArrival:
+                  type:
+                    - 'null'
+                    - string
+                  format: date-time
+                expectedArrival:
+                  type:
+                    - 'null'
+                    - string
+                  format: date-time
+            freshness:
+              required:
+                - tracking
+                - updatedAt
+                - lastStationName
+                - lastPosition
+              type: object
+              properties:
+                tracking:
+                  type: string
+                updatedAt:
+                  type:
+                    - 'null'
+                    - string
+                  format: date-time
+                lastStationName:
+                  type:
+                    - 'null'
+                    - string
+                lastPosition:
+                  required:
+                    - latitude
+                    - longitude
+                    - speedKmh
+                    - lastStationId
+                    - nextStationId
+                    - fractionToNext
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                      format: double
+                    longitude:
+                      type: number
+                      format: double
+                    speedKmh:
+                      type: number
+                      format: double
+                    lastStationId:
+                      type: string
+                      format: uuid
+                    nextStationId:
+                      type: string
+                      format: uuid
+                    fractionToNext:
+                      type: number
+                      format: double
+            hold:
+              required:
+                - stationId
+                - minutes
+                - reason
+              type: object
+              properties:
+                stationId:
+                  type: string
+                  format: uuid
+                minutes:
+                  type:
+                    - 'null'
+                    - integer
+                  format: int32
+                reason:
+                  required:
+                    - code
+                    - note
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    note:
+                      type:
+                        - 'null'
+                        - string
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
+            version:
+              type: integer
+              format: int32
+            stops:
+              type: array
+              items:
+                required:
+                  - sequence
+                  - stationId
+                  - name
+                  - callType
+                  - status
+                  - isAdded
+                  - scheduledArrival
+                  - expectedArrival
+                  - actualArrival
+                  - scheduledDeparture
+                  - expectedDeparture
+                  - actualDeparture
+                  - plannedPlatform
+                  - platform
+                  - previousPlatform
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    format: int32
+                  stationId:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  callType:
+                    type: string
+                  status:
+                    type: string
+                  isAdded:
+                    type: boolean
+                  scheduledArrival:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  expectedArrival:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  actualArrival:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  scheduledDeparture:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  expectedDeparture:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  actualDeparture:
+                    type:
+                      - 'null'
+                      - string
+                    format: date-time
+                  plannedPlatform:
+                    type: string
+                  platform:
+                    type: string
+                  previousPlatform:
+                    type:
+                      - 'null'
+                      - string
+            trainSet:
+              required:
+                - code
+                - traction
+                - coaches
+              type: object
+              properties:
+                code:
+                  type: string
+                traction:
+                  type: string
+                coaches:
+                  type: array
+                  items:
+                    required:
+                      - position
+                      - class
+                      - seating
+                    type: object
+                    properties:
+                      position:
+                        type: integer
+                        format: int32
+                      class:
+                        type: string
+                      seating:
+                        type: string
         sequence:
           type: integer
           format: int64
@@ -1332,6 +2301,159 @@ components:
           type:
             - 'null'
             - string
+    PlatformChangedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - PlatformChanged
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - platform
+            - previousPlatform
+            - leadTimeLevel
+            - holdSet
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            platform:
+              type: string
+            previousPlatform:
+              type: string
+            leadTimeLevel:
+              enum:
+                - Normal
+                - ShortNotice
+                - Late
+              type: string
+            holdSet:
+              type: boolean
+    PlatformChangeRequest:
+      required:
+        - platform
+        - setHold
+        - holdMinutes
+        - conflictsAcknowledged
+        - expectedVersion
+      type: object
+      properties:
+        platform:
+          type:
+            - 'null'
+            - string
+        setHold:
+          type:
+            - 'null'
+            - boolean
+        holdMinutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        conflictsAcknowledged:
+          type:
+            - 'null'
+            - boolean
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
+    PlatformConflictResponse:
+      required:
+        - journeyId
+        - serviceNumber
+        - platform
+        - expectedArrival
+        - expectedDeparture
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceNumber:
+          type: string
+        platform:
+          type: string
+        expectedArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+    PlatformPreviewRequest:
+      required:
+        - platform
+      type: object
+      properties:
+        platform:
+          type:
+            - 'null'
+            - string
+    PlatformPreviewResponse:
+      required:
+        - leadTimeMinutes
+        - leadTimeLevel
+        - holdRecommended
+        - conflicts
+      type: object
+      properties:
+        leadTimeMinutes:
+          type: integer
+          format: int32
+        leadTimeLevel:
+          type: string
+        holdRecommended:
+          type: boolean
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformConflictResponse'
     PlatformResponse:
       required:
         - number
@@ -1471,6 +2593,11 @@ components:
           type: string
         requestId:
           type: string
+        currentVersion:
+          type: integer
+          format: int32
+        journey:
+          type: object
         errors:
           type: object
           additionalProperties:
@@ -1659,6 +2786,7 @@ components:
                 - Arrived
                 - Departed
                 - Passed
+                - Skipped
               type: string
             to:
               enum:
@@ -1666,6 +2794,7 @@ components:
                 - Arrived
                 - Departed
                 - Passed
+                - Skipped
               type: string
             at:
               type: string
@@ -1677,6 +2806,10 @@ components:
         - $ref: '#/components/schemas/DataFreshnessChangedEvent'
         - $ref: '#/components/schemas/JourneyStartedEvent'
         - $ref: '#/components/schemas/JourneyEndedEvent'
+        - $ref: '#/components/schemas/JourneyHeldEvent'
+        - $ref: '#/components/schemas/PlatformChangedEvent'
+        - $ref: '#/components/schemas/JourneyCancelledEvent'
+        - $ref: '#/components/schemas/JourneyReinstatedEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
@@ -1687,6 +2820,10 @@ components:
           DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'
           JourneyStarted: '#/components/schemas/JourneyStartedEvent'
           JourneyEnded: '#/components/schemas/JourneyEndedEvent'
+          JourneyHeld: '#/components/schemas/JourneyHeldEvent'
+          PlatformChanged: '#/components/schemas/PlatformChangedEvent'
+          JourneyCancelled: '#/components/schemas/JourneyCancelledEvent'
+          JourneyReinstated: '#/components/schemas/JourneyReinstatedEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:
       required:
@@ -1787,6 +2924,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CoachResponse'
+    VersionRequest:
+      required:
+        - expectedVersion
+      type: object
+      properties:
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
   securitySchemes:
     Bearer:
       type: http

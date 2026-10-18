@@ -11,10 +11,14 @@ internal static class PublicProjection
     private static readonly Dictionary<string, string[]> PublicPayloadFields = new()
     {
         ["StopStatusChanged"] = ["stationId", "sequence", "from", "to", "at"],
-        ["DelayChanged"] = ["delayMinutes", "previousDelayMinutes", "stops"],
+        ["DelayChanged"] = ["delayMinutes", "previousDelayMinutes", "stops", "reason"],
         ["DataFreshnessChanged"] = ["from", "to", "lastSeenAt", "lastStationId"],
         ["JourneyStarted"] = [],            // the stored payload (device, cab session) is staff-only: nothing of it is public
         ["JourneyEnded"] = ["reason"],
+        ["PlatformChanged"] = ["stationId", "platform", "previousPlatform", "leadTimeLevel", "holdSet"],   // not leadTimeMinutes: staff only
+        ["JourneyCancelled"] = ["reason"],
+        ["JourneyReinstated"] = [],
+        ["JourneyHeld"] = ["stationId", "released", "minutes", "reason"],
         ["TrainPositionUpdated"] = ["location", "speedKmh", "lastStationId", "nextStationId", "fractionToNext"],
     };
 

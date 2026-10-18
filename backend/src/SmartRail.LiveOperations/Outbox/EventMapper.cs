@@ -16,7 +16,7 @@ internal static class EventMapper
         // The stops still ahead (or at the platform): every display of those stations needs the new delay.
         DelayChanged e => Envelope(
             journey, eventId, "DelayChanged", e.At, e.Source, RemainingStations(journey),
-            new DelayChangedPayload(e.DelayMinutes, e.PreviousDelayMinutes, RemainingStops(journey))),
+            new DelayChangedPayload(e.DelayMinutes, e.PreviousDelayMinutes, RemainingStops(journey), e.Reason)),
 
         // The source is Gps: freshness is the age of the GPS data, even when the clock is what notices that it got old.
         DataFreshnessChanged e => Envelope(
@@ -28,6 +28,24 @@ internal static class EventMapper
             journey, eventId, "TrainPositionUpdated", e.At, Source.Gps, [e.LastStationId, e.NextStationId],
             new TrainPositionUpdatedPayload(
                 new GeoLocation(e.Location.Latitude, e.Location.Longitude), e.SpeedKmh, e.LastStationId, e.NextStationId, e.FractionToNext)),
+
+        // The held station's display and every station after it need to hear about the hold (the station may already be behind the
+        // train when a release comes from the train leaving, so it is named explicitly).
+        JourneyHeld e => Envelope(
+            journey, eventId, "JourneyHeld", e.At, e.Source, RemainingStations(journey).Union([e.StationId]).ToList(),
+            new JourneyHeldPayload(e.StationId, e.Released, e.Minutes, e.Reason)),
+
+        // Only that station's displays and the trains' passengers there care which platform it is.
+        PlatformChanged e => Envelope(
+            journey, eventId, "PlatformChanged", e.At, Source.Controller, [e.StationId],
+            new PlatformChangedPayload(e.StationId, e.Platform, e.PreviousPlatform, e.Level, e.LeadTimeMinutes, e.HoldSet)),
+
+        // A cancelled or reinstated train concerns every station on its route.
+        JourneyCancelled e => Envelope(
+            journey, eventId, "JourneyCancelled", e.At, Source.Controller, AllStations(journey), new JourneyCancelledPayload(e.Reason)),
+
+        JourneyReinstated e => Envelope(
+            journey, eventId, "JourneyReinstated", e.At, Source.Controller, AllStations(journey), new EmptyPayload()),
 
         // Every stop's display shows a running or finished train, so both events name all the stops.
         JourneyStarted e => Envelope(

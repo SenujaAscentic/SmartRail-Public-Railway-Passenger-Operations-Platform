@@ -29,10 +29,29 @@ internal static class Problems
     public static IResult RuleViolation(HttpContext http, string detail) =>
         Build(http, StatusCodes.Status422UnprocessableEntity, "rule-violation", "A rule refuses this action", "RULE_VIOLATION", detail: detail);
 
+    // 409 VERSION_CONFLICT (R-18, contract section 6): the decision was based on an old version. `detail` names who changed the journey
+    // (the one place a staff name may appear); the answer carries the current version and the journey as it is now.
+    public static IResult VersionConflict(HttpContext http, string detail, int currentVersion, object journey) =>
+        Build(http, StatusCodes.Status409Conflict, "version-conflict", "Journey was changed by someone else", "VERSION_CONFLICT", detail: detail,
+            more: new Dictionary<string, object?> { ["currentVersion"] = currentVersion, ["journey"] = journey });
+
+    // 422 CONFLICT_NOT_ACKNOWLEDGED (contract 3.5, R-12): another train is expected at the chosen platform and the controller did not
+    // confirm they know. The answer lists the conflicts so the dialog can show them.
+    public static IResult ConflictNotAcknowledged(HttpContext http, object conflicts) =>
+        Build(http, StatusCodes.Status422UnprocessableEntity, "conflict-not-acknowledged", "Platform conflict not acknowledged", "CONFLICT_NOT_ACKNOWLEDGED",
+            detail: "Another train is expected at that platform around the same time. Confirm with conflictsAcknowledged.",
+            more: new Dictionary<string, object?> { ["conflicts"] = conflicts });
+
     private static IResult Build(
-        HttpContext http, int status, string type, string title, string code, Dictionary<string, string[]>? errors = null, string? detail = null)
+        HttpContext http, int status, string type, string title, string code, Dictionary<string, string[]>? errors = null, string? detail = null,
+        Dictionary<string, object?>? more = null)
     {
         var extensions = new Dictionary<string, object?> { ["code"] = code, ["requestId"] = http.TraceIdentifier };
+        foreach (var (key, value) in more ?? [])
+        {
+            extensions[key] = value;
+        }
+
         if (errors is not null)
         {
             extensions["errors"] = errors;

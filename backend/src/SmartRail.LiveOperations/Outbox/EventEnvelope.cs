@@ -31,13 +31,23 @@ public sealed record EmptyPayload;
 
 public sealed record JourneyEndedPayload(JourneyEndReason Reason);
 
+// JourneyHeld: a hold was set (Released false, with its minutes and reason) or ended (Released true: the controller released it or the train left).
+public sealed record JourneyHeldPayload(Guid StationId, bool Released, int? Minutes, JourneyReason? Reason);
+
+public sealed record JourneyCancelledPayload(JourneyReason Reason);
+
+// PlatformChanged: LeadTimeMinutes is for the staff and the audit; it is not in the public stream (PublicProjection). HoldSet is true only
+// when a hold was set with the change: apps may say "the train will wait" only then.
+public sealed record PlatformChangedPayload(Guid StationId, string Platform, string PreviousPlatform, LeadTimeLevel LeadTimeLevel, int LeadTimeMinutes, bool HoldSet);
+
 public sealed record GeoLocation(double Latitude, double Longitude);
 
 public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
 
 public sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
 
-public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);
+// Reason is present only when the controller set the delay: the code and the plain-text note passengers see.
+public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops, JourneyReason? Reason = null);
 
 public sealed record DataFreshnessChangedPayload(TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, Guid? LastStationId);
 

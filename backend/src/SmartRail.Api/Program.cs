@@ -80,6 +80,9 @@ builder.Services.AddOpenApi(options =>
             schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
             schema.Properties["code"] = new OpenApiSchema { Type = JsonSchemaType.String };
             schema.Properties["requestId"] = new OpenApiSchema { Type = JsonSchemaType.String };
+            // Only on 409 VERSION_CONFLICT (R-18): the journey's current version and the journey itself (a JourneyDetailResponse).
+            schema.Properties["currentVersion"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32" };
+            schema.Properties["journey"] = new OpenApiSchema { Type = JsonSchemaType.Object };
             schema.Properties["errors"] = new OpenApiSchema
             {
                 Type = JsonSchemaType.Object,

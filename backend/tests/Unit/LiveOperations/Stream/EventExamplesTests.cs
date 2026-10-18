@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
 using SmartRail.LiveOperations.Domain;
+using SmartRail.LiveOperations.Features.JourneyViews;
 using SmartRail.LiveOperations.Features.StreamEvents;
 using SmartRail.LiveOperations.Outbox;
 using SmartRail.LiveOperations.Stream;
+using SmartRail.Network;
 using Xunit;
 
 namespace SmartRail.UnitTests.LiveOperations.Stream;
@@ -79,6 +81,10 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("JourneyHeld")]
+    [InlineData("PlatformChanged")]
+    [InlineData("JourneyCancelled")]
+    [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
@@ -129,7 +135,11 @@ public class EventExamplesTests
     [Fact]
     public void DelayChanged_as_sent_has_the_shape_of_its_example()
     {
-        Assert.Equal(Shape.Of(Example("DelayChanged")), Shape.Of(RealEvent<DelayChanged>(Journey())));
+        // Set by the controller, so the optional reason is part of what is sent.
+        var journey = Journey();
+        journey.SetDelayByController(0, new Delay(4), new JourneyReason("SignalFailure", "Signal fault near Ragama"), Guid.NewGuid(), At(6, 51));
+
+        Assert.Equal(Shape.Of(Example("DelayChanged")), Shape.Of(RealEvent<DelayChanged>(journey)));
     }
 
     [Fact]
@@ -172,9 +182,51 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void JourneyHeld_as_sent_has_the_shape_of_its_example()
+    {
+        var journey = Journey();
+        journey.SetHoldByController(0, S2, 10, new JourneyReason("Congestion", "Waiting for the platform"), Guid.NewGuid(), At(6, 51));
+
+        Assert.Equal(Shape.Of(Example("JourneyHeld")), Shape.Of(RealEvent<JourneyHeld>(journey)));
+    }
+
+    [Fact]
+    public void PlatformChanged_as_sent_has_the_shape_of_its_example_and_hides_the_lead_time_minutes()
+    {
+        var journey = Journey();
+        journey.ChangePlatformByController(0, S2, "5", ["1", "2", "3", "4", "5"], holdMinutes: 5, Guid.NewGuid(), At(6, 52));   // standing at S2, held
+
+        var real = RealEvent<PlatformChanged>(journey);
+
+        Assert.Equal(Shape.Of(Example("PlatformChanged")), Shape.Of(real));
+        Assert.False(real.GetProperty("payload").TryGetProperty("leadTimeMinutes", out _));   // staff and audit only
+    }
+
+    [Fact]
+    public void JourneyCancelled_and_JourneyReinstated_as_sent_have_the_shape_of_their_examples()
+    {
+        var journey = Journey();
+        journey.CancelByController(0, new JourneyReason("TrainFault", "Engine failure at Rambukkana"), Guid.NewGuid(), At(6, 52));
+        Assert.Equal(Shape.Of(Example("JourneyCancelled")), Shape.Of(RealEvent<JourneyCancelled>(journey)));
+
+        // Reinstating is only allowed before the scheduled start, so this journey has not started.
+        var planned = OperationalJourney.Plan(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(), [new PlannedStop(1, S1, CallType.Stop, null, 360, "1"), new PlannedStop(2, S2, CallType.Stop, 400, null, "2")],
+            TimeZoneInfo.Utc, Guid.NewGuid());
+        planned.CancelByController(0, new JourneyReason("TrainFault", null), Guid.NewGuid(), At(5, 0));
+        planned.ReinstateByController(1, Guid.NewGuid(), At(5, 10));
+        var real = RealEvent<JourneyReinstated>(planned);
+        Assert.Equal(Shape.Of(Example("JourneyReinstated")), Shape.Of(real));
+        Assert.Empty(real.GetProperty("payload").EnumerateObject());
+    }
+
+    [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
-        var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(Journey(), sequence: 1), EventJson.Options);
+        var journey = Journey();
+        var names = new Dictionary<Guid, string> { [S1] = "Colombo Fort", [S2] = "Rambukkana", [S3] = "Kandy" };
+        var detail = JourneyViewBuilder.Detail(journey, names, new ServiceDetails("1001", "Express"), trainSet: null);
+        var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(journey, sequence: 1, detail), EventJson.Options);
 
         Assert.Equal(Shape.Of(Example("snapshot")), Shape.Of(real));
     }
@@ -196,6 +248,10 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged", typeof(DataFreshnessChangedEvent))]
     [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
     [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
+    [InlineData("JourneyHeld", typeof(JourneyHeldEvent))]
+    [InlineData("PlatformChanged", typeof(PlatformChangedEvent))]
+    [InlineData("JourneyCancelled", typeof(JourneyCancelledEvent))]
+    [InlineData("JourneyReinstated", typeof(JourneyReinstatedEvent))]
     [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
@@ -214,6 +270,10 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("JourneyHeld")]
+    [InlineData("PlatformChanged")]
+    [InlineData("JourneyCancelled")]
+    [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {

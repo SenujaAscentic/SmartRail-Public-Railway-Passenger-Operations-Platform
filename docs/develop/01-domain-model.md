@@ -239,7 +239,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | **R-08** | **Position plausibility:** discard a position that is older than the last accepted one, more than 500 m from the route, or implies a speed above **120 km/h** since the last one (M-2, 12 Oct). Discarded positions are counted and logged, not stored as live. | S5 failure scenarios |
 | **R-09** | **Clock correction:** event time = GPS time when present; otherwise device time + the clock offset measured at session start. | ADR-05 |
 | **R-10** | **Unscheduled stop:** speed < 5 km/h for ≥ 3 min outside every station zone → one alert per stop, cleared when the train moves. | O-8 |
-| **R-11** | **Platform change lead time** = **expected arrival** at the station − now (at the origin, where there is no arrival: expected departure − now) (M-1, 12 Oct): > 15 min Normal, 5–15 min ShortNotice, < 5 min Late. Late requires a hold. The "train will wait" message is sent only when the hold is actually set. | O-5, A-112–A-114 |
+| **R-11** | **Platform change lead time** = **expected arrival** at the station − now (at the origin, where there is no arrival: expected departure − now) (M-1, 12 Oct): > 15 min Normal, 5–15 min ShortNotice, < 5 min Late. **Late: warning, hold recommended (US-O5 AC5); the change is not blocked.** The "train will wait" message is sent only when the hold is actually set. *(Changed 18 Oct, approved by Senuja: was "Late requires a hold".)* | O-5, A-112–A-114 |
 | **R-12** | **Platform conflict:** warn (do not block) if another journey is expected at the same station and platform within ±5 min of this train's expected arrival–departure window. | O-5, D-3 |
 | **R-13** | **Platform change allowed** only for a stop that is Scheduled or Arrived, to a platform that exists and is in service at that station. | O-5 |
 | **R-14** | **Cancel** only Planned or Running journeys; all remaining stops become Skipped. **Terminate early** only a Running journey, at a station ahead of the train; stops after it become Skipped. **Reinstate** only a Cancelled journey before its scheduled start. | O-4, S10-10 |
@@ -313,11 +313,12 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | JourneyEnded | reason (Driver / Terminus / Controller) |
 | TrainPositionUpdated | location, speedKmh, lastStationId, nextStationId, fractionToNext |
 | StopStatusChanged | stationId, sequence, from, to, at |
-| DelayChanged | delayMinutes, previousDelayMinutes, stops[] { stationId, expectedArrival, expectedDeparture } |
+| DelayChanged | delayMinutes, previousDelayMinutes, stops[] { stationId, expectedArrival, expectedDeparture }, reason? `{code, note}` (only when the controller set the delay; added 18 Oct) |
 | DataFreshnessChanged | from, to, lastSeenAt, lastStationId |
-| JourneyHeld | stationId, reason, released (bool) |
-| PlatformChanged | stationId, platform, previousPlatform, leadTimeLevel, holdSet (bool) |
-| JourneyCancelled | reason, incidentId? |
+| JourneyHeld | stationId, released (bool), minutes?, reason? `{code, note}` *(minutes added 18 Oct)* |
+| PlatformChanged | stationId, platform, previousPlatform, leadTimeLevel, holdSet (bool); stored also: leadTimeMinutes (staff and audit only, not public) |
+| JourneyCancelled | reason `{code, note}` *(no incidentId until incidents exist, 18 Oct)* |
+| JourneyReinstated | – *(new 18 Oct; public payload `{}`)* |
 | JourneyTerminatedEarly | atStationId, reason |
 | StopSkipped / StopAdded | stationId, sequence, expectedArrival? (added only) |
 | UnscheduledStopDetected | location, stoppedSince, betweenStationIds[2] |
@@ -418,7 +419,7 @@ Written as test names. You approve, remove or add names; then the AI implements 
 - `Lead_time_is_measured_from_expected_arrival_except_at_origin`
 - `Lead_time_over_15_minutes_is_normal`
 - `Lead_time_between_5_and_15_minutes_is_short_notice`
-- `Lead_time_under_5_minutes_requires_hold`
+- `Lead_time_under_5_minutes_recommends_a_hold_and_does_not_block` *(renamed 18 Oct with R-11)*
 - `Train_will_wait_message_only_when_hold_is_set`
 - `Conflict_warning_when_another_train_expected_at_same_platform_within_5_minutes`
 - `Platform_change_refused_for_departed_stop`
@@ -488,6 +489,8 @@ Written as test names. You approve, remove or add names; then the AI implements 
 | Added `Position` as a time-series table outside the aggregate. | Volume (every 10 s); the aggregate keeps only the latest. |
 | `PassengerTrip` removed from the backend model. | "I'm on this train" is a device-side mode (P-3); no passenger location is stored (A-10). |
 | Added Incident effects, Crew report, Crew message, Announcement, Audit entry, Outbox message. | Sections 9, 10, 11 and O-10. |
+| R-11: a lead time under 5 minutes is a warning with a recommended hold, not a requirement. | US-O5 AC5 says the controller *can* set a hold; blocking would stop an urgent change. Approved by Senuja 18 Oct. |
+| Journey states `Cancelled` and stop state `Skipped` are now used (cancel / reinstate, R-14). | Phase 3a. |
 | R-07: a position from an ended crew session answers 401, not 403. | Contract §6 (a session that has ended is an authentication failure); approved by Senuja 18 Oct. A deactivated tablet keeps working until its token expires (15 min at most, T-12), also accepted. |
 
 ## AI usage log

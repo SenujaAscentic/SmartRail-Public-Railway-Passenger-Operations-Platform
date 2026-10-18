@@ -11,6 +11,11 @@ internal static class JourneyViewBuilder
     // (the apps show "Live information unavailable", US-P4 AC1 star).
     public static JourneyStatusResponse Status(OperationalJourney journey)
     {
+        if (journey.Status == JourneyStatus.Cancelled)
+        {
+            return new JourneyStatusResponse("Cancelled", null);
+        }
+
         if (journey.Status == JourneyStatus.Completed)
         {
             return new JourneyStatusResponse("Completed", journey.DelayMinutes);
@@ -35,7 +40,7 @@ internal static class JourneyViewBuilder
         new(journey.Id, service.Number, name, service.TrainType, journey.ServiceDate, Status(journey),
             From(journey, from, names), To(journey, to, names),
             new JourneyFreshnessResponse(journey.Tracking.ToString(), journey.LastPositionAt),
-            Hold: null, Reason: null, journey.ControlVersion);
+            Hold(journey), Reason(journey), journey.ControlVersion);
 
     public static JourneyDetailResponse Detail(
         OperationalJourney journey, IReadOnlyDictionary<Guid, string> names, ServiceDetails service, TrainSetDetails? trainSet)
@@ -50,21 +55,29 @@ internal static class JourneyViewBuilder
         return new JourneyDetailResponse(
             journey.Id, service.Number, Name(names[stops[^1].StationId], service.TrainType), service.TrainType, journey.ServiceDate,
             Status(journey), From(journey, stops[0], names), To(journey, stops[^1], names),
-            new JourneyDetailFreshnessResponse(journey.Tracking.ToString(), journey.LastPositionAt, position),
-            Hold: null, Reason: null, journey.ControlVersion,
+            new JourneyDetailFreshnessResponse(
+                journey.Tracking.ToString(), journey.LastPositionAt, position is null ? null : names.GetValueOrDefault(position.LastStationId), position),
+            Hold(journey), Reason(journey), journey.ControlVersion,
             stops.Select(s => new JourneyStopResponse(
                 s.Sequence, s.StationId, names[s.StationId], s.CallType.ToString(), s.Status.ToString(), IsAdded: false,
                 s.ScheduledArrival, s.ExpectedArrival(delay), s.ActualArrival,
                 s.ScheduledDeparture, s.ExpectedDeparture(delay), s.ActualDeparture,
-                s.PlannedPlatform, s.PlannedPlatform, PreviousPlatform: null)).ToList(),
+                s.PlannedPlatform, s.Platform, s.PreviousPlatform)).ToList(),
             trainSet is null ? null : new TrainSetResponse(
                 trainSet.Code, trainSet.Traction, trainSet.Coaches.Select(c => new CoachResponse(c.Position, c.Class, c.Seating)).ToList()));
     }
 
-    // `platform` is the planned platform until a platform change exists (Phase 3).
+    private static JourneyHoldResponse? Hold(OperationalJourney journey) =>
+        journey.Hold is { } hold
+            ? new JourneyHoldResponse(hold.StationId, hold.Minutes, hold.Reason is { } r ? new JourneyReasonResponse(r.Code, r.Note) : null)
+            : null;
+
+    private static JourneyReasonResponse? Reason(OperationalJourney journey) =>
+        journey.Reason is { } reason ? new JourneyReasonResponse(reason.Code, reason.Note) : null;
+
     private static JourneyFromResponse From(OperationalJourney journey, JourneyStop stop, IReadOnlyDictionary<Guid, string> names) =>
         new(stop.StationId, names[stop.StationId], stop.ScheduledDeparture, stop.ExpectedDeparture(journey.CurrentDelay.Value),
-            stop.PlannedPlatform, PreviousPlatform: null);
+            stop.Platform, stop.PreviousPlatform);
 
     private static JourneyToResponse To(OperationalJourney journey, JourneyStop stop, IReadOnlyDictionary<Guid, string> names) =>
         new(stop.StationId, names[stop.StationId], stop.ScheduledArrival, stop.ExpectedArrival(journey.CurrentDelay.Value));
