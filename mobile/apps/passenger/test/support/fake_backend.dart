@@ -28,6 +28,15 @@ class FakeBackend {
   /// While true, the journey search answers 500.
   bool failJourneySearch = false;
 
+  /// Answer of `GET /journeys/{id}`; null means 404.
+  Map<String, dynamic>? detail;
+
+  /// While true, `GET /journeys/{id}` answers 500.
+  bool failJourney = false;
+
+  /// The HTTP `Date` header of the journey answer (the server's time); null leaves it out.
+  String? dateHeader;
+
   final requests = <Uri>[];
 
   Future<http.Response> _handle(http.Request request) async {
@@ -40,6 +49,15 @@ class FakeBackend {
       case '/api/v1/journeys/search':
         if (failJourneySearch) return http.Response('boom', 500);
         return _json(journeys);
+    }
+    if (request.url.path.startsWith('/api/v1/journeys/')) {
+      if (failJourney) return http.Response('boom', 500);
+      final body = detail;
+      if (body == null) return http.Response('{"code":"NOT_FOUND","title":"Not found"}', 404);
+      return http.Response(jsonEncode(body), 200, headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'date': ?dateHeader,
+      });
     }
     return http.Response('not found', 404);
   }
@@ -106,3 +124,17 @@ Future<void> loadAppFonts() async {
   await load('NotoSans', ['NotoSans-Regular.ttf', 'NotoSans-Bold.ttf']);
   await load('NotoSansMono', ['NotoSansMono-Regular.ttf', 'NotoSansMono-Bold.ttf']);
 }
+
+/// A real answer of `GET /journeys/{id}` (train 1001, moving between Kelaniya
+/// and Ragama), copied from the backend into core's contract fixtures. A fresh
+/// copy each call, so a test can change it.
+Map<String, dynamic> detailJson() =>
+    jsonDecode(File('../../packages/core/test/fixtures/journey_detail.json').readAsStringSync()) as Map<String, dynamic>;
+
+/// The stop with [name] in a detail answer.
+Map<String, dynamic> stopNamed(Map<String, dynamic> detail, String name) =>
+    (detail['stops'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['name'] == name);
+
+/// Station ids used in the detail answer.
+const gampahaId = '01a14eb2-015b-7b5a-a2da-49d81f392430';
+const kandyId = '01a14eb2-015b-7254-ae7a-ded485b163b9';

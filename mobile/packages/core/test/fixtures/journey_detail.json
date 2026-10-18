@@ -1,0 +1,260 @@
+{
+  "journeyId": "01a156ce-00e7-729d-a368-ef00172f4ec5",
+  "serviceNumber": "1001",
+  "name": "Kandy Express",
+  "trainType": "Express",
+  "serviceDate": "2026-10-20",
+  "status": {
+    "kind": "OnTime",
+    "delayMinutes": 0
+  },
+  "from": {
+    "stationId": "01a14eb2-0142-7bfb-b3ba-7503a4bce38e",
+    "name": "Colombo Fort",
+    "scheduledDeparture": "2026-10-20T01:00:00Z",
+    "expectedDeparture": "2026-10-20T01:00:57.665101Z",
+    "platform": "5",
+    "previousPlatform": null
+  },
+  "to": {
+    "stationId": "01a14eb2-015b-7254-ae7a-ded485b163b9",
+    "name": "Kandy",
+    "scheduledArrival": "2026-10-20T03:45:00Z",
+    "expectedArrival": "2026-10-20T03:45:00Z"
+  },
+  "freshness": {
+    "tracking": "Live",
+    "updatedAt": "2026-10-20T01:16:31.183576Z",
+    "lastPosition": {
+      "latitude": 6.981269829198914,
+      "longitude": 79.90238458481805,
+      "speedKmh": 41.07813481148667,
+      "lastStationId": "01a14eb2-015b-7ebe-998e-19f3d315ef4d",
+      "nextStationId": "01a14eb2-015b-732d-aef4-d3a44774841f",
+      "fractionToNext": 0.2933105234722473
+    }
+  },
+  "hold": null,
+  "reason": null,
+  "version": 0,
+  "stops": [
+    {
+      "sequence": 1,
+      "stationId": "01a14eb2-0142-7bfb-b3ba-7503a4bce38e",
+      "name": "Colombo Fort",
+      "callType": "Stop",
+      "status": "Departed",
+      "isAdded": false,
+      "scheduledArrival": null,
+      "expectedArrival": "2026-10-20T00:56:06.708701Z",
+      "actualArrival": "2026-10-20T00:56:06.708701Z",
+      "scheduledDeparture": "2026-10-20T01:00:00Z",
+      "expectedDeparture": "2026-10-20T01:00:57.665101Z",
+      "actualDeparture": "2026-10-20T01:00:57.665101Z",
+      "plannedPlatform": "5",
+      "platform": "5",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 2,
+      "stationId": "01a14eb2-015a-73ed-8936-7324e431bc1d",
+      "name": "Maradana",
+      "callType": "Stop",
+      "status": "Departed",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T01:05:00Z",
+      "expectedArrival": "2026-10-20T01:05:08.179531Z",
+      "actualArrival": "2026-10-20T01:05:08.179531Z",
+      "scheduledDeparture": "2026-10-20T01:07:00Z",
+      "expectedDeparture": "2026-10-20T01:07:29.952383Z",
+      "actualDeparture": "2026-10-20T01:07:29.952383Z",
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 3,
+      "stationId": "01a14eb2-015b-7ebe-998e-19f3d315ef4d",
+      "name": "Kelaniya",
+      "callType": "Pass",
+      "status": "Passed",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T01:13:00Z",
+      "expectedArrival": "2026-10-20T01:13:30.829592Z",
+      "actualArrival": "2026-10-20T01:13:30.829592Z",
+      "scheduledDeparture": "2026-10-20T01:13:00Z",
+      "expectedDeparture": "2026-10-20T01:13:30.829592Z",
+      "actualDeparture": "2026-10-20T01:13:30.829592Z",
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 4,
+      "stationId": "01a14eb2-015b-732d-aef4-d3a44774841f",
+      "name": "Ragama",
+      "callType": "Pass",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T01:25:00Z",
+      "expectedArrival": "2026-10-20T01:25:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T01:25:00Z",
+      "expectedDeparture": "2026-10-20T01:25:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 5,
+      "stationId": "01a14eb2-015b-7b5a-a2da-49d81f392430",
+      "name": "Gampaha",
+      "callType": "Stop",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T01:40:00Z",
+      "expectedArrival": "2026-10-20T01:40:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T01:42:00Z",
+      "expectedDeparture": "2026-10-20T01:42:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 6,
+      "stationId": "01a14eb2-015b-79cf-9e6c-ab14cf11a22a",
+      "name": "Veyangoda",
+      "callType": "Pass",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T01:55:00Z",
+      "expectedArrival": "2026-10-20T01:55:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T01:55:00Z",
+      "expectedDeparture": "2026-10-20T01:55:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 7,
+      "stationId": "01a14eb2-015b-7a7e-bd97-4eb8ac4d62df",
+      "name": "Polgahawela",
+      "callType": "Stop",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T02:43:00Z",
+      "expectedArrival": "2026-10-20T02:43:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T02:46:00Z",
+      "expectedDeparture": "2026-10-20T02:46:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 8,
+      "stationId": "01a14eb2-015b-7b23-bd93-594578b198ff",
+      "name": "Rambukkana",
+      "callType": "Pass",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T02:59:00Z",
+      "expectedArrival": "2026-10-20T02:59:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T02:59:00Z",
+      "expectedDeparture": "2026-10-20T02:59:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 9,
+      "stationId": "01a14eb2-015b-7612-85d5-c4fd4e849303",
+      "name": "Kadugannawa",
+      "callType": "Pass",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T03:26:00Z",
+      "expectedArrival": "2026-10-20T03:26:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T03:26:00Z",
+      "expectedDeparture": "2026-10-20T03:26:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 10,
+      "stationId": "01a14eb2-015b-7829-b54b-ed67a63fae30",
+      "name": "Peradeniya",
+      "callType": "Stop",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T03:38:00Z",
+      "expectedArrival": "2026-10-20T03:38:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": "2026-10-20T03:40:00Z",
+      "expectedDeparture": "2026-10-20T03:40:00Z",
+      "actualDeparture": null,
+      "plannedPlatform": "1",
+      "platform": "1",
+      "previousPlatform": null
+    },
+    {
+      "sequence": 11,
+      "stationId": "01a14eb2-015b-7254-ae7a-ded485b163b9",
+      "name": "Kandy",
+      "callType": "Stop",
+      "status": "Scheduled",
+      "isAdded": false,
+      "scheduledArrival": "2026-10-20T03:45:00Z",
+      "expectedArrival": "2026-10-20T03:45:00Z",
+      "actualArrival": null,
+      "scheduledDeparture": null,
+      "expectedDeparture": null,
+      "actualDeparture": null,
+      "plannedPlatform": "2",
+      "platform": "2",
+      "previousPlatform": null
+    }
+  ],
+  "trainSet": {
+    "code": "DPS-01",
+    "traction": "DieselPowerSet",
+    "coaches": [
+      {
+        "position": 1,
+        "class": "First",
+        "seating": "Reserved"
+      },
+      {
+        "position": 2,
+        "class": "Second",
+        "seating": "Reserved"
+      },
+      {
+        "position": 3,
+        "class": "Second",
+        "seating": "Reserved"
+      },
+      {
+        "position": 4,
+        "class": "Third",
+        "seating": "Unreserved"
+      },
+      {
+        "position": 5,
+        "class": "Third",
+        "seating": "Unreserved"
+      }
+    ]
+  }
+}

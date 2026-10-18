@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io' show HttpDate;
 
 import 'package:http/http.dart' as http;
 
+import '../models/journey_detail.dart';
 import '../models/journey_summary.dart';
 import '../models/station.dart';
 
@@ -23,6 +25,17 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode $code: $message)';
 }
 
+/// A journey and the server's time when it answered (the HTTP `Date` header),
+/// which is the reference for the age of the data (ADR-12, point 12).
+class JourneyResponse {
+  const JourneyResponse(this.journey, this.serverTime);
+
+  final JourneyDetail journey;
+
+  /// Null when the answer had no usable `Date` header: then no age is shown.
+  final DateTime? serverTime;
+}
+
 /// Public (no sign-in) endpoints of API contract §3.1 that the passenger app uses.
 /// The [http.Client] is passed in, so tests can use a fake (ADR-12).
 class SmartRailApi {
@@ -33,8 +46,8 @@ class SmartRailApi {
 
   /// Type-ahead: up to 10 stations whose name matches [query].
   Future<List<Station>> searchStations(String query) async {
-    final body = await _get('/api/v1/stations', {'query': query});
-    return _list(body, Station.fromJson);
+    final answer = await _get('/api/v1/stations', {'query': query});
+    return _list(answer.body, Station.fromJson);
   }
 
   /// Direct journeys from station [fromId] to station [toId] on [date] (`YYYY-MM-DD`).
@@ -43,23 +56,71 @@ class SmartRailApi {
     required String toId,
     required String date,
   }) async {
-    final body = await _get('/api/v1/journeys/search', {'from': fromId, 'to': toId, 'date': date});
-    return _list(body, JourneySummary.fromJson);
+    final answer = await _get('/api/v1/journeys/search', {
+      'from': fromId,
+      'to': toId,
+      'date': date,
+    });
+    return _list(answer.body, JourneySummary.fromJson);
   }
 
-  Future<Object?> _get(String path, Map<String, String> query) async {
-    final uri = _base.replace(path: path, queryParameters: query);
+  /// One journey with its stops, train set and last position.
+  Future<JourneyResponse> getJourney(String journeyId) async {
+    final answer = await _get(
+      '/api/v1/journeys/${Uri.encodeComponent(journeyId)}',
+      const {},
+    );
+    final body = answer.body;
+    if (body is! Map<String, dynamic>) {
+      throw const ApiException('Expected a JSON object');
+    }
+    try {
+      return JourneyResponse(JourneyDetail.fromJson(body), answer.serverTime);
+    } on FormatException catch (e) {
+      throw ApiException('Unexpected data: ${e.message}');
+    } on TypeError catch (e) {
+      throw ApiException('Unexpected data: $e');
+    }
+  }
+
+  Future<({Object? body, DateTime? serverTime})> _get(
+    String path,
+    Map<String, String> query,
+  ) async {
+    final uri = _base.replace(
+      path: path,
+      queryParameters: query.isEmpty ? null : query,
+    );
     final http.Response response;
     try {
-      response = await _client.get(uri, headers: {'Accept': 'application/json'});
+      response = await _client.get(
+        uri,
+        headers: {'Accept': 'application/json'},
+      );
     } on http.ClientException catch (e) {
       throw ApiException('Server not reached: ${e.message}');
     }
     if (response.statusCode != 200) throw _errorFrom(response);
     try {
-      return jsonDecode(utf8.decode(response.bodyBytes));
+      return (
+        body: jsonDecode(utf8.decode(response.bodyBytes)),
+        serverTime: _serverTime(response),
+      );
     } on FormatException catch (e) {
-      throw ApiException('Answer is not JSON: ${e.message}', statusCode: response.statusCode);
+      throw ApiException(
+        'Answer is not JSON: ${e.message}',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  DateTime? _serverTime(http.Response response) {
+    final header = response.headers['date'];
+    if (header == null) return null;
+    try {
+      return HttpDate.parse(header);
+    } on Exception {
+      return null; // an unreadable Date header means "age unknown", not an error
     }
   }
 

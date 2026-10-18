@@ -3,9 +3,12 @@ library;
 
 export 'src/api/smartrail_api.dart';
 export 'src/models/freshness.dart';
+export 'src/models/journey_detail.dart';
 export 'src/models/journey_status.dart';
+export 'src/models/journey_stop.dart';
 export 'src/models/journey_summary.dart';
 export 'src/models/station.dart';
+export 'src/models/train_set.dart';
 export 'src/status/status_texts.dart';
 export 'src/strings.dart';
 export 'src/theme/app_theme.dart';

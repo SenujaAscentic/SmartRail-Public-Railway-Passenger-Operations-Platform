@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:smartrail_core/smartrail_core.dart';
 
+import '../details/details_controller.dart';
+import '../details/details_screen.dart';
 import 'search_controller.dart' as search;
 import 'station_field.dart';
 
 /// US-P1: find the direct trains between two stations on a date.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.controller});
+  const SearchScreen({super.key, required this.controller, required this.api});
 
   final search.SearchController controller;
+
+  /// Used to open the train details of a result.
+  final SmartRailApi api;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -19,6 +24,19 @@ class _SearchScreenState extends State<SearchScreen> {
 
   /// How far ahead a date can be chosen (the date picker needs an end).
   static const _daysAhead = 60;
+
+  void _open(JourneySummary journey) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DetailsScreen(
+          controller: DetailController(widget.api, journey.journeyId),
+          // "Your station" and "destination" on the stop list.
+          boardingStationId: journey.from.stationId,
+          destinationStationId: journey.to.stationId,
+        ),
+      ),
+    );
+  }
 
   Future<void> _pickDate() async {
     final first = _toLocalDate(_c.today);
@@ -69,7 +87,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ],
               ),
             ),
-            Expanded(child: _Results(state: _c.state, onRetry: _c.search)),
+            Expanded(child: _Results(state: _c.state, onRetry: _c.search, onOpen: _open)),
           ],
         ),
       ),
@@ -78,10 +96,11 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 class _Results extends StatelessWidget {
-  const _Results({required this.state, required this.onRetry});
+  const _Results({required this.state, required this.onRetry, required this.onOpen});
 
   final search.SearchState state;
   final VoidCallback onRetry;
+  final ValueChanged<JourneySummary> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +125,7 @@ class _Results extends StatelessWidget {
               expectedArrival: j.to.expectedArrival,
               platform: j.from.platform,
               previousPlatform: j.from.previousPlatform,
+              onTap: () => onOpen(j),
             );
           },
         ),

@@ -1,0 +1,153 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartrail_core/smartrail_core.dart';
+import 'package:yaml/yaml.dart';
+
+// Contract tests for GET /journeys/{id} (ADR-12). test/fixtures/journey_detail.json
+// is a real answer of the backend (train 1001 on 20 Oct, a moving train).
+// flutter test runs with the package folder as working directory.
+
+Map<String, dynamic> load() =>
+    jsonDecode(File('test/fixtures/journey_detail.json').readAsStringSync()) as Map<String, dynamic>;
+
+/// The fields the models read, per openapi.yaml schema (same idea as in
+/// journey_summary_test.dart): removing one must break parsing, and each must
+/// exist in openapi.yaml.
+const readFields = <String, List<String>>{
+  'JourneyDetailResponse': [
+    'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'version', 'stops', 'trainSet',
+  ],
+  'JourneyDetailFreshnessResponse': ['tracking', 'updatedAt', 'lastPosition'],
+  'PositionResponse': ['lastStationId', 'nextStationId', 'fractionToNext'],
+  'JourneyStopResponse': [
+    'sequence', 'stationId', 'name', 'callType', 'status', 'isAdded', 'scheduledArrival', 'expectedArrival', 'actualArrival',
+    'scheduledDeparture', 'expectedDeparture', 'actualDeparture', 'platform', 'previousPlatform',
+  ],
+  'TrainSetResponse': ['code', 'traction', 'coaches'],
+  'CoachResponse': ['position', 'class', 'seating'],
+};
+
+void main() {
+  group('JourneyDetail.fromJson', () {
+    test('parses a real answer: header, freshness, position, train set, stops', () {
+      final j = JourneyDetail.fromJson(load());
+      expect(j.serviceNumber, '1001');
+      expect(j.name, 'Kandy Express');
+      expect(j.status.kind, StatusKind.onTime);
+      expect(j.freshness.tracking, Tracking.live);
+      expect(j.freshness.updatedAt, DateTime.utc(2026, 10, 20, 1, 16, 31, 183, 576));
+      expect(j.lastPosition!.lastStationId, '01a14eb2-015b-7ebe-998e-19f3d315ef4d');
+      expect(j.lastPosition!.fractionToNext, closeTo(0.2933, 0.0001));
+      expect(j.trainSet!.traction, 'DieselPowerSet');
+      expect(j.trainSet!.coaches, hasLength(5));
+      expect(j.stops, hasLength(11));
+    });
+
+    test('the last station of the position gives the name for "Last seen ... near"', () {
+      final j = JourneyDetail.fromJson(load());
+      expect(j.freshness.lastStation, 'Kelaniya');
+      expect(j.freshness.lastSeenAt, j.freshness.updatedAt);
+    });
+
+    test('callingPoints lists the stops where the train stops, not the ones it passes', () {
+      final j = JourneyDetail.fromJson(load());
+      expect(j.callingPoints.map((s) => s.name), ['Colombo Fort', 'Maradana', 'Gampaha', 'Polgahawela', 'Peradeniya', 'Kandy']);
+    });
+
+    test('a skipped stop stays on the list of calling points', () {
+      final json = load();
+      final stops = json['stops'] as List;
+      (stops[4] as Map<String, dynamic>)['status'] = 'Skipped'; // Gampaha
+      final j = JourneyDetail.fromJson(json);
+      expect(j.callingPoints.map((s) => s.name), contains('Gampaha'));
+      expect(j.callingPoints.firstWhere((s) => s.name == 'Gampaha').state, StopState.skipped);
+    });
+
+    test('stop states and times are read as sent', () {
+      final j = JourneyDetail.fromJson(load());
+      final fort = j.stops.first;
+      expect(fort.state, StopState.departed);
+      expect(fort.scheduledArrival, isNull);
+      expect(fort.actualDeparture, isNotNull);
+      expect(fort.platform, '5');
+      expect(j.stops[2].callType, CallType.pass);
+      expect(j.stops[2].state, StopState.passed);
+      expect(j.stops[3].actualArrival, isNull);
+    });
+
+    test('no train set yet is null, not an error', () {
+      final json = load()..['trainSet'] = null;
+      expect(JourneyDetail.fromJson(json).trainSet, isNull);
+    });
+
+    test('no position yet is null, and then there is no station name', () {
+      final json = load();
+      (json['freshness'] as Map<String, dynamic>)['lastPosition'] = null;
+      final j = JourneyDetail.fromJson(json);
+      expect(j.lastPosition, isNull);
+      expect(j.freshness.lastStation, isNull);
+    });
+
+    test('an unknown stop status or call type is refused', () {
+      final a = load();
+      ((a['stops'] as List).first as Map<String, dynamic>)['status'] = 'Teleported';
+      expect(() => JourneyDetail.fromJson(a), throwsFormatException);
+      final b = load();
+      ((b['stops'] as List).first as Map<String, dynamic>)['callType'] = 'Maybe';
+      expect(() => JourneyDetail.fromJson(b), throwsFormatException);
+    });
+
+    test('unknown fields are ignored', () {
+      final json = load()..['somethingNew'] = 1;
+      expect(() => JourneyDetail.fromJson(json), returnsNormally);
+    });
+  });
+
+  group('every field the detail models read is required', () {
+    Map<String, dynamic> objectFor(Map<String, dynamic> json, String schema) => switch (schema) {
+          'JourneyDetailResponse' => json,
+          'JourneyDetailFreshnessResponse' => json['freshness'] as Map<String, dynamic>,
+          'PositionResponse' => (json['freshness'] as Map<String, dynamic>)['lastPosition'] as Map<String, dynamic>,
+          'JourneyStopResponse' => (json['stops'] as List).first as Map<String, dynamic>,
+          'TrainSetResponse' => json['trainSet'] as Map<String, dynamic>,
+          'CoachResponse' => ((json['trainSet'] as Map<String, dynamic>)['coaches'] as List).first as Map<String, dynamic>,
+          _ => throw ArgumentError(schema),
+        };
+
+    for (final entry in readFields.entries) {
+      for (final field in entry.value) {
+        test('${entry.key}.$field missing makes parsing fail', () {
+          final json = load();
+          objectFor(json, entry.key).remove(field);
+          expect(() => JourneyDetail.fromJson(json), throwsA(anything));
+        });
+      }
+    }
+  });
+
+  group('backend/openapi.yaml still has every field the detail models read', () {
+    final spec = loadYaml(File('../../../backend/openapi.yaml').readAsStringSync()) as YamlMap;
+    final schemas = (spec['components'] as YamlMap)['schemas'] as YamlMap;
+
+    for (final entry in readFields.entries) {
+      test('${entry.key}: properties', () {
+        final schema = schemas[entry.key] as YamlMap?;
+        expect(schema, isNotNull, reason: 'schema ${entry.key} is gone from openapi.yaml');
+        final properties = (schema!['properties'] as YamlMap).keys.toSet();
+        for (final field in entry.value) {
+          expect(properties, contains(field), reason: '${entry.key}.$field');
+        }
+      });
+    }
+
+    test('GET /api/v1/journeys/{journeyId} exists and answers JourneyDetailResponse', () {
+      final path = (spec['paths'] as YamlMap)['/api/v1/journeys/{journeyId}'] as YamlMap?;
+      expect(path, isNotNull);
+      final schema = ((((path!['get'] as YamlMap)['responses'] as YamlMap)['200'] as YamlMap)['content'] as YamlMap)['application/json']
+          as YamlMap;
+      expect((schema['schema'] as YamlMap)[r'$ref'], '#/components/schemas/JourneyDetailResponse');
+    });
+  });
+}

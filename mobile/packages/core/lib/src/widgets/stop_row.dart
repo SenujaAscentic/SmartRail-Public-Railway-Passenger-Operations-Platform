@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/journey_status.dart';
+import '../models/journey_stop.dart' show StopState;
 import '../strings.dart';
 import '../status/status_texts.dart';
 import '../theme/app_theme.dart';
@@ -8,9 +9,6 @@ import '../theme/status_theme.dart';
 import '../theme/tokens.dart';
 import '../time/colombo_time.dart';
 import 'status_badge.dart';
-
-/// State of one calling point on the stop list (API contract §5, JourneyStop.status).
-enum StopState { scheduled, arrived, departed, passed, skipped }
 
 /// One calling point: name, scheduled and expected time, optional platform.
 /// Passed and departed stops are greyed, the stop the train is at is outlined,

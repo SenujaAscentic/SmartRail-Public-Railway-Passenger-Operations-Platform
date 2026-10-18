@@ -39,7 +39,7 @@ class _PassengerAppState extends State<PassengerApp> {
       theme: buildPassengerTheme(Brightness.light),
       darkTheme: buildPassengerTheme(Brightness.dark),
       themeMode: ThemeMode.system,
-      home: SearchScreen(controller: _search),
+      home: SearchScreen(controller: _search, api: widget.api),
     );
   }
 }

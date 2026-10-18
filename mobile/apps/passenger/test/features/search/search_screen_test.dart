@@ -205,4 +205,23 @@ void main() {
 
     expect(find.text('Date: 14 Oct 2026'), findsOneWidget);
   });
+
+  testWidgets('tapping a result opens the train details of that journey, and back returns to the results', (tester) async {
+    final backend = FakeBackend()
+      ..journeys = [journeyJson(id: 'abc-123')]
+      ..detail = detailJson();
+    await pumpApp(tester, backend);
+    await searchGampahaKandy(tester);
+
+    await tester.tap(find.textContaining('1001 Kandy Express', findRichText: true));
+    await tester.pumpAndSettle();
+
+    expect(backend.requests.last.path, '/api/v1/journeys/abc-123');
+    expect(find.text('Train 1001 · Express · Colombo Fort → Kandy'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('On time'), findsOneWidget);
+    expect(find.text(Strings.search), findsOneWidget);
+  });
 }

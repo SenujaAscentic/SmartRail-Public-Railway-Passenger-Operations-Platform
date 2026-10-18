@@ -83,4 +83,49 @@ void main() {
     final api = SmartRailApi(MockClient((_) async => http.Response('{}', 200)), base);
     await expectLater(api.searchStations('x'), throwsA(isA<ApiException>()));
   });
+
+  group('getJourney', () {
+    test('calls GET /api/v1/journeys/{id} and returns the journey with the server time', () async {
+      late Uri seen;
+      final api = SmartRailApi(
+        MockClient((request) async {
+          seen = request.url;
+          return http.Response(fixture('journey_detail.json'), 200, headers: {'date': 'Tue, 20 Oct 2026 01:13:38 GMT'});
+        }),
+        base,
+      );
+
+      final response = await api.getJourney('01a156ce-00e7-729d-a368-ef00172f4ec5');
+
+      expect(seen.toString(), '$base/api/v1/journeys/01a156ce-00e7-729d-a368-ef00172f4ec5');
+      expect(response.journey.serviceNumber, '1001');
+      expect(response.serverTime, DateTime.utc(2026, 10, 20, 1, 13, 38));
+    });
+
+    test('without a Date header the server time is null (no age is shown)', () async {
+      final api = SmartRailApi(MockClient((_) async => http.Response(fixture('journey_detail.json'), 200)), base);
+      expect((await api.getJourney('x')).serverTime, isNull);
+    });
+
+    test('an unreadable Date header is also "unknown", not an error', () async {
+      final api = SmartRailApi(
+        MockClient((_) async => http.Response(fixture('journey_detail.json'), 200, headers: {'date': 'yesterday-ish'})),
+        base,
+      );
+      expect((await api.getJourney('x')).serverTime, isNull);
+    });
+
+    test('an unknown journey is an ApiException with status 404', () async {
+      final api = SmartRailApi(MockClient((_) async => http.Response('{"code":"NOT_FOUND","title":"Not found"}', 404)), base);
+      await expectLater(
+        api.getJourney('x'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404).having((e) => e.code, 'code', 'NOT_FOUND')),
+      );
+    });
+
+    test('an answer with a missing field is an ApiException, not a crash', () async {
+      final api = SmartRailApi(MockClient((_) async => http.Response('{"journeyId":"x"}', 200)), base);
+      await expectLater(api.getJourney('x'), throwsA(isA<ApiException>()));
+    });
+  });
 }
