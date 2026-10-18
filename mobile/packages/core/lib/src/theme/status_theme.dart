@@ -39,9 +39,9 @@ class StatusTheme extends ThemeExtension<StatusTheme> {
     return StatusStyle(icon: _icons[token.icon]!, fg: colors.fg, bg: colors.bg);
   }
 
-  /// Style for a status kind from the API. 'Completed' has no token in
-  /// tokens.json yet, so it uses the neutral 'Scheduled' style (open point).
-  StatusStyle forKind(StatusKind kind) => named(switch (kind) {
+  /// Token name for a status kind. 'Completed' has no token in tokens.json, so it
+  /// uses the neutral 'Scheduled' style (approved 18 Oct, no new colour).
+  static String tokenNameFor(StatusKind kind) => switch (kind) {
         StatusKind.onTime => 'OnTime',
         StatusKind.late => 'Late',
         StatusKind.early => 'Early',
@@ -50,7 +50,9 @@ class StatusTheme extends ThemeExtension<StatusTheme> {
         StatusKind.held => 'Held',
         StatusKind.notStarted => 'NotStarted',
         StatusKind.completed => 'Scheduled',
-      });
+      };
+
+  StatusStyle forKind(StatusKind kind) => named(tokenNameFor(kind));
 
   @override
   StatusTheme copyWith({bool? dark}) => StatusTheme(dark: dark ?? this.dark);

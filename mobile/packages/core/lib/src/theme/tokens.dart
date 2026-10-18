@@ -52,7 +52,7 @@ class StatusColors {
   final Color bg;
 }
 
-/// Colours and icon name of one status (tokens.json -> status.<Name>).
+/// Colours and icon name of one status (tokens.json -> status.NAME).
 class StatusToken {
   const StatusToken(this.icon, this.light, this.dark);
   final String icon;
