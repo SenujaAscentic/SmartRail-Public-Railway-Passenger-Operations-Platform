@@ -8,6 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SmartRail.LiveOperations.Domain\SmartRail.LiveOperations.Domain.csproj" />
     <ProjectReference Include="..\SmartRail.Network\SmartRail.Network.csproj" />
+    <!-- Only Identity's public IStaffDirectory is used (to find a driver's account id); allowed since 18 Oct (architecture test). -->
+    <ProjectReference Include="..\SmartRail.Identity\SmartRail.Identity.csproj" />
   </ItemGroup>
 
   <ItemGroup>

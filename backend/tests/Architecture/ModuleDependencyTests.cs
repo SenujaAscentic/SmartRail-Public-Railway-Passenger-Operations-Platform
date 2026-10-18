@@ -23,12 +23,17 @@ public class ModuleDependencyTests
     //  - Disruptions calls LiveOperations (a decision that must succeed or fail together).
     //  - LiveOperations reads Network through its public interface (for example the schedule).
     //  - Identity asks Network's public IStationDirectory for station IDs, once, while seeding staff (approved 14 Oct).
+    //  - LiveOperations asks Identity's public IStaffDirectory for a driver's account id, when it assigns drivers to journeys
+    //    (approved 18 Oct). One-way: Identity does not depend on LiveOperations, so there is no cycle. The reason: R-07 accepts
+    //    positions only from the journey's assigned driver, and the token carries the account id (`sub`); no other module may
+    //    read Identity's tables, so the id has to come through Identity's public door.
     // Neither the reverse directions nor any other pair are allowed.
     private static readonly (string From, string To)[] AllowedDependencies =
     [
         ("Disruptions", "LiveOperations"),
         ("LiveOperations", "Network"),
         ("Identity", "Network"),
+        ("LiveOperations", "Identity"),
     ];
 
     private static IEnumerable<string> ReferencedAssemblies(string assemblyName) =>

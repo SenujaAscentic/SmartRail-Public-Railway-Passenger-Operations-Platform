@@ -46,6 +46,7 @@ Each principle records the question, my decision and the reasoning, because the 
 | Backend → apps | SSE stream of events | Live updates |
 
 - **Dependencies point one way.** Disruptions may call Live Operations, never the reverse; Live Operations stores only `incidentId`.
+- **Recorded architecture change (18 Oct 2026): Live Operations → Identity is now an allowed dependency**, through Identity's public `IStaffDirectory` only (staff number → a driver's account id), used when journeys are given their driver. **Reason:** R-07 accepts positions only from a journey's assigned driver, and the cab token identifies the driver by account id (`sub`); no module may read another's tables, so the id must come through Identity's public door. The alternative, an adapter in the host, was not chosen because it adds code for no gain. **One-way:** Identity depends only on Network, never on Live Operations, so there is no cycle. The architecture test's list of allowed pairs is now Disruptions → Live Operations, Live Operations → Network, Identity → Network, Live Operations → Identity.
 - **Changed during discussion:** for case 3 I first chose events. Walking through a refused delay showed that an event cannot say "no" back, leaving an incident that claims a delay that never happened. That is a reliability failure, so it became a direct call in one transaction.
 
 ---

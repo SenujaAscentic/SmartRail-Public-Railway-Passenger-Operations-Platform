@@ -110,6 +110,22 @@ public sealed class OperationalJourney
     public Guid TrainSetId { get; private set; }
     public Guid LineId { get; private set; }   // for the event stream: lets a client filter by line (domain model 8.1)
 
+    // The driver who runs this journey: the id of their account, which is the `sub` of their tokens. Null while none is assigned.
+    // R-07 accepts positions only from this driver. The id comes from service-assignments.json (staff number -> account).
+    public Guid? DriverId { get; private set; }
+
+    // Sets the driver only where none is set; a driver already assigned is never replaced here. Returns whether it was set.
+    public bool AssignDriver(Guid driverId)
+    {
+        if (DriverId is not null)
+        {
+            return false;
+        }
+
+        DriverId = driverId;
+        return true;
+    }
+
     // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation. No decision
     // exists yet, so it stays 0; it is here so the API can show it from the first day (apps' generated types must not change later).
     public int ControlVersion { get; private set; }
@@ -366,7 +382,7 @@ public sealed class OperationalJourney
     // date in the given time zone (Asia/Colombo); they are converted to UTC here, once, and never again.
     public static OperationalJourney Plan(
         Guid id, Guid serviceId, DateOnly serviceDate, Guid trainSetId,
-        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone, Guid lineId)
+        IEnumerable<PlannedStop> stops, TimeZoneInfo timeZone, Guid lineId, Guid? driverId = null)
     {
         var journey = new OperationalJourney
         {
@@ -375,6 +391,7 @@ public sealed class OperationalJourney
             ServiceDate = serviceDate,
             TrainSetId = trainSetId,
             LineId = lineId,
+            DriverId = driverId,
             Status = JourneyStatus.Planned,
         };
 

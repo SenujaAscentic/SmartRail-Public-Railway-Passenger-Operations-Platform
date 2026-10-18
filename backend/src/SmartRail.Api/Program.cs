@@ -22,10 +22,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// Order matters: LiveOperations' start-up check needs the network data that Network loads first.
+// Order matters (hosted services start in this order): Network loads the network first; Identity seeds the staff accounts next;
+// LiveOperations then checks the assignments and generates journeys, and needs both.
 builder.Services.AddNetworkModule(builder.Configuration);
-builder.Services.AddLiveOperationsModule(builder.Configuration);
-builder.Services.AddIdentityModule(builder.Configuration);   // after Network: its seed needs the station IDs
+builder.Services.AddIdentityModule(builder.Configuration);   // after Network (its seed needs the station IDs) and before LiveOperations
+builder.Services.AddLiveOperationsModule(builder.Configuration);   // its first journey generation needs the driver accounts Identity seeds
 builder.Services.AddOpenApi(options =>
 {
     options.AddStreamEventSchemas();   // the live events and the snapshot, for the apps' generated types

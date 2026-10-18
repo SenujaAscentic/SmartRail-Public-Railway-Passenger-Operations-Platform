@@ -41,6 +41,9 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
                     b.Property<double?>("LastLatitude")
                         .HasColumnType("double precision");
 
