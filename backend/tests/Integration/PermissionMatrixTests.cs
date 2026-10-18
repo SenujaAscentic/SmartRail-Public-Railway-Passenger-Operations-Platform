@@ -148,6 +148,18 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/cancel and /reinstate: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/cancel", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/cancel", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/cancel", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/cancel", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/cancel", HttpStatusCode.Forbidden },
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
     };
 
     [Theory]

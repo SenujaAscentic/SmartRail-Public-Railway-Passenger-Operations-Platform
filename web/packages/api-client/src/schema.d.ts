@@ -204,6 +204,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller cancels a planned or running journey; its remaining stops are skipped (R-14). */
+        post: operations["CancelJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller reinstates a cancelled journey, only before its scheduled start (R-14). */
+        post: operations["ReinstateJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -330,6 +364,12 @@ export interface components {
             /** Format: date-time */
             serverTime: string;
         };
+        CancelRequest: {
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
         CoachResponse: {
             /** Format: int32 */
             position: number;
@@ -442,6 +482,34 @@ export interface components {
             /** Format: int32 */
             expectedVersion: null | number;
         };
+        JourneyCancelledEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyCancelled";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
+        };
         JourneyDetailFreshnessResponse: {
             tracking: string;
             /** Format: date-time */
@@ -552,6 +620,29 @@ export interface components {
             code: string;
             note: null | string;
         };
+        JourneyReinstatedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyReinstated";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: Record<string, never>;
+        };
         JourneySnapshot: {
             /** Format: uuid */
             journeyId: string;
@@ -560,7 +651,7 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             /** @enum {string} */
-            status: "Planned" | "Running" | "Completed";
+            status: "Planned" | "Running" | "Completed" | "Cancelled";
             /** Format: int32 */
             delayMinutes: number;
             /** @enum {string} */
@@ -587,7 +678,7 @@ export interface components {
                 /** Format: int32 */
                 sequence: number;
                 /** @enum {string} */
-                status: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                status: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** Format: date-time */
                 actualArrival: null | string;
                 /** Format: date-time */
@@ -822,15 +913,15 @@ export interface components {
                 /** Format: int32 */
                 sequence: number;
                 /** @enum {string} */
-                from: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                from: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** @enum {string} */
-                to: "Scheduled" | "Arrived" | "Departed" | "Passed";
+                to: "Scheduled" | "Arrived" | "Departed" | "Passed" | "Skipped";
                 /** Format: date-time */
                 at: string;
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
         };
@@ -1435,6 +1526,112 @@ export interface operations {
         };
     };
     ReleaseHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReinstateJourney: {
         parameters: {
             query?: never;
             header?: never;

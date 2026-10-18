@@ -516,6 +516,98 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/cancel':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller cancels a planned or running journey; its remaining stops are skipped (R-14).
+      operationId: CancelJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/reinstate':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller reinstates a cancelled journey, only before its scheduled start (R-14).'
+      operationId: ReinstateJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -769,6 +861,26 @@ components:
         serverTime:
           type: string
           format: date-time
+    CancelRequest:
+      required:
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     CoachResponse:
       required:
         - position
@@ -1046,6 +1158,67 @@ components:
             - 'null'
             - integer
           format: int32
+    JourneyCancelledEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyCancelled
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - reason
+          type: object
+          properties:
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
     JourneyDetailFreshnessResponse:
       required:
         - tracking
@@ -1320,6 +1493,52 @@ components:
           type:
             - 'null'
             - string
+    JourneyReinstatedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyReinstated
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          type: object
     JourneySnapshot:
       required:
         - journeyId
@@ -1348,6 +1567,7 @@ components:
             - Planned
             - Running
             - Completed
+            - Cancelled
           type: string
         delayMinutes:
           type: integer
@@ -1418,6 +1638,7 @@ components:
                   - Arrived
                   - Departed
                   - Passed
+                  - Skipped
                 type: string
               actualArrival:
                 type:
@@ -2007,6 +2228,7 @@ components:
                 - Arrived
                 - Departed
                 - Passed
+                - Skipped
               type: string
             to:
               enum:
@@ -2014,6 +2236,7 @@ components:
                 - Arrived
                 - Departed
                 - Passed
+                - Skipped
               type: string
             at:
               type: string
@@ -2026,6 +2249,8 @@ components:
         - $ref: '#/components/schemas/JourneyStartedEvent'
         - $ref: '#/components/schemas/JourneyEndedEvent'
         - $ref: '#/components/schemas/JourneyHeldEvent'
+        - $ref: '#/components/schemas/JourneyCancelledEvent'
+        - $ref: '#/components/schemas/JourneyReinstatedEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
@@ -2037,6 +2262,8 @@ components:
           JourneyStarted: '#/components/schemas/JourneyStartedEvent'
           JourneyEnded: '#/components/schemas/JourneyEndedEvent'
           JourneyHeld: '#/components/schemas/JourneyHeldEvent'
+          JourneyCancelled: '#/components/schemas/JourneyCancelledEvent'
+          JourneyReinstated: '#/components/schemas/JourneyReinstatedEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:
       required:

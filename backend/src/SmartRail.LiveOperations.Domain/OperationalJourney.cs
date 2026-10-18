@@ -1,7 +1,7 @@
 namespace SmartRail.LiveOperations.Domain;
 
-// Domain model 4.2. Cancelled and TerminatedEarly come with the controller decisions (Phase 3).
-public enum JourneyStatus { Planned, Running, Completed }
+// Domain model 4.2. TerminatedEarly comes with terminate (Phase 3b).
+public enum JourneyStatus { Planned, Running, Completed, Cancelled }
 
 // Why a journey ended (domain model 8.2): the driver pressed End; the train reached the terminus; the controller ended it.
 public enum JourneyEndReason { Driver, Terminus, Controller }
@@ -23,8 +23,8 @@ public enum EndResult { Ended, WrongState }
 
 public enum CallType { Stop, Pass }
 
-// Domain model 4.3. Skipped comes with the skip / cancel decisions.
-public enum StopStatus { Scheduled, Arrived, Departed, Passed }
+// Domain model 4.3. Skipped: the controller cancelled the journey before the train got here (skip / unskip of a single stop is Phase 3b).
+public enum StopStatus { Scheduled, Arrived, Departed, Passed, Skipped }
 
 // What a crew member taps for a stop.
 public enum StopEventKind { Arrival, Departure }
@@ -80,6 +80,15 @@ public sealed class JourneyStop
         ActualDepartureSource = time.Source;
     }
 
+    // A reinstated journey: the stops that were skipped by the cancellation are ahead of the train again.
+    internal void Unskip()
+    {
+        if (Status == StopStatus.Skipped)
+        {
+            Status = StopStatus.Scheduled;
+        }
+    }
+
     internal void SetZoneState(ZoneState state)
     {
         Zone = state.Phase;
@@ -94,6 +103,7 @@ public sealed class JourneyStop
             StopStatus.Arrived => Status == StopStatus.Scheduled,
             StopStatus.Departed => Status is StopStatus.Scheduled or StopStatus.Arrived,
             StopStatus.Passed => Status == StopStatus.Scheduled,
+            StopStatus.Skipped => Status == StopStatus.Scheduled,
             _ => false,
         };
         if (allowed)
@@ -247,6 +257,66 @@ public sealed class OperationalJourney
         (HoldStationId, HoldMinutes, HoldSetAt) = (stationId, minutes, now);
         (HoldReasonCode, HoldReasonNote) = (reason?.Code, reason?.Note);
         _events.Add(new JourneyHeld(Id, stationId, Released: false, minutes, reason, Source.Controller, now));
+        return DecisionResult.Done;
+    }
+
+    // R-14: cancel a Planned or Running journey. Every stop the train has not reached becomes Skipped; a stop it is standing at keeps
+    // Arrived (that is what happened). A hold ends. The data is over, so tracking ends. The reason is public (US-P4).
+    public DecisionResult CancelByController(int expectedVersion, JourneyReason reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        Status = JourneyStatus.Cancelled;
+        (ReasonCode, ReasonNote) = (reason.Code, reason.Note);
+        foreach (var stop in _stops)
+        {
+            stop.TryMoveTo(StopStatus.Skipped);   // only Scheduled stops move; the others are history
+        }
+
+        if (Hold is not null)
+        {
+            EndHold(Source.Controller, now);
+        }
+
+        _events.Add(new JourneyCancelled(Id, reason, now));
+        SetTracking(TrackingStatus.Ended, now);
+        return DecisionResult.Done;
+    }
+
+    // R-14: reinstate a Cancelled journey, only before its scheduled start. It becomes Planned again and the driver starts it as usual.
+    public DecisionResult ReinstateByController(int expectedVersion, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        var first = _stops.OrderBy(s => s.Sequence).First();
+        var start = first.ScheduledDeparture ?? first.ScheduledArrival;
+        if (Status != JourneyStatus.Cancelled || (start is { } scheduledStart && now >= scheduledStart))
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        Status = JourneyStatus.Planned;
+        (ReasonCode, ReasonNote) = (null, null);
+        foreach (var stop in _stops)
+        {
+            stop.Unskip();
+        }
+
+        _events.Add(new JourneyReinstated(Id, now));
+        SetTracking(TrackingStatus.NotStarted, now);
         return DecisionResult.Done;
     }
 

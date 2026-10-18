@@ -35,6 +35,13 @@ internal static class EventMapper
             journey, eventId, "JourneyHeld", e.At, e.Source, RemainingStations(journey).Union([e.StationId]).ToList(),
             new JourneyHeldPayload(e.StationId, e.Released, e.Minutes, e.Reason)),
 
+        // A cancelled or reinstated train concerns every station on its route.
+        JourneyCancelled e => Envelope(
+            journey, eventId, "JourneyCancelled", e.At, Source.Controller, AllStations(journey), new JourneyCancelledPayload(e.Reason)),
+
+        JourneyReinstated e => Envelope(
+            journey, eventId, "JourneyReinstated", e.At, Source.Controller, AllStations(journey), new EmptyPayload()),
+
         // Every stop's display shows a running or finished train, so both events name all the stops.
         JourneyStarted e => Envelope(
             journey, eventId, "JourneyStarted", e.At, Source.Crew, AllStations(journey),

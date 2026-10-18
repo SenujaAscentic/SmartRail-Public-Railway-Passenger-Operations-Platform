@@ -80,6 +80,8 @@ public class EventExamplesTests
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
     [InlineData("JourneyHeld")]
+    [InlineData("JourneyCancelled")]
+    [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
@@ -186,6 +188,24 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void JourneyCancelled_and_JourneyReinstated_as_sent_have_the_shape_of_their_examples()
+    {
+        var journey = Journey();
+        journey.CancelByController(0, new JourneyReason("TrainFault", "Engine failure at Rambukkana"), Guid.NewGuid(), At(6, 52));
+        Assert.Equal(Shape.Of(Example("JourneyCancelled")), Shape.Of(RealEvent<JourneyCancelled>(journey)));
+
+        // Reinstating is only allowed before the scheduled start, so this journey has not started.
+        var planned = OperationalJourney.Plan(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(), [new PlannedStop(1, S1, CallType.Stop, null, 360, "1"), new PlannedStop(2, S2, CallType.Stop, 400, null, "2")],
+            TimeZoneInfo.Utc, Guid.NewGuid());
+        planned.CancelByController(0, new JourneyReason("TrainFault", null), Guid.NewGuid(), At(5, 0));
+        planned.ReinstateByController(1, Guid.NewGuid(), At(5, 10));
+        var real = RealEvent<JourneyReinstated>(planned);
+        Assert.Equal(Shape.Of(Example("JourneyReinstated")), Shape.Of(real));
+        Assert.Empty(real.GetProperty("payload").EnumerateObject());
+    }
+
+    [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
         var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(Journey(), sequence: 1), EventJson.Options);
@@ -211,6 +231,8 @@ public class EventExamplesTests
     [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
     [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
     [InlineData("JourneyHeld", typeof(JourneyHeldEvent))]
+    [InlineData("JourneyCancelled", typeof(JourneyCancelledEvent))]
+    [InlineData("JourneyReinstated", typeof(JourneyReinstatedEvent))]
     [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
@@ -230,6 +252,8 @@ public class EventExamplesTests
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
     [InlineData("JourneyHeld")]
+    [InlineData("JourneyCancelled")]
+    [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {

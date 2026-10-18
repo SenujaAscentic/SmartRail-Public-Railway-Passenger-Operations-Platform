@@ -33,5 +33,11 @@ public sealed record DelayChanged(
 public sealed record JourneyHeld(
     Guid JourneyId, Guid StationId, bool Released, int? Minutes, JourneyReason? Reason, Source Source, DateTime At) : IDomainEvent;
 
+// The controller cancelled the journey (R-14): every stop still ahead is skipped.
+public sealed record JourneyCancelled(Guid JourneyId, JourneyReason Reason, DateTime At) : IDomainEvent;
+
+// The controller reinstated a cancelled journey before its scheduled start: it runs again (US-O4 AC4).
+public sealed record JourneyReinstated(Guid JourneyId, DateTime At) : IDomainEvent;
+
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;
