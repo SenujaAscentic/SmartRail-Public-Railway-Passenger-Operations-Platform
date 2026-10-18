@@ -9,6 +9,12 @@ public interface IDomainEvent
     Guid JourneyId { get; }
 }
 
+// The driver started the journey on the cab tablet. DeviceId and CrewSessionId are staff-only (T-07): the public stream sends
+// no payload for this event.
+public sealed record JourneyStarted(Guid JourneyId, DateTime At, Guid DeviceId, Guid CrewSessionId) : IDomainEvent;
+
+public sealed record JourneyEnded(Guid JourneyId, DateTime At, JourneyEndReason Reason) : IDomainEvent;
+
 // A stop changed status. Crew taps and GPS detections are the same event; Source says which (section 8.2).
 public sealed record StopStatusChanged(
     Guid JourneyId, Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At, Source Source) : IDomainEvent;

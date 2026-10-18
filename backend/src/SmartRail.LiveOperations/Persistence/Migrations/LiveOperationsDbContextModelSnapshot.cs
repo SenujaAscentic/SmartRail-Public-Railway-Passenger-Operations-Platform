@@ -75,12 +75,45 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<Guid>("TrainSetId")
                         .HasColumnType("uuid");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceId", "ServiceDate")
                         .IsUnique();
 
                     b.ToTable("Journeys", "ops");
+                });
+
+            modelBuilder.Entity("SmartRail.LiveOperations.Features.Idempotency.ProcessedAction", b =>
+                {
+                    b.Property<Guid>("ClientActionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JourneyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.HasKey("ClientActionId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("ProcessedActions", "ops");
                 });
 
             modelBuilder.Entity("SmartRail.LiveOperations.Outbox.OutboxEvent", b =>

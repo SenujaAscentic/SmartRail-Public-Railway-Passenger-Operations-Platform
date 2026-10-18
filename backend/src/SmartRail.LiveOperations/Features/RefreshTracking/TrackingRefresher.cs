@@ -13,7 +13,8 @@ internal sealed class TrackingRefresher(LiveOperationsDbContext db, TimeProvider
 
     // Returns how many journeys were looked at. Saving writes the events the journeys raised to the outbox (same SaveChanges),
     // so the stream hears Live -> Stale -> Lost and a growing overdue delay without any other code.
-    public async Task<int> RunOnceAsync(CancellationToken cancellationToken)
+    // A collision with a position that was saved at the same moment is retried from a fresh load (R-18).
+    public Task<int> RunOnceAsync(CancellationToken cancellationToken) => OptimisticRetry.RunAsync(db, async () =>
     {
         var now = clock.GetUtcNow().UtcDateTime;
         var journeys = await db.Journeys.Include(j => j.Stops).Where(j => Tracked.Contains(j.Tracking)).ToListAsync(cancellationToken);
@@ -25,5 +26,5 @@ internal sealed class TrackingRefresher(LiveOperationsDbContext db, TimeProvider
 
         await db.SaveChangesAsync(cancellationToken);
         return journeys.Count;
-    }
+    });
 }

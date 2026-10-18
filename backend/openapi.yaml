@@ -147,6 +147,116 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/crew/journeys/{journeyId}/start':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The assigned driver starts the journey on the cab tablet, from 60 minutes before the scheduled departure.'
+      operationId: StartJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/CrewActionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrewJourneyResult'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/crew/journeys/{journeyId}/end':
+    post:
+      tags:
+        - LiveOperations
+      summary: The assigned driver ends a running journey.
+      operationId: EndJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/CrewActionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrewJourneyResult'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   '/api/v1/journeys/{journeyId}':
     get:
       tags:
@@ -438,6 +548,31 @@ components:
           type: string
         seating:
           type: string
+    CrewActionRequest:
+      required:
+        - clientActionId
+      type: object
+      properties:
+        clientActionId:
+          type:
+            - 'null'
+            - string
+          format: uuid
+    CrewJourneyResult:
+      required:
+        - journeyId
+        - status
+        - at
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        at:
+          type: string
+          format: date-time
     DataFreshnessChangedEvent:
       required:
         - eventId
@@ -670,6 +805,61 @@ components:
           oneOf:
             - type: 'null'
             - $ref: '#/components/schemas/TrainSetResponse'
+    JourneyEndedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyEnded
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - reason
+          type: object
+          properties:
+            reason:
+              enum:
+                - Driver
+                - Terminus
+                - Controller
+              type: string
     JourneyFreshnessResponse:
       required:
         - tracking
@@ -745,6 +935,7 @@ components:
         - journeyId
         - serviceDate
         - lineId
+        - status
         - delayMinutes
         - tracking
         - lastSeenAt
@@ -762,6 +953,12 @@ components:
         lineId:
           type: string
           format: uuid
+        status:
+          enum:
+            - Planned
+            - Running
+            - Completed
+          type: string
         delayMinutes:
           type: integer
           format: int32
@@ -839,6 +1036,52 @@ components:
         sequence:
           type: integer
           format: int64
+    JourneyStartedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyStarted
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          type: object
     JourneyStatusResponse:
       required:
         - kind
@@ -1283,6 +1526,8 @@ components:
         - $ref: '#/components/schemas/StopStatusChangedEvent'
         - $ref: '#/components/schemas/DelayChangedEvent'
         - $ref: '#/components/schemas/DataFreshnessChangedEvent'
+        - $ref: '#/components/schemas/JourneyStartedEvent'
+        - $ref: '#/components/schemas/JourneyEndedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
         propertyName: type
@@ -1290,6 +1535,8 @@ components:
           StopStatusChanged: '#/components/schemas/StopStatusChangedEvent'
           DelayChanged: '#/components/schemas/DelayChangedEvent'
           DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'
+          JourneyStarted: '#/components/schemas/JourneyStartedEvent'
+          JourneyEnded: '#/components/schemas/JourneyEndedEvent'
     StreamResync:
       required:
         - reason

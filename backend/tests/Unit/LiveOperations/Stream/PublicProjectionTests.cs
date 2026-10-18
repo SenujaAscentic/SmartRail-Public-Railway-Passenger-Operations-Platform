@@ -73,6 +73,29 @@ public class PublicProjectionTests
         Assert.Null(PublicProjection.Of(Envelope(type, new JsonObject { ["note"] = "private" }), 1));
     }
 
+    // T-07: which tablet and which cab session started a journey is staff information.
+    [Fact]
+    public void A_started_journey_is_public_but_its_device_and_cab_session_are_not()
+    {
+        var payload = new JsonObject { ["deviceId"] = Guid.NewGuid().ToString(), ["crewSessionId"] = Guid.NewGuid().ToString() };
+
+        var projected = PublicProjection.Of(Envelope("JourneyStarted", payload), 9)!;
+
+        Assert.Equal("JourneyStarted", projected.Type);
+        Assert.Empty(projected.Payload);
+        var json = JsonSerializer.Serialize(projected, EventJson.Options);
+        Assert.DoesNotContain("deviceId", json);
+        Assert.DoesNotContain("crewSessionId", json);
+    }
+
+    [Fact]
+    public void An_ended_journey_keeps_its_reason()
+    {
+        var projected = PublicProjection.Of(Envelope("JourneyEnded", new JsonObject { ["reason"] = "Driver", ["note"] = "private" }), 10)!;
+
+        Assert.Equal(["reason"], projected.Payload.Select(p => p.Key));
+    }
+
     [Fact]
     public void Delay_change_keeps_the_remaining_stops_with_their_expected_times()
     {

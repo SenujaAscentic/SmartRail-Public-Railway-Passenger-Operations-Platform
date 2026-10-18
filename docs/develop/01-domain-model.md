@@ -327,6 +327,7 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | AnnouncementPosted | announcementId, stationId, priority, text, validTo |
 | ProviderHealthChanged | from, to, pendingCount |
 
+- **Public `JourneyStarted` carries no payload** (clarified 18 Oct): the stored payload `deviceId, crewSessionId` is staff-only (T-07), so the public stream sends `{}`. `JourneyEnded { reason }` is public.
 - `StopStatusChanged` carries `source`, so a crew tap and a GPS detection are the same event type. The priority rule (R-05) lives only in the backend.
 - **No personal data in any event.** Staff are referenced by ID; names are fetched by authorised apps only.
 
@@ -422,6 +423,15 @@ Written as test names. You approve, remove or add names; then the AI implements 
 - `Conflict_warning_when_another_train_expected_at_same_platform_within_5_minutes`
 - `Platform_change_refused_for_departed_stop`
 - `Platform_change_refused_for_platform_not_at_station`
+
+**Start and End by the driver (US-C2, added 18 Oct)**
+- `Start_is_refused_more_than_60_minutes_before_departure`
+- `Start_is_allowed_exactly_60_minutes_before_departure`
+- `Start_is_allowed_after_the_scheduled_departure_a_late_start_is_still_a_start`
+- `Starting_is_not_a_controller_decision_and_tracking_waits_for_the_first_position`
+- `A_journey_that_is_running_or_completed_cannot_be_started_again`
+- `End_completes_a_running_journey_and_ends_the_tracking`
+- `End_is_refused_for_a_journey_that_is_not_running`
 
 **Journey actions and concurrency (R-14, R-15, R-18, R-19, R-21, R-22)**
 - `Skipping_a_stop_reduces_later_delay_by_its_scheduled_dwell`

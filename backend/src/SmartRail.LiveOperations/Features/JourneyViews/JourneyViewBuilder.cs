@@ -11,6 +11,11 @@ internal static class JourneyViewBuilder
     // (the apps show "Live information unavailable", US-P4 AC1 star).
     public static JourneyStatusResponse Status(OperationalJourney journey)
     {
+        if (journey.Status == JourneyStatus.Completed)
+        {
+            return new JourneyStatusResponse("Completed", journey.DelayMinutes);
+        }
+
         if (journey.Tracking == TrackingStatus.NotStarted && journey.DelaySource == Source.Schedule)
         {
             return new JourneyStatusResponse("NotStarted", null);

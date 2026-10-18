@@ -133,6 +133,18 @@ Notation: **Who** = policy; **Story** = main story served.
 | `GET /crew/journeys/{id}/messages` · `POST /crew/messages/{id}/acknowledge` | CrewCab, CrewPhone | Acknowledge `{clientActionId}`; marks delivered on fetch | US-C6 |
 | `GET /crew/stream` | CrewCab, CrewPhone | Crew stream: own journeys' public events + instructions | US-C6 |
 
+**Start and End (decided 18 Oct 2026).** Body `{ "clientActionId": "<uuid>" }` (required: `400 VALIDATION_FAILED` without it). Answer `200 { "journeyId", "status", "at" }` where `status` is `Running` (start) or `Completed` (end). A repeat of the same `clientActionId` is answered `200` with the **identical original answer** and changes nothing (remembered for 48 h); the same id used for a different action or journey is `409 INVALID_STATE`. Errors:
+
+| Case | Answer |
+|---|---|
+| Not signed in with a cab session (a phone token, staff, nobody) | `401` / `403` from the policy |
+| A journey that is not assigned to this driver (R-17) | `403 OUT_OF_SCOPE`, logged with ids only |
+| Unknown or malformed journey id | `404 NOT_FOUND` |
+| Start more than 60 minutes before the scheduled departure (US-C2 AC2) | `422 RULE_VIOLATION` |
+| Start of a journey that is not Planned; End of one that is not Running | `409 INVALID_STATE` |
+
+Starting is not a controller decision: it does not change the control version (R-18). `Start` makes the journey `Running`; the tracking status stays `NotStarted` until the first position is accepted (domain model 4.4). `End` makes it `Completed` and the tracking `Ended`. Both are announced on the stream as `JourneyStarted` (public payload **empty**: the tablet and cab session are staff-only, T-07) and `JourneyEnded { reason }`.
+
 The **simulator** signs in as a seeded cab device and uses exactly these endpoints (US-B3).
 
 ### 3.5 Display devices
@@ -223,7 +235,7 @@ Staff fields (source, override flags, staff IDs) are removed from public events.
 "OnTime" | "Late" | "Early" | "Cancelled" | "TerminatedEarly" | "Held" | "NotStarted" | "Completed"
 ```
 
-`Held` is a display status computed from the hold flag (D-4); the journey's own state machine is unchanged.
+`Held` is a display status computed from the hold flag (D-4); the journey's own state machine is unchanged. `Completed` appears when the driver has ended the journey (18 Oct).
 
 ---
 

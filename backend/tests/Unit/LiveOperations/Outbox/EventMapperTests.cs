@@ -115,6 +115,37 @@ public class EventMapperTests
     }
 
     [Fact]
+    public void Journey_started_keeps_the_tablet_and_the_cab_session_for_the_staff_side_and_names_every_stop()
+    {
+        var journey = NewJourney();
+        var device = Guid.NewGuid();
+        var session = Guid.NewGuid();
+        journey.Start(At(5, 40), device, session);
+
+        var envelope = MapSingle<JourneyStarted>(journey);
+
+        Assert.Equal("JourneyStarted", envelope.Type);
+        Assert.Equal(At(5, 40), envelope.OccurredAt);
+        Assert.Equal(Source.Crew, envelope.Source);
+        Assert.Equal([S1, S2, S3], envelope.StationIds);
+        Assert.Equal(new JourneyStartedPayload(device, session), envelope.Payload.Deserialize<JourneyStartedPayload>(EventJson.Options));
+    }
+
+    [Fact]
+    public void Journey_ended_says_why_it_ended()
+    {
+        var journey = NewJourney();
+        journey.Start(At(5, 40), Guid.NewGuid(), Guid.NewGuid());
+        journey.End(At(7, 31));
+
+        var envelope = MapSingle<JourneyEnded>(journey);
+
+        Assert.Equal("JourneyEnded", envelope.Type);
+        Assert.Equal(new JourneyEndedPayload(JourneyEndReason.Driver), envelope.Payload.Deserialize<JourneyEndedPayload>(EventJson.Options));
+        Assert.Equal([S1, S2, S3], envelope.StationIds);
+    }
+
+    [Fact]
     public void Json_uses_camel_case_names_and_enum_names_and_omits_empty_fields()
     {
         var journey = NewJourney();
