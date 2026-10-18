@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
+using SmartRail.Api.Clock;
 using SmartRail.Api.OpenApi;
 using SmartRail.Identity;
 using SmartRail.LiveOperations;
@@ -10,8 +11,11 @@ using SmartRail.Network;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// One clock for the whole application; tests replace it with a fixed one.
-builder.Services.AddSingleton(TimeProvider.System);
+// One clock for the whole application; tests replace it with a fixed one. It is the real clock, except in Development, where
+// Clock:Start / Clock:Speed can move it for a demo (ClockSetup). Every module and Identity use THIS clock, so token issue and token
+// validation always agree, whatever time the demo clock shows.
+builder.Services.AddSingleton(provider => ClockSetup.Create(provider.GetRequiredService<IHostEnvironment>(), provider.GetRequiredService<IConfiguration>()));
+builder.Services.AddHostedService<ClockGuard>();   // first to start: refuses the Clock settings outside Development
 
 // JSON numbers are numbers: the ASP.NET default also accepts "12" as a number, and then the API description says
 // "number or string" for every numeric field, which would give every client a union type to handle.
