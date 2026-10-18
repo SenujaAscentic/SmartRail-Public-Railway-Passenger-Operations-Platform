@@ -14,9 +14,13 @@ sealed class LiveMessage {
 }
 
 /// First frame after connecting: the state at stream sequence [sequence].
+/// [journey] is the public journey detail, exactly as `GET /journeys/{id}`
+/// answers it; null when the snapshot has none or it cannot be read (the app
+/// then loads the journey itself).
 class SnapshotMessage extends LiveMessage {
-  const SnapshotMessage(this.sequence);
+  const SnapshotMessage(this.sequence, {this.journey});
   final int sequence;
+  final JourneyDetail? journey;
 }
 
 /// The missed events are no longer kept: reload the journey.
@@ -72,7 +76,8 @@ LiveMessage parseLiveFrame(SseFrame frame) {
   switch (frame.event) {
     case 'snapshot':
       final sequence = json?['sequence'];
-      return sequence is int ? SnapshotMessage(sequence) : const ChangeMessage(type: 'snapshot');
+      if (sequence is! int) return const ChangeMessage(type: 'snapshot');
+      return SnapshotMessage(sequence, journey: _journeyFrom(json!['journey']));
     case 'resync':
       return const ResyncMessage();
     case 'TrainPositionUpdated':
@@ -94,4 +99,16 @@ LiveMessage parseLiveFrame(SseFrame frame) {
     sequence: sequence is int ? sequence : int.tryParse(frame.id ?? ''),
     journeyId: journeyId is String ? journeyId : null,
   );
+}
+
+/// The journey of a snapshot, or null if it is missing or unreadable.
+JourneyDetail? _journeyFrom(Object? json) {
+  if (json is! Map<String, dynamic>) return null;
+  try {
+    return JourneyDetail.fromJson(json);
+  } on FormatException {
+    return null;
+  } on TypeError {
+    return null;
+  }
 }

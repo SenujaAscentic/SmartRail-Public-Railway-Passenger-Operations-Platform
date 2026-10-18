@@ -6,8 +6,13 @@ import 'package:smartrail_core/smartrail_core.dart';
 import 'package:yaml/yaml.dart';
 
 // Contract tests for GET /journeys/{id} (ADR-12). test/fixtures/journey_detail.json
-// is a real answer of the backend (train 1001 on 20 Oct, a moving train).
+// is a real answer of the backend (train 1001 on 20 Oct, a moving train); the
+// field `freshness.lastStationName`, added by the backend on 20 Oct, was put in
+// by hand (value "Kelaniya", the station the last position is after).
 // flutter test runs with the package folder as working directory.
+
+Map<String, dynamic> stopNamed(Map<String, dynamic> json, String name) =>
+    (json['stops'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['name'] == name);
 
 Map<String, dynamic> load() =>
     jsonDecode(File('test/fixtures/journey_detail.json').readAsStringSync()) as Map<String, dynamic>;
@@ -17,9 +22,11 @@ Map<String, dynamic> load() =>
 /// exist in openapi.yaml.
 const readFields = <String, List<String>>{
   'JourneyDetailResponse': [
-    'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'version', 'stops', 'trainSet',
+    'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'hold', 'reason', 'version', 'stops', 'trainSet',
   ],
-  'JourneyDetailFreshnessResponse': ['tracking', 'updatedAt', 'lastPosition'],
+  'JourneyDetailFreshnessResponse': ['tracking', 'updatedAt', 'lastStationName', 'lastPosition'],
+  'JourneyHoldResponse': ['stationId', 'minutes', 'reason'],
+  'JourneyReasonResponse': ['code', 'note'],
   'PositionResponse': ['lastStationId', 'nextStationId', 'fractionToNext'],
   'JourneyStopResponse': [
     'sequence', 'stationId', 'name', 'callType', 'status', 'isAdded', 'scheduledArrival', 'expectedArrival', 'actualArrival',
@@ -45,7 +52,7 @@ void main() {
       expect(j.stops, hasLength(11));
     });
 
-    test('the last station of the position gives the name for "Last seen ... near"', () {
+    test('lastStationName gives the name for "Last seen ... near" (updatedAt is the last GPS position)', () {
       final j = JourneyDetail.fromJson(load());
       expect(j.freshness.lastStation, 'Kelaniya');
       expect(j.freshness.lastSeenAt, j.freshness.updatedAt);
@@ -94,6 +101,56 @@ void main() {
       expect(moved.stops, same(j.stops));
     });
 
+    test('no hold and no reason are null', () {
+      final j = JourneyDetail.fromJson(load());
+      expect(j.hold, isNull);
+      expect(j.reason, isNull);
+    });
+
+    test('a hold with its reason, and the journey reason, are read as sent', () {
+      final json = load()
+        ..['hold'] = {
+          'stationId': '01a14eb2-015b-7b5a-a2da-49d81f392430',
+          'minutes': 3,
+          'reason': {'code': 'Congestion', 'note': 'Waiting for the platform'},
+        }
+        ..['reason'] = {'code': 'SignalFailure', 'note': null};
+      final j = JourneyDetail.fromJson(json);
+
+      expect(j.hold!.minutes, 3);
+      expect(j.hold!.stationId, '01a14eb2-015b-7b5a-a2da-49d81f392430');
+      expect(j.hold!.reason!.code, 'Congestion');
+      expect(j.hold!.reason!.note, 'Waiting for the platform');
+      expect(j.reason!.code, 'SignalFailure');
+      expect(j.reason!.note, isNull);
+    });
+
+    test('a hold without a reason or minutes (both optional) is read', () {
+      final json = load()..['hold'] = {'stationId': 'x', 'minutes': null, 'reason': null};
+      final hold = JourneyDetail.fromJson(json).hold!;
+      expect(hold.minutes, isNull);
+      expect(hold.reason, isNull);
+    });
+
+    test('terminatesAt is the last calling point that is not skipped, only for TerminatedEarly', () {
+      final json = load()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
+      for (final name in ['Polgahawela', 'Rambukkana', 'Kadugannawa', 'Peradeniya', 'Kandy']) {
+        stopNamed(json, name)['status'] = 'Skipped';
+      }
+      expect(JourneyDetail.fromJson(json).terminatesAt!.name, 'Gampaha');
+
+      final running = load();
+      expect(JourneyDetail.fromJson(running).terminatesAt, isNull);
+    });
+
+    test('terminatesAt is null when every stop is skipped', () {
+      final json = load()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
+      for (final s in json['stops'] as List) {
+        (s as Map<String, dynamic>)['status'] = 'Skipped';
+      }
+      expect(JourneyDetail.fromJson(json).terminatesAt, isNull);
+    });
+
     test('no train set yet is null, not an error', () {
       final json = load()..['trainSet'] = null;
       expect(JourneyDetail.fromJson(json).trainSet, isNull);
@@ -101,7 +158,9 @@ void main() {
 
     test('no position yet is null, and then there is no station name', () {
       final json = load();
-      (json['freshness'] as Map<String, dynamic>)['lastPosition'] = null;
+      (json['freshness'] as Map<String, dynamic>)
+        ..['lastPosition'] = null
+        ..['lastStationName'] = null;
       final j = JourneyDetail.fromJson(json);
       expect(j.lastPosition, isNull);
       expect(j.freshness.lastStation, isNull);
@@ -123,11 +182,22 @@ void main() {
   });
 
   group('every field the detail models read is required', () {
+    // The fixture has no hold and no reason; the tests of these two schemas use one.
+    Map<String, dynamic> withHoldAndReason() => load()
+      ..['hold'] = {
+        'stationId': '01a14eb2-015b-7b5a-a2da-49d81f392430',
+        'minutes': 3,
+        'reason': {'code': 'Congestion', 'note': 'Waiting for the platform'},
+      }
+      ..['reason'] = {'code': 'SignalFailure', 'note': 'signal fault near Ragama'};
+
     Map<String, dynamic> objectFor(Map<String, dynamic> json, String schema) => switch (schema) {
           'JourneyDetailResponse' => json,
           'JourneyDetailFreshnessResponse' => json['freshness'] as Map<String, dynamic>,
           'PositionResponse' => (json['freshness'] as Map<String, dynamic>)['lastPosition'] as Map<String, dynamic>,
           'JourneyStopResponse' => (json['stops'] as List).first as Map<String, dynamic>,
+          'JourneyHoldResponse' => json['hold'] as Map<String, dynamic>,
+          'JourneyReasonResponse' => json['reason'] as Map<String, dynamic>,
           'TrainSetResponse' => json['trainSet'] as Map<String, dynamic>,
           'CoachResponse' => ((json['trainSet'] as Map<String, dynamic>)['coaches'] as List).first as Map<String, dynamic>,
           _ => throw ArgumentError(schema),
@@ -136,7 +206,7 @@ void main() {
     for (final entry in readFields.entries) {
       for (final field in entry.value) {
         test('${entry.key}.$field missing makes parsing fail', () {
-          final json = load();
+          final json = withHoldAndReason();
           objectFor(json, entry.key).remove(field);
           expect(() => JourneyDetail.fromJson(json), throwsA(anything));
         });

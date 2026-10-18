@@ -19,7 +19,9 @@ const _changeTypes = {
   'JourneyHeld',
   'JourneyReinstated',
   'JourneyStarted',
+  'JourneyTerminatedEarly',
   'PlatformChanged',
+  'StopSkipped',
   'StopStatusChanged',
 };
 
@@ -48,7 +50,12 @@ void main() {
 
         switch (name) {
           case 'snapshot':
-            expect((message as SnapshotMessage).sequence, 1051);
+            final m = message as SnapshotMessage;
+            expect(m.sequence, 1051);
+            // The snapshot carries the public journey detail (20 Oct), read like GET /journeys/{id}.
+            expect(m.journey, isNotNull);
+            expect(m.journey!.journeyId, '0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01');
+            expect(m.journey!.freshness.lastStation, 'Rambukkana');
           case 'resync':
             expect(message, isA<ResyncMessage>());
           case 'TrainPositionUpdated':
@@ -93,6 +100,21 @@ void main() {
 
       expect(message, isA<ChangeMessage>());
       expect((message as ChangeMessage).type, 'TrainPositionUpdated');
+    });
+  });
+
+  group('the snapshot journey', () {
+    test('an unreadable journey in the snapshot becomes null (the app then loads it itself)', () {
+      final json = example('snapshot');
+      (json['journey'] as Map<String, dynamic>).remove('stops');
+      final message = parseLiveFrame(frameOf('snapshot', json)) as SnapshotMessage;
+      expect(message.sequence, 1051);
+      expect(message.journey, isNull);
+    });
+
+    test('a snapshot without a journey keeps its sequence', () {
+      final json = example('snapshot')..remove('journey');
+      expect((parseLiveFrame(frameOf('snapshot', json)) as SnapshotMessage).journey, isNull);
     });
   });
 

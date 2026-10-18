@@ -26,6 +26,58 @@ class DetailFailed extends DetailState {
   const DetailFailed();
 }
 
+/// The trains offered when this one is cancelled or ends early.
+sealed class AlternativesState {
+  const AlternativesState();
+}
+
+/// Nothing to offer: the train runs for this passenger.
+class NoAlternatives extends AlternativesState {
+  const NoAlternatives();
+}
+
+class AlternativesLoading extends AlternativesState {
+  const AlternativesLoading();
+}
+
+/// [trains] come from the journey search, as the backend sent them (at most 3).
+/// [kind] decides the heading: the next trains, or other trains from where this one ends.
+class AlternativesLoaded extends AlternativesState {
+  const AlternativesLoaded(this.trains, this.kind);
+
+  final List<JourneySummary> trains;
+  final AlternativesKind kind;
+}
+
+class AlternativesFailed extends AlternativesState {
+  const AlternativesFailed();
+}
+
+enum AlternativesKind { next, other }
+
+/// The search that finds the alternatives (same shape as the search of US-P1).
+class _AlternativesQuery {
+  const _AlternativesQuery(this.kind, this.fromId, this.toId, this.date, this.after);
+
+  final AlternativesKind kind;
+  final String fromId;
+  final String toId;
+  final String date;
+  final DateTime? after;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _AlternativesQuery &&
+      other.kind == kind &&
+      other.fromId == fromId &&
+      other.toId == toId &&
+      other.date == date &&
+      other.after == after;
+
+  @override
+  int get hashCode => Object.hash(kind, fromId, toId, date, after);
+}
+
 /// Loads one journey, keeps it up to date from the live stream, and counts how
 /// old its data is (US-P2, US-P3, US-P4).
 ///
@@ -41,8 +93,13 @@ class DetailFailed extends DetailState {
 /// growing pause (resuming with Last-Event-ID) and meanwhile polls the journey
 /// every 30 seconds (ADR-02 fallback).
 class DetailController extends ChangeNotifier {
-  DetailController(this._api, this.journeyId, {Stopwatch Function()? newStopwatch})
-      : _newStopwatch = newStopwatch ?? Stopwatch.new;
+  DetailController(
+    this._api,
+    this.journeyId, {
+    this.boardingStationId,
+    this.destinationStationId,
+    Stopwatch Function()? newStopwatch,
+  }) : _newStopwatch = newStopwatch ?? Stopwatch.new;
 
   /// The heartbeat comes every 15 s; three missed ones mean the connection is lost.
   static const silenceTimeout = Duration(seconds: 45);
@@ -65,7 +122,21 @@ class DetailController extends ChangeNotifier {
 
   final SmartRailApi _api;
   final String journeyId;
+
+  /// The passenger's stations from the search: they mark "Your station" and
+  /// "destination", and decide which alternatives make sense. Null when unknown.
+  final String? boardingStationId;
+  final String? destinationStationId;
   final Stopwatch Function() _newStopwatch;
+
+  // Alternatives (cancelled / terminated early)
+  AlternativesState _alternatives = const NoAlternatives();
+  _AlternativesQuery? _alternativesQuery;
+  int _alternativesId = 0;
+  AlternativesState get alternatives => _alternatives;
+
+  /// Server time of the stream answer: the reference for the age of a snapshot.
+  DateTime? _streamServerTime;
 
   // Live updates
   bool _live = false;
@@ -103,7 +174,8 @@ class DetailController extends ChangeNotifier {
     _state = const DetailLoading();
     notifyListeners();
     await _fetch();
-    if (_state is DetailLoaded) startLive();
+    final state = _state;
+    if (state is DetailLoaded && state.journey.status.kind != StatusKind.completed) startLive();
   }
 
   /// Manual refresh (pull down or the refresh button). Keeps what is on screen
@@ -115,15 +187,24 @@ class DetailController extends ChangeNotifier {
     try {
       final response = await _api.getJourney(journeyId);
       if (id != _loadId) return;
-      _ageAtReceipt = _ageFrom(response);
-      _sinceReceipt = _newStopwatch()..start();
-      _state = DetailLoaded(response.journey);
+      _show(response.journey, response.serverTime);
     } on ApiException {
       if (id != _loadId) return;
       final current = _state;
       _state = current is DetailLoaded ? DetailLoaded(current.journey, refreshFailed: true) : const DetailFailed();
     }
     notifyListeners();
+  }
+
+  /// Shows [journey] (from a load or a snapshot) and starts its age.
+  /// A completed journey has nothing more to report, so the stream and the
+  /// polling stop. A cancelled one keeps listening: it can be reinstated.
+  void _show(JourneyDetail journey, DateTime? serverTime) {
+    _ageAtReceipt = _ageFor(journey, serverTime);
+    _sinceReceipt = _newStopwatch()..start();
+    _state = DetailLoaded(journey);
+    if (journey.status.kind == StatusKind.completed) stopLive();
+    _updateAlternatives(journey);
   }
 
   /// Starts reading the stream. Called after the first successful load.
@@ -148,7 +229,12 @@ class DetailController extends ChangeNotifier {
     if (!_live) return;
     _subscription?.cancel();
     _subscription = _api
-        .openStream(journeyId, lastEventId: _lastEventId, silenceTimeout: silenceTimeout)
+        .openStream(
+          journeyId,
+          lastEventId: _lastEventId,
+          silenceTimeout: silenceTimeout,
+          onConnected: (serverTime) => _streamServerTime = serverTime,
+        )
         .listen(_onFrame, onError: (_) => _onLost(), onDone: _onLost, cancelOnError: true);
   }
 
@@ -162,11 +248,19 @@ class DetailController extends ChangeNotifier {
     if (frame.id != null) _lastEventId = frame.id;
 
     switch (parseLiveFrame(frame)) {
-      case SnapshotMessage(:final sequence):
-        // Load the journey again, so nothing between the first load and this
-        // snapshot (or during an outage) is missed; older events are then ignored.
+      case SnapshotMessage(:final sequence, :final journey):
+        // The snapshot is the state at this sequence (the public journey
+        // detail): it replaces what is shown, so nothing between the first load
+        // and now (or during an outage) is missed; older events are then
+        // ignored. Without a readable journey in it, load the journey instead.
         _lastSequence = sequence;
-        _scheduleRefetch();
+        if (journey != null && journey.journeyId == journeyId) {
+          _refetchTimer?.cancel();
+          _show(journey, _streamServerTime);
+          notifyListeners();
+        } else {
+          _scheduleRefetch();
+        }
       case ResyncMessage():
         _lastEventId = null;
         _lastSequence = null;
@@ -220,15 +314,88 @@ class DetailController extends ChangeNotifier {
     _reconnectTimer = Timer(delay, _connect);
   }
 
+  /// "Try again" for a failed list of alternatives.
+  void retryAlternatives() {
+    final current = _state;
+    if (current is! DetailLoaded) return;
+    _alternativesQuery = null; // forget it, so that the same query is run again
+    _updateAlternatives(current.journey);
+    notifyListeners();
+  }
+
+  /// Cancelled: the next trains from the passenger station to their
+  /// destination, after this train departure. Ended early: other trains from
+  /// where it ends, but only when the passenger destination is no longer
+  /// served (or their own station is not). The backend does the search and the
+  /// times; the app only asks and shows.
+  _AlternativesQuery? _queryFor(JourneyDetail journey) {
+    final fromId = boardingStationId ?? journey.from.stationId;
+    final toId = destinationStationId ?? journey.to.stationId;
+    final boarding = journey.stopAt(fromId);
+    final destination = journey.stopAt(toId);
+    final departure = boarding?.scheduledDeparture ?? boarding?.scheduledArrival ?? journey.from.scheduledDeparture;
+
+    switch (journey.status.kind) {
+      case StatusKind.cancelled:
+        return _AlternativesQuery(AlternativesKind.next, fromId, toId, journey.serviceDate, departure);
+      case StatusKind.terminatedEarly:
+        if (boarding != null && boarding.state == StopState.skipped) {
+          return _AlternativesQuery(AlternativesKind.next, fromId, toId, journey.serviceDate, departure);
+        }
+        final end = journey.terminatesAt;
+        final destinationLost = destination == null || destination.state == StopState.skipped;
+        if (destinationLost && end != null && end.stationId != toId) {
+          return _AlternativesQuery(AlternativesKind.other, end.stationId, toId, journey.serviceDate, null);
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  void _updateAlternatives(JourneyDetail journey) {
+    final query = _queryFor(journey);
+    if (query == null) {
+      _alternativesQuery = null;
+      _alternativesId++;
+      _alternatives = const NoAlternatives();
+      return;
+    }
+    if (query == _alternativesQuery) return; // same situation: keep what is there
+    _alternativesQuery = query;
+    final id = ++_alternativesId;
+    _alternatives = const AlternativesLoading();
+    unawaited(_loadAlternatives(query, id));
+  }
+
+  Future<void> _loadAlternatives(_AlternativesQuery query, int id) async {
+    AlternativesState result;
+    try {
+      final found = await _api.searchJourneys(
+        fromId: query.fromId,
+        toId: query.toId,
+        date: query.date,
+        after: query.after,
+        limit: 3,
+      );
+      // This train itself is not an alternative to itself.
+      result = AlternativesLoaded([for (final j in found) if (j.journeyId != journeyId) j].take(3).toList(), query.kind);
+    } on ApiException {
+      result = const AlternativesFailed();
+    }
+    if (id != _alternativesId) return; // the situation changed meanwhile
+    _alternatives = result;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     stopLive();
     super.dispose();
   }
 
-  Duration? _ageFrom(JourneyResponse response) {
-    final server = response.serverTime;
-    final updated = response.journey.freshness.updatedAt;
+  Duration? _ageFor(JourneyDetail journey, DateTime? server) {
+    final updated = journey.freshness.updatedAt;
     if (server == null || updated == null) return null;
     final age = server.difference(updated);
     return age.isNegative ? Duration.zero : age;

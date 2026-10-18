@@ -25,6 +25,7 @@
   "freshness": {
     "tracking": "Live",
     "updatedAt": "2026-10-20T01:16:31.183576Z",
+    "lastStationName": "Kelaniya",
     "lastPosition": {
       "latitude": 6.981269829198914,
       "longitude": 79.90238458481805,

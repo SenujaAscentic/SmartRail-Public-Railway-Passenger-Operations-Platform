@@ -1,4 +1,5 @@
 import 'freshness.dart';
+import 'journey_reason.dart';
 import 'journey_status.dart';
 
 /// Where the passenger boards: the `from` part of a journey summary.
@@ -75,6 +76,8 @@ class JourneySummary {
     required this.from,
     required this.to,
     required this.freshness,
+    required this.hold,
+    required this.reason,
     required this.version,
   });
 
@@ -92,6 +95,12 @@ class JourneySummary {
   final JourneyTo to;
   final Freshness freshness;
 
+  /// Null unless the controller has set a hold.
+  final JourneyHold? hold;
+
+  /// The controller's reason for a delay, cancellation or early end; null when none was given.
+  final JourneyReason? reason;
+
   /// Control version (R-18). Read-only for passengers.
   final int version;
 
@@ -100,6 +109,7 @@ class JourneySummary {
     final freshness = json['freshness'] as Map<String, dynamic>;
     requireKeys(status, ['delayMinutes']);
     requireKeys(freshness, ['updatedAt']);
+    requireKeys(json, ['hold', 'reason']);
     return JourneySummary(
       journeyId: json['journeyId'] as String,
       serviceNumber: json['serviceNumber'] as String,
@@ -110,10 +120,16 @@ class JourneySummary {
       from: JourneyFrom.fromJson(json['from'] as Map<String, dynamic>),
       to: JourneyTo.fromJson(json['to'] as Map<String, dynamic>),
       freshness: Freshness.fromJson(freshness),
+      hold: holdFrom(json['hold']),
+      reason: reasonFrom(json['reason']),
       version: json['version'] as int,
     );
   }
 }
+
+JourneyHold? holdFrom(Object? json) => json == null ? null : JourneyHold.fromJson(json as Map<String, dynamic>);
+
+JourneyReason? reasonFrom(Object? json) => json == null ? null : JourneyReason.fromJson(json as Map<String, dynamic>);
 
 /// Throws when a key is absent. A value of null is fine; a missing key is not.
 void requireKeys(Map<String, dynamic> json, List<String> keys) {

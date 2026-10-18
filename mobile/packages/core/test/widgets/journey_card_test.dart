@@ -70,6 +70,7 @@ void main() {
       card(status: const JourneyStatus(StatusKind.onTime, delayMinutes: 0), platform: '5', previousPlatform: '2'),
     );
     expect(find.text('Platform 5 (was 2)'), findsOneWidget);
+    expect(find.byIcon(Icons.swap_horiz), findsOneWidget, reason: 'icon + text + colour');
   });
 
   testWidgets('not running today: neutral badge, no status text', (tester) async {

@@ -101,8 +101,11 @@ void sendPosition(FakeStream s, int sequence, double fraction, {String id = jour
 
 void sendChange(FakeStream s, String type, int sequence) => s.frame(id: '$sequence', event: type, data: changeEvent(type, sequence));
 
-void sendSnapshot(FakeStream s, int sequence) =>
-    s.frame(event: 'snapshot', data: {'journeyId': journeyId, 'sequence': sequence, 'delayMinutes': 0, 'tracking': 'Live', 'stops': <dynamic>[]});
+void sendSnapshot(FakeStream s, int sequence, {Map<String, dynamic>? journey}) => s.frame(
+      id: '$sequence',
+      event: 'snapshot',
+      data: {'journeyId': journeyId, 'sequence': sequence, 'delayMinutes': 0, 'tracking': 'Live', 'stops': <dynamic>[], 'journey': ?journey},
+    );
 
 void main() {
   group('connecting', () {
@@ -289,6 +292,211 @@ void main() {
       sendChange(h.stream, 'DelayChanged', 102);
       await settle(tester, const Duration(milliseconds: 600));
       expect(h.loaded.refreshFailed, isFalse);
+    });
+  });
+
+  group('the snapshot carries the journey (20 Oct)', () {
+    liveTest('it replaces what is shown, without loading the journey again', (tester) async {
+      final h = await start(tester);
+      final getsBefore = h.gets;
+
+      sendSnapshot(h.stream, 100, journey: detailJson()..['status'] = {'kind': 'Late', 'delayMinutes': 6});
+      await settle(tester, const Duration(seconds: 2));
+
+      expect(h.loaded.journey.status.kind, StatusKind.late);
+      expect(h.loaded.journey.status.delayMinutes, 6);
+      expect(h.gets, getsBefore, reason: 'no extra GET');
+    });
+
+    liveTest('after a reconnect the new snapshot is used too', (tester) async {
+      final h = await start(tester);
+      h.stream.close();
+      await settle(tester, const Duration(seconds: 1, milliseconds: 100));
+      expect(h.backend.streams, hasLength(2));
+      final getsBefore = h.gets;
+
+      sendSnapshot(h.stream, 200, journey: detailJson()..['status'] = {'kind': 'Late', 'delayMinutes': 11});
+      await settle(tester);
+
+      expect(h.loaded.journey.status.delayMinutes, 11);
+      expect(h.gets, getsBefore);
+    });
+
+    liveTest('its age is the Date header of the stream answer minus updatedAt', (tester) async {
+      final backend = FakeBackend()
+        ..detail = detailJson()
+        ..dateHeader = thirtySecondsLater
+        ..streamDateHeader = 'Tue, 20 Oct 2026 01:18:32 GMT'; // 2 min 0.8 s after updatedAt 01:16:31.18
+      final h = await start(tester, backend: backend);
+
+      sendSnapshot(h.stream, 100, journey: detailJson());
+      await settle(tester);
+
+      expect(h.controller.age!.inSeconds, 120);
+    });
+
+    liveTest('without a Date header on the stream answer there is no age after a snapshot', (tester) async {
+      final h = await start(tester);
+
+      sendSnapshot(h.stream, 100, journey: detailJson());
+      await settle(tester);
+
+      expect(h.controller.age, isNull);
+    });
+
+    liveTest('a snapshot of another journey is not shown; the journey is loaded instead', (tester) async {
+      final h = await start(tester);
+      final other = detailJson()
+        ..['journeyId'] = 'some-other-journey'
+        ..['status'] = {'kind': 'Late', 'delayMinutes': 9};
+
+      sendSnapshot(h.stream, 100, journey: other);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      expect(h.loaded.journey.status.kind, StatusKind.onTime);
+      expect(h.gets, 2);
+    });
+
+    liveTest('a snapshot whose journey cannot be read makes the app load the journey itself', (tester) async {
+      final h = await start(tester);
+      final broken = detailJson()..remove('stops');
+
+      sendSnapshot(h.stream, 100, journey: broken);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      expect(h.gets, 2);
+    });
+
+    liveTest('events the snapshot already contains are ignored', (tester) async {
+      final h = await start(tester);
+      sendSnapshot(h.stream, 200, journey: detailJson());
+      await settle(tester);
+
+      sendChange(h.stream, 'DelayChanged', 150);
+      await settle(tester, const Duration(seconds: 2));
+
+      expect(h.gets, 1);
+    });
+  });
+
+  group('a finished journey stops the listening, a cancelled one does not', () {
+    Map<String, dynamic> completed() => detailJson()..['status'] = {'kind': 'Completed', 'delayMinutes': null};
+    Map<String, dynamic> cancelledJourney() => detailJson()..['status'] = {'kind': 'Cancelled', 'delayMinutes': null};
+
+    liveTest('a journey that is Completed at the first load opens no stream', (tester) async {
+      final h = await start(tester, backend: FakeBackend()..detail = completed());
+
+      expect(h.loaded.journey.status.kind, StatusKind.completed);
+      expect(h.backend.streams, isEmpty);
+    });
+
+    liveTest('a reload that shows Completed closes the stream and stops polling and reconnecting', (tester) async {
+      final h = await start(tester);
+      final stream = h.stream;
+      h.backend.detail = completed();
+
+      sendChange(stream, 'JourneyEnded', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+      expect(h.loaded.journey.status.kind, StatusKind.completed);
+      expect(stream.listening, isFalse, reason: 'the connection is closed');
+
+      final gets = h.gets;
+      await settle(tester, const Duration(minutes: 5));
+      expect(h.gets, gets, reason: 'no polling');
+      expect(h.backend.streams, hasLength(1), reason: 'no reconnecting');
+    });
+
+    liveTest('a snapshot that shows Completed stops it too', (tester) async {
+      final h = await start(tester);
+      final stream = h.stream;
+
+      sendSnapshot(stream, 100, journey: completed());
+      await settle(tester);
+
+      expect(stream.listening, isFalse);
+      await settle(tester, const Duration(minutes: 5));
+      expect(h.backend.streams, hasLength(1));
+    });
+
+    liveTest('a manual refresh still works after the journey is completed', (tester) async {
+      final h = await start(tester);
+      h.backend.detail = completed();
+      sendChange(h.stream, 'JourneyEnded', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      final gets = h.gets;
+      unawaited(h.controller.refresh());
+      await settle(tester);
+
+      expect(h.gets, gets + 1);
+    });
+
+    liveTest('a cancelled journey keeps listening: a reload showing Cancelled leaves the stream open', (tester) async {
+      final h = await start(tester);
+      final stream = h.stream;
+      h.backend.detail = cancelledJourney();
+
+      sendChange(stream, 'JourneyCancelled', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      expect(h.loaded.journey.status.kind, StatusKind.cancelled);
+      expect(stream.listening, isTrue);
+      expect(h.backend.streams, hasLength(1));
+    });
+
+    liveTest('a cancelled journey that loses the stream still reconnects', (tester) async {
+      final h = await start(tester, backend: FakeBackend()..detail = cancelledJourney());
+      expect(h.backend.streams, hasLength(1));
+
+      h.stream.close();
+      await settle(tester, const Duration(seconds: 1, milliseconds: 100));
+
+      expect(h.backend.streams, hasLength(2));
+    });
+
+    liveTest('reinstating a cancelled journey: the alternatives go away', (tester) async {
+      final backend = FakeBackend()
+        ..detail = cancelledJourney()
+        ..journeys = [journeyJson(id: 'a', serviceNumber: '1003', name: 'Podi Menike')];
+      final h = await start(tester, backend: backend);
+      expect(h.controller.alternatives, isA<AlternativesLoaded>());
+
+      backend.detail = detailJson();
+      sendChange(h.stream, 'JourneyReinstated', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      expect(h.loaded.journey.status.kind, StatusKind.onTime);
+      expect(h.controller.alternatives, isA<NoAlternatives>());
+    });
+
+    liveTest('a train that gets cancelled while the screen is open gets its alternatives', (tester) async {
+      final backend = FakeBackend()
+        ..detail = detailJson()
+        ..journeys = [journeyJson(id: 'a', serviceNumber: '1003', name: 'Podi Menike')];
+      final h = await start(tester, backend: backend);
+      expect(h.controller.alternatives, isA<NoAlternatives>());
+
+      backend.detail = cancelledJourney();
+      sendChange(h.stream, 'JourneyCancelled', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      final alternatives = h.controller.alternatives as AlternativesLoaded;
+      expect(alternatives.trains.single.serviceNumber, '1003');
+      expect(alternatives.kind, AlternativesKind.next);
+    });
+
+    liveTest('the same cancelled state seen again does not search again', (tester) async {
+      final backend = FakeBackend()
+        ..detail = cancelledJourney()
+        ..journeys = [journeyJson(id: 'a')];
+      final h = await start(tester, backend: backend);
+      int searches() => backend.requests.where((u) => u.path == '/api/v1/journeys/search').length;
+      expect(searches(), 1);
+
+      sendChange(h.stream, 'DelayChanged', 101);
+      await settle(tester, const Duration(milliseconds: 600));
+
+      expect(searches(), 1);
     });
   });
 

@@ -73,12 +73,20 @@ class FakeBackend {
   /// While true, `GET /stream` answers 503 instead of opening.
   bool refuseStream = false;
 
+  /// The HTTP `Date` header of the stream answer (the server time at connect); null leaves it out.
+  String? streamDateHeader;
+
   Future<http.StreamedResponse> _handleStreaming(http.BaseRequest request, http.ByteStream body) async {
     if (request.url.path == '/api/v1/stream') {
       if (refuseStream) return http.StreamedResponse(const Stream.empty(), 503, request: request);
       final stream = FakeStream(request);
       streams.add(stream);
-      return http.StreamedResponse(stream.controller.stream, 200, headers: {'content-type': 'text/event-stream'}, request: request);
+      return http.StreamedResponse(
+        stream.controller.stream,
+        200,
+        headers: {'content-type': 'text/event-stream', 'date': ?streamDateHeader},
+        request: request,
+      );
     }
     final response = await _handle(request);
     return http.StreamedResponse(

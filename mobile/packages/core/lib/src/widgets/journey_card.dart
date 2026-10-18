@@ -98,7 +98,11 @@ class JourneyCard extends StatelessWidget {
                   ]),
                 ),
               ),
-              if (platform != null) Text(platformText(platform!, previousPlatform), style: small),
+              // A changed platform gets the platform-change badge (icon + text + colour).
+              if (platform != null && previousPlatform != null)
+                StatusBadge.platformChange(platform!, previousPlatform!)
+              else if (platform != null)
+                Text(platformText(platform!, null), style: small),
             ],
           ),
         ],

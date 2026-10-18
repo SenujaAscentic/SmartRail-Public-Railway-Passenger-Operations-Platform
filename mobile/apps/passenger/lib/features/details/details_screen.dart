@@ -7,20 +7,15 @@ import 'details_controller.dart';
 import 'train_set_chips.dart';
 
 /// US-P2: one train with all its calling points, where it is now, and today's
-/// train set. [boardingStationId] and [destinationStationId] (from the search)
-/// mark "Your station" and "destination" on the list. In this step the data is
-/// refreshed by hand; the live stream comes next.
+/// train set, kept up to date by the live stream (the controller). The
+/// passenger's stations (from the search, held by the controller) mark "Your
+/// station" and "destination". When the train is cancelled or ends early, other
+/// trains are offered; [onOpenJourney] opens one of them.
 class DetailsScreen extends StatefulWidget {
-  const DetailsScreen({
-    super.key,
-    required this.controller,
-    this.boardingStationId,
-    this.destinationStationId,
-  });
+  const DetailsScreen({super.key, required this.controller, required this.onOpenJourney});
 
   final DetailController controller;
-  final String? boardingStationId;
-  final String? destinationStationId;
+  final ValueChanged<JourneySummary> onOpenJourney;
 
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
@@ -64,8 +59,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 journey: journey,
                 age: _c.age,
                 refreshFailed: refreshFailed,
-                boardingStationId: widget.boardingStationId,
-                destinationStationId: widget.destinationStationId,
+                boardingStationId: _c.boardingStationId,
+                destinationStationId: _c.destinationStationId,
+                alternatives: _c.alternatives,
+                onRetryAlternatives: _c.retryAlternatives,
+                onOpenJourney: widget.onOpenJourney,
               ),
             ),
         },
@@ -81,6 +79,9 @@ class _Body extends StatelessWidget {
     required this.refreshFailed,
     required this.boardingStationId,
     required this.destinationStationId,
+    required this.alternatives,
+    required this.onRetryAlternatives,
+    required this.onOpenJourney,
   });
 
   final JourneyDetail journey;
@@ -88,12 +89,27 @@ class _Body extends StatelessWidget {
   final bool refreshFailed;
   final String? boardingStationId;
   final String? destinationStationId;
+  final AlternativesState alternatives;
+  final VoidCallback onRetryAlternatives;
+  final ValueChanged<JourneySummary> onOpenJourney;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final points = journey.callingPoints;
     final position = _Position.of(journey, points);
+
+    // The platform change of the passenger's own station, also in the header.
+    final boardingStop = boardingStationId == null ? null : journey.stopAt(boardingStationId!);
+    final boardingPlatformChange = (boardingStop != null && boardingStop.platform != null && boardingStop.previousPlatform != null)
+        ? StatusBadge.platformChange(boardingStop.platform!, boardingStop.previousPlatform!)
+        : null;
+
+    // Why: the reason of the delay or cancellation, and the reason of a hold, when sent.
+    final reasonLines = <String>[
+      if (journey.reason != null) Strings.reasonLine(journey.reason!.code, journey.reason!.note),
+      if (journey.hold?.reason != null) Strings.reasonLine(journey.hold!.reason!.code, journey.hold!.reason!.note),
+    ];
 
     return ListView(
       // Lets a short list still be pulled down to refresh.
@@ -118,7 +134,15 @@ class _Body extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: spaceSm),
-        Center(child: StatusBadge.journey(journey.status)),
+        Center(child: StatusBadge.journey(journey.status, terminatesAt: journey.terminatesAt?.name)),
+        if (boardingPlatformChange != null) ...[
+          const SizedBox(height: spaceSm),
+          Center(child: boardingPlatformChange),
+        ],
+        for (final line in reasonLines) ...[
+          const SizedBox(height: spaceSm),
+          _ReasonLine(text: line),
+        ],
         if (position != null) ...[
           const SizedBox(height: spaceSm),
           Center(child: _PositionChip(text: position.text)),
@@ -135,6 +159,10 @@ class _Body extends StatelessWidget {
         if (position != null) ...[
           const SizedBox(height: spaceMd),
           position.diagram,
+        ],
+        if (alternatives is! NoAlternatives) ...[
+          const SizedBox(height: spaceMd),
+          _Alternatives(state: alternatives, onRetry: onRetryAlternatives, onOpen: onOpenJourney),
         ],
         const SizedBox(height: spaceMd),
         TrainSetChips(trainSet: journey.trainSet),
@@ -254,5 +282,82 @@ class _PositionChip extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// One line of plain text with an info icon, for the controller's reasons.
+class _ReasonLine extends StatelessWidget {
+  const _ReasonLine({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ExcludeSemantics(child: Icon(Icons.info_outline, size: 18, color: theme.colorScheme.onSurfaceVariant)),
+        const SizedBox(width: spaceXs),
+        // Plain text only: a Text widget never interprets markup.
+        Flexible(child: Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodySmall)),
+      ],
+    );
+  }
+}
+
+/// "Next trains" / "Other trains": up to three journeys from the search, as the
+/// backend sent them. The app only shows them.
+class _Alternatives extends StatelessWidget {
+  const _Alternatives({required this.state, required this.onRetry, required this.onOpen});
+
+  final AlternativesState state;
+  final VoidCallback onRetry;
+  final ValueChanged<JourneySummary> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    switch (state) {
+      case NoAlternatives():
+        return const SizedBox.shrink();
+      case AlternativesLoading():
+        return const Center(child: Padding(padding: EdgeInsets.all(spaceMd), child: CircularProgressIndicator()));
+      case AlternativesFailed():
+        return Column(
+          children: [
+            Text(Strings.otherTrainsError, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: spaceSm),
+            OutlinedButton(onPressed: onRetry, child: const Text(Strings.tryAgain)),
+          ],
+        );
+      case AlternativesLoaded(:final trains, :final kind):
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              kind == AlternativesKind.next ? Strings.nextTrains : Strings.otherTrains,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: spaceSm),
+            if (trains.isEmpty) Text(Strings.noOtherTrains, style: theme.textTheme.bodyLarge),
+            for (final j in trains) ...[
+              JourneyCard(
+                serviceNumber: j.serviceNumber,
+                name: j.name,
+                status: j.status,
+                scheduledDeparture: j.from.scheduledDeparture,
+                scheduledArrival: j.to.scheduledArrival,
+                expectedDeparture: j.from.expectedDeparture,
+                expectedArrival: j.to.expectedArrival,
+                platform: j.from.platform,
+                previousPlatform: j.from.previousPlatform,
+                onTap: () => onOpen(j),
+              ),
+              const SizedBox(height: spaceSm),
+            ],
+          ],
+        );
+    }
   }
 }

@@ -18,9 +18,11 @@ Map<String, dynamic> load(String name) =>
 /// either side.
 const readFields = <String, List<String>>{
   'JourneySummaryResponse': [
-    'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'version',
+    'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'hold', 'reason', 'version',
   ],
   'JourneyStatusResponse': ['kind', 'delayMinutes'],
+  'JourneyHoldResponse': ['stationId', 'minutes', 'reason'],
+  'JourneyReasonResponse': ['code', 'note'],
   'JourneyFromResponse': [
     'stationId', 'name', 'scheduledDeparture', 'expectedDeparture', 'platform', 'previousPlatform',
   ],
@@ -56,6 +58,20 @@ void main() {
       expect(j.freshness.tracking, Tracking.notStarted);
     });
 
+    test('hold and reason are null when there are none, and read when there are', () {
+      final none = JourneySummary.fromJson(load('journey_summary.json'));
+      expect(none.hold, isNull);
+      expect(none.reason, isNull);
+
+      final json = load('journey_summary.json')
+        ..['hold'] = {'stationId': 'x', 'minutes': 3, 'reason': null}
+        ..['reason'] = {'code': 'Weather', 'note': 'Heavy rain'};
+      final j = JourneySummary.fromJson(json);
+      expect(j.hold!.minutes, 3);
+      expect(j.reason!.code, 'Weather');
+      expect(j.reason!.note, 'Heavy rain');
+    });
+
     test('ignores fields it does not know (adding fields is not breaking)', () {
       final json = load('journey_summary.json')..['somethingNew'] = {'a': 1};
       expect(() => JourneySummary.fromJson(json), returnsNormally);
@@ -71,9 +87,18 @@ void main() {
   group('every field the models read is required', () {
     // Removes [field] from the JSON object found at [schema] in the fixture.
     Map<String, dynamic> without(String schema, String field) {
-      final json = load('journey_summary.json');
+      // The fixture has no hold and no reason; the tests of those two schemas use one.
+      final json = load('journey_summary.json')
+        ..['hold'] = {
+          'stationId': 'x',
+          'minutes': 3,
+          'reason': {'code': 'Congestion', 'note': 'Waiting for the platform'},
+        }
+        ..['reason'] = {'code': 'SignalFailure', 'note': null};
       final target = switch (schema) {
         'JourneySummaryResponse' => json,
+        'JourneyHoldResponse' => json['hold'] as Map<String, dynamic>,
+        'JourneyReasonResponse' => json['reason'] as Map<String, dynamic>,
         'JourneyStatusResponse' => json['status'] as Map<String, dynamic>,
         'JourneyFromResponse' => json['from'] as Map<String, dynamic>,
         'JourneyToResponse' => json['to'] as Map<String, dynamic>,

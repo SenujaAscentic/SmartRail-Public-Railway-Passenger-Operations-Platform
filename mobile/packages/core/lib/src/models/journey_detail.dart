@@ -1,4 +1,5 @@
 import 'freshness.dart';
+import 'journey_reason.dart';
 import 'journey_status.dart';
 import 'journey_stop.dart';
 import 'journey_summary.dart';
@@ -37,6 +38,8 @@ class JourneyDetail {
     required this.to,
     required this.freshness,
     required this.lastPosition,
+    required this.hold,
+    required this.reason,
     required this.version,
     required this.stops,
     required this.trainSet,
@@ -51,13 +54,19 @@ class JourneyDetail {
   final JourneyFrom from;
   final JourneyTo to;
 
-  /// The tracking state with the time the data is from. For a stale train,
-  /// `lastSeenAt` is the backend's `updatedAt` and `lastStation` is the name of
-  /// the station the last position is after.
+  /// The tracking state. `updatedAt` is the time of the last accepted GPS
+  /// position only, and `lastStationName` the station that position is after;
+  /// together they give "Last seen 07:38 near Kelaniya" (S-15).
   final Freshness freshness;
 
   /// Null before the first position. Only meaningful while tracking is live or stale.
   final Position? lastPosition;
+
+  /// Null unless the controller has set a hold.
+  final JourneyHold? hold;
+
+  /// The controller's reason for a delay, cancellation or early end; null when none was given.
+  final JourneyReason? reason;
   final int version;
   final List<JourneyStop> stops;
 
@@ -66,6 +75,18 @@ class JourneyDetail {
 
   /// The calling points, in order (design handoff rule 13).
   List<JourneyStop> get callingPoints => [for (final s in stops) if (s.isCallingPoint) s];
+
+  /// For an early-terminated journey: the station where it ends, the last
+  /// calling point that is not skipped (the stops after it become Skipped, API
+  /// contract §3.3). Null for every other status, or when every stop is skipped.
+  JourneyStop? get terminatesAt {
+    if (status.kind != StatusKind.terminatedEarly) return null;
+    JourneyStop? last;
+    for (final s in callingPoints) {
+      if (s.state != StopState.skipped) last = s;
+    }
+    return last;
+  }
 
   JourneyStop? stopAt(String stationId) {
     for (final s in stops) {
@@ -92,6 +113,8 @@ class JourneyDetail {
       to: to,
       freshness: Freshness(freshness.tracking, updatedAt: at, lastSeenAt: at, lastStation: lastStation),
       lastPosition: position,
+      hold: hold,
+      reason: reason,
       version: version,
       stops: stops,
       trainSet: trainSet,
@@ -102,19 +125,13 @@ class JourneyDetail {
     final status = json['status'] as Map<String, dynamic>;
     final freshnessJson = json['freshness'] as Map<String, dynamic>;
     requireKeys(status, ['delayMinutes']);
-    requireKeys(freshnessJson, ['tracking', 'updatedAt', 'lastPosition']);
-    requireKeys(json, ['trainSet']);
+    requireKeys(freshnessJson, ['tracking', 'updatedAt', 'lastStationName', 'lastPosition']);
+    requireKeys(json, ['trainSet', 'hold', 'reason']);
 
     final stops = [for (final s in json['stops'] as List) JourneyStop.fromJson(s as Map<String, dynamic>)];
     final positionJson = freshnessJson['lastPosition'] as Map<String, dynamic>?;
     final position = positionJson == null ? null : Position.fromJson(positionJson);
     final updatedAt = optionalTime(freshnessJson, 'updatedAt');
-    String? lastStation;
-    if (position != null) {
-      for (final s in stops) {
-        if (s.stationId == position.lastStationId) lastStation = s.name;
-      }
-    }
     final trainSetJson = json['trainSet'] as Map<String, dynamic>?;
 
     return JourneyDetail(
@@ -130,9 +147,11 @@ class JourneyDetail {
         Tracking.parse(freshnessJson['tracking'] as String),
         updatedAt: updatedAt,
         lastSeenAt: updatedAt,
-        lastStation: lastStation,
+        lastStation: freshnessJson['lastStationName'] as String?,
       ),
       lastPosition: position,
+      hold: holdFrom(json['hold']),
+      reason: reasonFrom(json['reason']),
       version: json['version'] as int,
       stops: stops,
       trainSet: trainSetJson == null ? null : TrainSet.fromJson(trainSetJson),

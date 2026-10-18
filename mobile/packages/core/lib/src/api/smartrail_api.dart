@@ -62,15 +62,21 @@ class SmartRailApi {
   }
 
   /// Direct journeys from station [fromId] to station [toId] on [date] (`YYYY-MM-DD`).
+  /// [after] (a UTC time) and [limit] are for "next trains" after a cancelled
+  /// train; without them the backend uses its defaults.
   Future<List<JourneySummary>> searchJourneys({
     required String fromId,
     required String toId,
     required String date,
+    DateTime? after,
+    int? limit,
   }) async {
     final answer = await _get('/api/v1/journeys/search', {
       'from': fromId,
       'to': toId,
       'date': date,
+      if (after != null) 'after': after.toUtc().toIso8601String(),
+      if (limit != null) 'limit': '$limit',
     });
     return _list(answer.body, JourneySummary.fromJson);
   }
@@ -98,11 +104,14 @@ class SmartRailApi {
   /// Sends `Last-Event-ID` when resuming. The stream ends with an error
   /// ([ApiException] if the server refused, [StreamLostException] after
   /// [silenceTimeout] without any bytes) or normally when the server closes it.
+  /// [onConnected] is called when the server has answered, with its time (the
+  /// `Date` header; null if unusable): the reference for the age of the snapshot.
   /// Cancelling the subscription closes the connection at once.
   Stream<SseFrame> openStream(
     String journeyId, {
     String? lastEventId,
     Duration silenceTimeout = const Duration(seconds: 45),
+    void Function(DateTime? serverTime)? onConnected,
   }) {
     late final StreamController<SseFrame> controller;
     StreamSubscription<SseFrame>? upstream;
@@ -128,6 +137,8 @@ class SmartRailApi {
           await response.stream.drain<void>();
           throw ApiException('HTTP ${response.statusCode}', statusCode: response.statusCode);
         }
+
+        onConnected?.call(_serverTime(response));
 
         // Silence detection: every chunk of bytes (a frame or the heartbeat
         // comment) starts the wait again; if it runs out, the connection is
@@ -210,7 +221,7 @@ class SmartRailApi {
     }
   }
 
-  DateTime? _serverTime(http.Response response) {
+  DateTime? _serverTime(http.BaseResponse response) {
     final header = response.headers['date'];
     if (header == null) return null;
     try {

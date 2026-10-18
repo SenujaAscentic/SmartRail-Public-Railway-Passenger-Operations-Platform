@@ -45,6 +45,22 @@ void main() {
     expect(journeys.single.serviceNumber, '1001');
   });
 
+  test('searchJourneys sends after (as UTC) and limit when given', () async {
+    late Uri seen;
+    final api = SmartRailApi(
+      MockClient((request) async {
+        seen = request.url;
+        return http.Response('[]', 200);
+      }),
+      base,
+    );
+
+    // 12:30 Colombo is 07:00 UTC; the time is sent as UTC.
+    await api.searchJourneys(fromId: 'a', toId: 'b', date: '2026-10-14', after: DateTime.utc(2026, 10, 14, 7), limit: 3);
+
+    expect(seen.queryParameters, {'from': 'a', 'to': 'b', 'date': '2026-10-14', 'after': '2026-10-14T07:00:00.000Z', 'limit': '3'});
+  });
+
   test('an empty list is a normal answer', () async {
     final api = SmartRailApi(MockClient((_) async => http.Response('[]', 200)), base);
     expect(await api.searchJourneys(fromId: 'a', toId: 'b', date: '2026-10-14'), isEmpty);
@@ -151,6 +167,20 @@ void main() {
       expect(seen.headers.containsKey('Last-Event-ID'), isFalse);
       expect(frames.single.event, 'DelayChanged');
       expect(frames.single.id, '5');
+    });
+
+    test('onConnected gets the server time of the answer, or null', () async {
+      final times = <DateTime?>[];
+      final withDate = SmartRailApi(
+        MockClient.streaming((_, _) async => http.StreamedResponse(const Stream.empty(), 200, headers: {'date': 'Tue, 20 Oct 2026 01:13:38 GMT'})),
+        base,
+      );
+      await withDate.openStream('j1', onConnected: times.add).toList();
+
+      final withoutDate = SmartRailApi(MockClient.streaming((_, _) async => http.StreamedResponse(const Stream.empty(), 200)), base);
+      await withoutDate.openStream('j1', onConnected: times.add).toList();
+
+      expect(times, [DateTime.utc(2026, 10, 20, 1, 13, 38), null]);
     });
 
     test('sends Last-Event-ID when resuming', () async {

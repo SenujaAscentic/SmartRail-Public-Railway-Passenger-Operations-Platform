@@ -28,16 +28,23 @@ Future<FakeStopwatch> pumpDetails(
   String? boarding,
   String? destination,
   Brightness brightness = Brightness.light,
+  List<JourneySummary>? opened,
 }) async {
   tester.view.physicalSize = const Size(390 * 2, 1600 * 2);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
   final watch = FakeStopwatch();
-  final controller = DetailController(SmartRailApi(backend.client, 'http://test'), 'journey-1', newStopwatch: () => watch);
+  final controller = DetailController(
+    SmartRailApi(backend.client, 'http://test'),
+    'journey-1',
+    boardingStationId: boarding,
+    destinationStationId: destination,
+    newStopwatch: () => watch,
+  );
   await tester.pumpWidget(
     MaterialApp(
       theme: buildPassengerTheme(brightness),
-      home: DetailsScreen(controller: controller, boardingStationId: boarding, destinationStationId: destination),
+      home: DetailsScreen(controller: controller, onOpenJourney: (j) => opened?.add(j)),
     ),
   );
   await tester.pumpAndSettle();

@@ -29,10 +29,14 @@ class _SearchScreenState extends State<SearchScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => DetailsScreen(
-          controller: DetailController(widget.api, journey.journeyId),
-          // "Your station" and "destination" on the stop list.
-          boardingStationId: journey.from.stationId,
-          destinationStationId: journey.to.stationId,
+          // "Your station" and "destination" on the stop list, and the alternatives.
+          controller: DetailController(
+            widget.api,
+            journey.journeyId,
+            boardingStationId: journey.from.stationId,
+            destinationStationId: journey.to.stationId,
+          ),
+          onOpenJourney: _open,
         ),
       ),
     );

@@ -53,4 +53,32 @@ abstract final class Strings {
         'Unreserved' => 'unreserved',
         _ => value,
       };
+
+  // Disruptions (wording for approval, see mobile/NOTES.md)
+  static const nextTrains = 'Next trains';
+  static const otherTrains = 'Other trains';
+  static const noOtherTrains = 'No other direct trains on this date';
+  static const otherTrainsError = "Couldn't load other trains";
+
+  /// "Signal failure" for the code the controller picked; an unknown code is shown as sent.
+  static String reasonLabel(String code) => switch (code) {
+        'SignalFailure' => 'Signal failure',
+        'TrackWork' => 'Track work',
+        'TrainFault' => 'Train fault',
+        'Weather' => 'Weather',
+        'CrewShortage' => 'Crew shortage',
+        'Congestion' => 'Congestion',
+        'Other' => 'Other',
+        _ => code,
+      };
+
+  /// "Reason: Signal failure · signal fault near Ragama". The note is plain text.
+  /// For the code "Other" the note alone says it ("Reason: Bridge inspection").
+  static String reasonLine(String code, String? note) {
+    final text = note?.trim();
+    final hasNote = text != null && text.isNotEmpty;
+    if (code == 'Other' && hasNote) return 'Reason: $text';
+    return hasNote ? 'Reason: ${reasonLabel(code)} · $text' : 'Reason: ${reasonLabel(code)}';
+  }
 }
+
