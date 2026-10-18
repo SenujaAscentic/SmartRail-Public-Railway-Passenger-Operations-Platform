@@ -608,6 +608,52 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/terminate':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller ends a running journey early at a station ahead of the train; the stops after it are skipped (R-14).
+      operationId: TerminateJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/TerminateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview':
     post:
       tags:
@@ -1687,6 +1733,7 @@ components:
             - Running
             - Completed
             - Cancelled
+            - TerminatedEarly
           type: string
         delayMinutes:
           type: integer
@@ -2245,6 +2292,71 @@ components:
         version:
           type: integer
           format: int32
+    JourneyTerminatedEarlyEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyTerminatedEarly
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - atStationId
+            - reason
+          type: object
+          properties:
+            atStationId:
+              type: string
+              format: uuid
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
     JourneyToResponse:
       required:
         - stationId
@@ -2810,6 +2922,7 @@ components:
         - $ref: '#/components/schemas/PlatformChangedEvent'
         - $ref: '#/components/schemas/JourneyCancelledEvent'
         - $ref: '#/components/schemas/JourneyReinstatedEvent'
+        - $ref: '#/components/schemas/JourneyTerminatedEarlyEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
@@ -2824,6 +2937,7 @@ components:
           PlatformChanged: '#/components/schemas/PlatformChangedEvent'
           JourneyCancelled: '#/components/schemas/JourneyCancelledEvent'
           JourneyReinstated: '#/components/schemas/JourneyReinstatedEvent'
+          JourneyTerminatedEarly: '#/components/schemas/JourneyTerminatedEarlyEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:
       required:
@@ -2832,6 +2946,32 @@ components:
       properties:
         reason:
           type: string
+    TerminateRequest:
+      required:
+        - atStationId
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        atStationId:
+          type:
+            - 'null'
+            - string
+          format: uuid
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     TrainPositionUpdatedEvent:
       required:
         - eventId

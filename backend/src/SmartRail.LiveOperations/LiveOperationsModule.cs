@@ -83,6 +83,7 @@ public static class LiveOperationsModule
         DelayEndpoints.Map(routes);
         HoldEndpoints.Map(routes);
         CancelEndpoints.Map(routes);
+        TerminateEndpoints.Map(routes);
         PlatformEndpoints.Map(routes);
         return routes;
     }

@@ -172,6 +172,13 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/terminate: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/terminate", HttpStatusCode.Forbidden },
     };
 
     [Theory]

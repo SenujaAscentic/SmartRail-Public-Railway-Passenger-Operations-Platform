@@ -1,7 +1,7 @@
 namespace SmartRail.LiveOperations.Domain;
 
-// Domain model 4.2. TerminatedEarly comes with terminate (Phase 3b).
-public enum JourneyStatus { Planned, Running, Completed, Cancelled }
+// Domain model 4.2.
+public enum JourneyStatus { Planned, Running, Completed, Cancelled, TerminatedEarly }
 
 // Why a journey ended (domain model 8.2): the driver pressed End; the train reached the terminus; the controller ended it.
 public enum JourneyEndReason { Driver, Terminus, Controller }
@@ -369,6 +369,45 @@ public sealed class OperationalJourney
         }
 
         _events.Add(new JourneyCancelled(Id, reason, now));
+        SetTracking(TrackingStatus.Ended, now);
+        return DecisionResult.Done;
+    }
+
+    // R-14: terminate a Running journey at a station ahead of the train (Scheduled, or the one it is standing at). Every stop after it that
+    // the train has not reached is skipped, a hold ends, the journey ends (reason Controller) and tracking ends. The reason is public.
+    public DecisionResult TerminateByController(int expectedVersion, Guid atStationId, JourneyReason reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        var last = _stops.FirstOrDefault(s => s.StationId == atStationId);
+        if (last is null)
+        {
+            return DecisionResult.UnknownStop;
+        }
+
+        if (Status != JourneyStatus.Running || last.Status is not (StopStatus.Scheduled or StopStatus.Arrived))
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        Status = JourneyStatus.TerminatedEarly;
+        (ReasonCode, ReasonNote) = (reason.Code, reason.Note);
+        foreach (var stop in _stops.Where(s => s.Sequence > last.Sequence))
+        {
+            stop.TryMoveTo(StopStatus.Skipped);
+        }
+
+        if (Hold is not null)
+        {
+            EndHold(Source.Controller, now);
+        }
+
+        _events.Add(new JourneyTerminatedEarly(Id, atStationId, reason, now));
+        _events.Add(new JourneyEnded(Id, now, JourneyEndReason.Controller));
         SetTracking(TrackingStatus.Ended, now);
         return DecisionResult.Done;
     }

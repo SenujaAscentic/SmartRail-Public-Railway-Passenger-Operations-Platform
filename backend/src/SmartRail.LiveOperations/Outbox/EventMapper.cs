@@ -44,6 +44,9 @@ internal static class EventMapper
         JourneyCancelled e => Envelope(
             journey, eventId, "JourneyCancelled", e.At, Source.Controller, AllStations(journey), new JourneyCancelledPayload(e.Reason)),
 
+        JourneyTerminatedEarly e => Envelope(
+            journey, eventId, "JourneyTerminatedEarly", e.At, Source.Controller, AllStations(journey), new JourneyTerminatedEarlyPayload(e.AtStationId, e.Reason)),
+
         JourneyReinstated e => Envelope(
             journey, eventId, "JourneyReinstated", e.At, Source.Controller, AllStations(journey), new EmptyPayload()),
 

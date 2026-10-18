@@ -18,6 +18,7 @@ internal static class PublicProjection
         ["PlatformChanged"] = ["stationId", "platform", "previousPlatform", "leadTimeLevel", "holdSet"],   // not leadTimeMinutes: staff only
         ["JourneyCancelled"] = ["reason"],
         ["JourneyReinstated"] = [],
+        ["JourneyTerminatedEarly"] = ["atStationId", "reason"],
         ["JourneyHeld"] = ["stationId", "released", "minutes", "reason"],
         ["TrainPositionUpdated"] = ["location", "speedKmh", "lastStationId", "nextStationId", "fractionToNext"],
     };

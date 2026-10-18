@@ -238,6 +238,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller ends a running journey early at a station ahead of the train; the stops after it are skipped (R-14). */
+        post: operations["TerminateJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview": {
         parameters: {
             query?: never;
@@ -687,7 +704,7 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             /** @enum {string} */
-            status: "Planned" | "Running" | "Completed" | "Cancelled";
+            status: "Planned" | "Running" | "Completed" | "Cancelled" | "TerminatedEarly";
             /** Format: int32 */
             delayMinutes: number;
             /** @enum {string} */
@@ -901,6 +918,36 @@ export interface components {
             reason: null | components["schemas"]["JourneyReasonResponse"];
             /** Format: int32 */
             version: number;
+        };
+        JourneyTerminatedEarlyEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyTerminatedEarly";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                atStationId: string;
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
         };
         JourneyToResponse: {
             /** Format: uuid */
@@ -1122,9 +1169,17 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["JourneyTerminatedEarlyEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
+        };
+        TerminateRequest: {
+            /** Format: uuid */
+            atStationId: null | string;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
         TrainPositionUpdatedEvent: {
             /** Format: uuid */
@@ -1844,6 +1899,59 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TerminateJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["TerminateRequest"];
             };
         };
         responses: {

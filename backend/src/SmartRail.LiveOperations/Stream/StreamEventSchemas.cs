@@ -45,6 +45,10 @@ public sealed record JourneyCancelledEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, JourneyCancelledPayload Payload);
 
+public sealed record JourneyTerminatedEarlyEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, JourneyTerminatedEarlyPayload Payload);
+
 public sealed record JourneyReinstatedEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, EmptyPayload Payload);
