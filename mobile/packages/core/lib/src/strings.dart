@@ -27,7 +27,8 @@ abstract final class Strings {
   static const scheduledColumn = 'Sched.';
   static const expectedColumn = 'Exp.';
   static const usuallyPowerSet = 'Usually: power set';
-  static String trainLine(String number, String type, String from, String to) => 'Train $number · $type · $from → $to';
+  /// The name already holds the train type ("Kandy Express"), so the type is not repeated.
+  static String trainLine(String number, String from, String to) => 'Train $number · $from → $to';
   static String betweenStations(String a, String b) => 'Between $a and $b';
   static String atStation(String name) => 'At $name';
 

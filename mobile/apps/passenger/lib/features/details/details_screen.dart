@@ -113,7 +113,7 @@ class _Body extends StatelessWidget {
         Text(journey.name, textAlign: TextAlign.center, style: theme.textTheme.titleLarge),
         const SizedBox(height: spaceXs),
         Text(
-          Strings.trainLine(journey.serviceNumber, journey.trainType, journey.from.name, journey.to.name),
+          Strings.trainLine(journey.serviceNumber, journey.from.name, journey.to.name),
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall,
         ),

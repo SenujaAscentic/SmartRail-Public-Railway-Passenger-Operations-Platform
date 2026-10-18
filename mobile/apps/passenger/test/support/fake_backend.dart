@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -9,9 +10,34 @@ import 'package:http/testing.dart';
 /// A stand-in for the SmartRail backend (same idea as ops-web's fakes): it
 /// answers the public endpoints from lists the test sets up, and remembers the
 /// requests it got.
+/// One open connection to the stream endpoint.
+class FakeStream {
+  FakeStream(this.request);
+
+  final http.BaseRequest request;
+  final controller = StreamController<List<int>>();
+
+  String? get lastEventId => request.headers['Last-Event-ID'];
+
+  /// Whether the app still listens (false after it cancelled or closed the connection).
+  bool get listening => controller.hasListener;
+
+  /// Sends one frame; [data] is encoded as JSON.
+  void frame({String? id, required String event, required Object data}) {
+    final lines = [if (id != null) 'id: $id', 'event: $event', 'data: ${jsonEncode(data)}'];
+    controller.add(utf8.encode('${lines.join('\n')}\n\n'));
+  }
+
+  /// The heartbeat comment line.
+  void heartbeat() => controller.add(utf8.encode(': keep-alive\n\n'));
+
+  /// The server closes the connection.
+  void close() => controller.close();
+}
+
 class FakeBackend {
   FakeBackend() {
-    client = MockClient(_handle);
+    client = MockClient.streaming(_handleStreaming);
   }
 
   late final MockClient client;
@@ -37,9 +63,33 @@ class FakeBackend {
   /// The HTTP `Date` header of the journey answer (the server's time); null leaves it out.
   String? dateHeader;
 
+  /// Plain requests (stations, search, journey). Stream connections are in [streams].
   final requests = <Uri>[];
 
-  Future<http.Response> _handle(http.Request request) async {
+  /// Every connection to `GET /stream`, oldest first. A test sends frames with
+  /// `streams.last.frame(...)` and ends one with `close()`.
+  final streams = <FakeStream>[];
+
+  /// While true, `GET /stream` answers 503 instead of opening.
+  bool refuseStream = false;
+
+  Future<http.StreamedResponse> _handleStreaming(http.BaseRequest request, http.ByteStream body) async {
+    if (request.url.path == '/api/v1/stream') {
+      if (refuseStream) return http.StreamedResponse(const Stream.empty(), 503, request: request);
+      final stream = FakeStream(request);
+      streams.add(stream);
+      return http.StreamedResponse(stream.controller.stream, 200, headers: {'content-type': 'text/event-stream'}, request: request);
+    }
+    final response = await _handle(request);
+    return http.StreamedResponse(
+      http.ByteStream.fromBytes(response.bodyBytes),
+      response.statusCode,
+      headers: response.headers,
+      request: request,
+    );
+  }
+
+  Future<http.Response> _handle(http.BaseRequest request) async {
     requests.add(request.url);
     switch (request.url.path) {
       case '/api/v1/stations':

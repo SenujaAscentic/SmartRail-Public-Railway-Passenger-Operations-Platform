@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show HttpDate;
 
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../models/journey_detail.dart';
 import '../models/journey_summary.dart';
 import '../models/station.dart';
+import '../stream/sse_parser.dart';
 
 /// A failed call: the server answered with an error, answered with something
 /// that is not the expected JSON, or could not be reached at all.
@@ -23,6 +25,15 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($statusCode $code: $message)';
+}
+
+/// The live stream went quiet for longer than allowed (no bytes, not even the
+/// 15-second heartbeat), so the connection is treated as lost.
+class StreamLostException implements Exception {
+  const StreamLostException();
+
+  @override
+  String toString() => 'StreamLostException()';
 }
 
 /// A journey and the server's time when it answered (the HTTP `Date` header),
@@ -81,6 +92,91 @@ class SmartRailApi {
     } on TypeError catch (e) {
       throw ApiException('Unexpected data: $e');
     }
+  }
+
+  /// The public live stream of one journey (`GET /api/v1/stream?journeyIds=`).
+  /// Sends `Last-Event-ID` when resuming. The stream ends with an error
+  /// ([ApiException] if the server refused, [StreamLostException] after
+  /// [silenceTimeout] without any bytes) or normally when the server closes it.
+  /// Cancelling the subscription closes the connection at once.
+  Stream<SseFrame> openStream(
+    String journeyId, {
+    String? lastEventId,
+    Duration silenceTimeout = const Duration(seconds: 45),
+  }) {
+    late final StreamController<SseFrame> controller;
+    StreamSubscription<SseFrame>? upstream;
+    Timer? watchdog;
+    var cancelled = false;
+
+    Future<void> connect() async {
+      final request = http.Request(
+        'GET',
+        _base.replace(path: '/api/v1/stream', queryParameters: {'journeyIds': journeyId}),
+      )
+        ..headers['Accept'] = 'text/event-stream'
+        ..headers['Cache-Control'] = 'no-cache';
+      if (lastEventId != null) request.headers['Last-Event-ID'] = lastEventId;
+
+      try {
+        final response = await _client.send(request);
+        if (cancelled) {
+          await response.stream.drain<void>();
+          return;
+        }
+        if (response.statusCode != 200) {
+          await response.stream.drain<void>();
+          throw ApiException('HTTP ${response.statusCode}', statusCode: response.statusCode);
+        }
+
+        // Silence detection: every chunk of bytes (a frame or the heartbeat
+        // comment) starts the wait again; if it runs out, the connection is
+        // closed and the stream ends with a StreamLostException.
+        void arm() {
+          watchdog?.cancel();
+          watchdog = Timer(silenceTimeout, () {
+            upstream?.cancel();
+            controller.addError(const StreamLostException());
+            controller.close();
+          });
+        }
+
+        arm();
+        final bytes = response.stream.map((chunk) {
+          arm();
+          return chunk;
+        });
+        upstream = parseSse(bytes).listen(
+          controller.add,
+          onError: (Object error, StackTrace stack) {
+            watchdog?.cancel();
+            controller.addError(error, stack);
+          },
+          onDone: () {
+            watchdog?.cancel();
+            controller.close();
+          },
+        );
+      } on http.ClientException catch (e) {
+        controller.addError(ApiException('Server not reached: ${e.message}'));
+        await controller.close();
+      } on ApiException catch (e) {
+        controller.addError(e);
+        await controller.close();
+      }
+    }
+
+    controller = StreamController<SseFrame>(
+      onListen: connect,
+      onCancel: () {
+        cancelled = true;
+        watchdog?.cancel();
+        // Not returned: a controller that waits for this future before it
+        // delivers "done" would hold the end of the stream back.
+        unawaited(upstream?.cancel());
+      },
+    );
+    return controller.stream;
   }
 
   Future<({Object? body, DateTime? serverTime})> _get(

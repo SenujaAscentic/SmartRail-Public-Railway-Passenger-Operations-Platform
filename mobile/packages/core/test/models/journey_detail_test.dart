@@ -77,6 +77,23 @@ void main() {
       expect(j.stops[3].actualArrival, isNull);
     });
 
+    test('withPosition changes the position and the time of the data, nothing else', () {
+      final j = JourneyDetail.fromJson(load());
+      final at = DateTime.utc(2026, 10, 20, 2);
+      final moved = j.withPosition(
+        const Position(lastStationId: '01a14eb2-015b-732d-aef4-d3a44774841f', nextStationId: '01a14eb2-015b-7b5a-a2da-49d81f392430', fractionToNext: 0.5),
+        at,
+      );
+
+      expect(moved.lastPosition!.fractionToNext, 0.5);
+      expect(moved.freshness.updatedAt, at);
+      expect(moved.freshness.lastSeenAt, at);
+      expect(moved.freshness.lastStation, 'Ragama');
+      expect(moved.freshness.tracking, j.freshness.tracking);
+      expect(moved.status, same(j.status));
+      expect(moved.stops, same(j.stops));
+    });
+
     test('no train set yet is null, not an error', () {
       final json = load()..['trainSet'] = null;
       expect(JourneyDetail.fromJson(json).trainSet, isNull);

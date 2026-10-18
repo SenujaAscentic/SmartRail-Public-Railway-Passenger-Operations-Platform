@@ -10,6 +10,8 @@ export 'src/models/journey_summary.dart';
 export 'src/models/station.dart';
 export 'src/models/train_set.dart';
 export 'src/status/status_texts.dart';
+export 'src/stream/live_message.dart';
+export 'src/stream/sse_parser.dart';
 export 'src/strings.dart';
 export 'src/theme/app_theme.dart';
 export 'src/theme/status_theme.dart';

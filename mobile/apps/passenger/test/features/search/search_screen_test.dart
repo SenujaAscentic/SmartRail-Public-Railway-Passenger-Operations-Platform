@@ -217,7 +217,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(backend.requests.last.path, '/api/v1/journeys/abc-123');
-    expect(find.text('Train 1001 · Express · Colombo Fort → Kandy'), findsOneWidget);
+    expect(find.text('Train 1001 · Colombo Fort → Kandy'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();

@@ -59,7 +59,7 @@ void main() {
     await pumpDetails(tester, backend);
 
     expect(find.text('Kandy Express'), findsOneWidget);
-    expect(find.text('Train 1001 · Express · Colombo Fort → Kandy'), findsOneWidget);
+    expect(find.text('Train 1001 · Colombo Fort → Kandy'), findsOneWidget);
     expect(find.text('On time'), findsOneWidget);
     expect(backend.requests.single.path, '/api/v1/journeys/journey-1');
   });

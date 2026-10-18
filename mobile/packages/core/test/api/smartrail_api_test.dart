@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -126,6 +127,86 @@ void main() {
     test('an answer with a missing field is an ApiException, not a crash', () async {
       final api = SmartRailApi(MockClient((_) async => http.Response('{"journeyId":"x"}', 200)), base);
       await expectLater(api.getJourney('x'), throwsA(isA<ApiException>()));
+    });
+  });
+
+  group('openStream', () {
+    http.StreamedResponse streamed(Stream<List<int>> bytes, {int status = 200}) =>
+        http.StreamedResponse(bytes, status, headers: {'content-type': 'text/event-stream'});
+
+    test('connects to GET /api/v1/stream?journeyIds= and gives the frames', () async {
+      late http.BaseRequest seen;
+      final api = SmartRailApi(
+        MockClient.streaming((request, _) async {
+          seen = request;
+          return streamed(Stream.value(utf8.encode('id: 5\nevent: DelayChanged\ndata: {}\n\n')));
+        }),
+        base,
+      );
+
+      final frames = await api.openStream('j1').toList();
+
+      expect(seen.url.toString(), '$base/api/v1/stream?journeyIds=j1');
+      expect(seen.headers['Accept'], 'text/event-stream');
+      expect(seen.headers.containsKey('Last-Event-ID'), isFalse);
+      expect(frames.single.event, 'DelayChanged');
+      expect(frames.single.id, '5');
+    });
+
+    test('sends Last-Event-ID when resuming', () async {
+      late http.BaseRequest seen;
+      final api = SmartRailApi(
+        MockClient.streaming((request, _) async {
+          seen = request;
+          return streamed(const Stream.empty());
+        }),
+        base,
+      );
+
+      await api.openStream('j1', lastEventId: '1043').toList();
+
+      expect(seen.headers['Last-Event-ID'], '1043');
+    });
+
+    test('a refusal is an ApiException with the status', () async {
+      final api = SmartRailApi(MockClient.streaming((_, _) async => streamed(Stream.value(utf8.encode('no')), status: 400)), base);
+
+      await expectLater(api.openStream('j1').toList(), throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 400)));
+    });
+
+    test('a server that cannot be reached is an ApiException', () async {
+      final api = SmartRailApi(MockClient.streaming((_, _) async => throw http.ClientException('no route')), base);
+
+      await expectLater(api.openStream('j1').toList(), throwsA(isA<ApiException>()));
+    });
+
+    test('no bytes for the silence timeout is a StreamLostException', () async {
+      final controller = StreamController<List<int>>();
+      final api = SmartRailApi(MockClient.streaming((_, _) async => streamed(controller.stream)), base);
+
+      await expectLater(
+        api.openStream('j1', silenceTimeout: const Duration(milliseconds: 50)).toList(),
+        throwsA(isA<StreamLostException>()),
+      );
+      await controller.close();
+    });
+
+    test('a heartbeat comment counts as activity', () async {
+      final controller = StreamController<List<int>>();
+      final api = SmartRailApi(MockClient.streaming((_, _) async => streamed(controller.stream)), base);
+      final frames = <SseFrame>[];
+      final done = Completer<void>();
+      api.openStream('j1', silenceTimeout: const Duration(milliseconds: 150)).listen(frames.add, onDone: done.complete);
+
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        controller.add(utf8.encode(': keep-alive\n\n'));
+      }
+      controller.add(utf8.encode('event: a\ndata: 1\n\n'));
+      await controller.close();
+      await done.future;
+
+      expect(frames.single.event, 'a');
     });
   });
 }

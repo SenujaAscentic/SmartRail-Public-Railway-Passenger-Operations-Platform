@@ -74,6 +74,30 @@ class JourneyDetail {
     return null;
   }
 
+  /// The same journey with a newer position from the stream. Only the position
+  /// and the time the data is from change; everything else stays as loaded.
+  JourneyDetail withPosition(Position position, DateTime at) {
+    String? lastStation;
+    for (final s in stops) {
+      if (s.stationId == position.lastStationId) lastStation = s.name;
+    }
+    return JourneyDetail(
+      journeyId: journeyId,
+      serviceNumber: serviceNumber,
+      name: name,
+      trainType: trainType,
+      serviceDate: serviceDate,
+      status: status,
+      from: from,
+      to: to,
+      freshness: Freshness(freshness.tracking, updatedAt: at, lastSeenAt: at, lastStation: lastStation),
+      lastPosition: position,
+      version: version,
+      stops: stops,
+      trainSet: trainSet,
+    );
+  }
+
   factory JourneyDetail.fromJson(Map<String, dynamic> json) {
     final status = json['status'] as Map<String, dynamic>;
     final freshnessJson = json['freshness'] as Map<String, dynamic>;
