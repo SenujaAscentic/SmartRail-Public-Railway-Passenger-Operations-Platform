@@ -38,7 +38,7 @@ class StatusBadge extends StatelessWidget {
         );
 
   /// A badge with text that is not a journey status, in the neutral style
-  /// (for example "Does not run today").
+  /// with the calendar icon (for example "Does not run today").
   const StatusBadge.neutral(String text, {Key? key, IconData? icon})
       : this._(key: key, text: text, tokenName: 'Scheduled', icon: icon);
 

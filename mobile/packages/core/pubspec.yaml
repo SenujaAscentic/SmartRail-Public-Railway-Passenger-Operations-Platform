@@ -8,10 +8,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Official package (dart.dev). Exact version, checked on pub.dev: 1.6.0, published 2025-11-10.
+  http: 1.6.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Dart team (tools.dart.dev). Exact version, checked on pub.dev: 3.1.4, published 2026-08-28.
+  # Reads backend/openapi.yaml in the contract tests.
+  yaml: 3.1.4
 flutter:
   # Noto Sans / Noto Sans Mono, bundled (SIL OFL 1.1, see fonts/OFL.txt). No google_fonts package.
   fonts:

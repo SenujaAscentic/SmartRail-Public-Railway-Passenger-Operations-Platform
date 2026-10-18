@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/journey_status.dart';
+import '../strings.dart';
 import '../status/status_texts.dart';
 import '../theme/app_theme.dart';
 import '../theme/status_theme.dart';
@@ -76,8 +77,8 @@ class StopRow extends StatelessWidget {
       if (isYourStation || isDestination || platform != null)
         Text(
           [
-            if (isYourStation) 'Your station',
-            if (isDestination) 'destination',
+            if (isYourStation) Strings.yourStation,
+            if (isDestination) Strings.destination,
             if (platform != null && previousPlatform == null) platformText(platform!, null),
           ].join(' · '),
           style: textTheme.bodySmall,
@@ -101,7 +102,7 @@ class StopRow extends StatelessWidget {
               const SizedBox(width: spaceXs),
               Flexible(
                 child: Text(
-                  'Food available at $name',
+                  Strings.foodAvailableAt(name),
                   style: textTheme.labelLarge!.copyWith(color: scheme.primary, fontSize: textSmall),
                 ),
               ),

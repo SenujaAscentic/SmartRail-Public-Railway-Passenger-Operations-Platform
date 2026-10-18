@@ -5,6 +5,8 @@ import 'tokens.dart';
 
 const _fontPackage = 'smartrail_core';
 
+final buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg));
+
 /// Material 3 theme for the passenger app, built from the tokens. The
 /// ColorScheme is written out by hand: ColorScheme.fromSeed would invent its own
 /// palette and lose the checked contrast (design handoff rule 11).
@@ -66,14 +68,15 @@ ThemeData buildPassengerTheme(Brightness brightness) {
     dividerColor: c.border,
     // Every tap target is at least 48 px (tokens.json -> touchTarget.passenger).
     materialTapTargetSize: MaterialTapTargetSize.padded,
+    // Buttons use the token radius (rounded rectangle, as in the hi-fi) and are at least 48 px high.
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget)),
+      style: FilledButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget), shape: buttonShape),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget)),
+      style: OutlinedButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget), shape: buttonShape),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget)),
+      style: TextButton.styleFrom(minimumSize: const Size(touchTarget, touchTarget), shape: buttonShape),
     ),
     extensions: [StatusTheme(dark: dark)],
   );

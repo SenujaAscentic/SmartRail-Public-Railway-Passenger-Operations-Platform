@@ -29,6 +29,9 @@ String statusText(JourneyStatus status, {String? terminatesAt}) {
   }
 }
 
+/// Saved train that does not run today (US-P6); fixture S-28.
+const doesNotRunTodayText = 'Does not run today';
+
 /// "59 min", "1 h", "1 h 15 min": hours from 60 minutes (decided 12 Oct, fixtures S-05..S-05c).
 String minutesText(int minutes) {
   if (minutes < 60) return '$minutes min';

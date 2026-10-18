@@ -18,8 +18,9 @@ class AgeLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = freshness.tracking == Tracking.live ? freshnessText(freshness, age: age) : null;
     if (text == null) return const SizedBox.shrink();
-    // The dot reuses the "On time" green; the words carry the meaning.
-    final dot = Theme.of(context).extension<StatusTheme>()!.named('OnTime').fg;
+    // The dot uses the accent colour, not the "On time" green, so it is never
+    // read as a status next to "8 min late". The words carry the meaning.
+    final dot = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

@@ -31,6 +31,7 @@
     { "id": "S-24", "input": { "freshness": { "tracking": "Stale", "lastSeenAt": "2026-10-14T02:08:00Z" } }, "expected": { "text": "Last seen 07:38", "icon": "signal-weak", "note": "no station known" } },
     { "id": "S-25", "input": { "freshness": { "tracking": "NotStarted" } }, "expected": { "text": "", "note": "nothing to say" } },
     { "id": "S-26", "input": { "freshness": { "tracking": "Ended" } }, "expected": { "text": "", "note": "nothing to say" } },
-    { "id": "S-27", "input": { "freshness": { "tracking": "Live" } }, "expected": { "text": "", "note": "no age known, so no age is shown (no Date header)" } }
+    { "id": "S-27", "input": { "freshness": { "tracking": "Live" } }, "expected": { "text": "", "note": "no age known, so no age is shown (no Date header)" } },
+    { "id": "S-28", "input": { "runsToday": false }, "expected": { "text": "Does not run today", "icon": "calendar", "note": "saved trip whose train is not in today's calendar (US-P6); neutral style" } }
   ]
 }

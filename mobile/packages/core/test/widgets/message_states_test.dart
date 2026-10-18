@@ -8,7 +8,7 @@ void main() {
   setUpAll(loadAppFonts);
 
   testWidgets('empty state: the "no direct trains" text and an icon', (tester) async {
-    await pumpThemed(tester, const SizedBox(height: 400, child: EmptyState(message: noDirectTrainsText)));
+    await pumpThemed(tester, const SizedBox(height: 400, child: EmptyState(message: Strings.noDirectTrains)));
     expect(find.text('No direct trains between these stations on this date'), findsOneWidget);
     expect(find.byIcon(Icons.search_off), findsOneWidget);
     expect(find.byType(OutlinedButton), findsNothing);

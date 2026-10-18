@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 
-/// Text for a search with no result (US-P1 AC5, A-08).
-const noDirectTrainsText = 'No direct trains between these stations on this date';
-
 /// A centred icon and message, with an optional action button (48 px high).
-/// The screens pass the wording; only [noDirectTrainsText] is fixed by the stories.
+/// The screens pass the wording (see strings.dart).
 class EmptyState extends StatelessWidget {
   const EmptyState({super.key, required this.message, this.icon = Icons.search_off, this.actionLabel, this.onAction})
       : assert((actionLabel == null) == (onAction == null), 'give both actionLabel and onAction, or neither');

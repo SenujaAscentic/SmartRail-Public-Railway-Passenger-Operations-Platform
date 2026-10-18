@@ -1,0 +1,92 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../models/journey_summary.dart';
+import '../models/station.dart';
+
+/// A failed call: the server answered with an error, answered with something
+/// that is not the expected JSON, or could not be reached at all.
+class ApiException implements Exception {
+  const ApiException(this.message, {this.statusCode, this.code});
+
+  /// For logs and developers only; screens show their own wording (strings.dart).
+  final String message;
+
+  /// HTTP status; null when the server was not reached.
+  final int? statusCode;
+
+  /// The `code` of an RFC 9457 problem (API contract §6), e.g. `VALIDATION_FAILED`.
+  final String? code;
+
+  @override
+  String toString() => 'ApiException($statusCode $code: $message)';
+}
+
+/// Public (no sign-in) endpoints of API contract §3.1 that the passenger app uses.
+/// The [http.Client] is passed in, so tests can use a fake (ADR-12).
+class SmartRailApi {
+  SmartRailApi(this._client, String baseUrl) : _base = Uri.parse(baseUrl);
+
+  final http.Client _client;
+  final Uri _base;
+
+  /// Type-ahead: up to 10 stations whose name matches [query].
+  Future<List<Station>> searchStations(String query) async {
+    final body = await _get('/api/v1/stations', {'query': query});
+    return _list(body, Station.fromJson);
+  }
+
+  /// Direct journeys from station [fromId] to station [toId] on [date] (`YYYY-MM-DD`).
+  Future<List<JourneySummary>> searchJourneys({
+    required String fromId,
+    required String toId,
+    required String date,
+  }) async {
+    final body = await _get('/api/v1/journeys/search', {'from': fromId, 'to': toId, 'date': date});
+    return _list(body, JourneySummary.fromJson);
+  }
+
+  Future<Object?> _get(String path, Map<String, String> query) async {
+    final uri = _base.replace(path: path, queryParameters: query);
+    final http.Response response;
+    try {
+      response = await _client.get(uri, headers: {'Accept': 'application/json'});
+    } on http.ClientException catch (e) {
+      throw ApiException('Server not reached: ${e.message}');
+    }
+    if (response.statusCode != 200) throw _errorFrom(response);
+    try {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException catch (e) {
+      throw ApiException('Answer is not JSON: ${e.message}', statusCode: response.statusCode);
+    }
+  }
+
+  ApiException _errorFrom(http.Response response) {
+    String? code;
+    String message = 'HTTP ${response.statusCode}';
+    try {
+      final problem = jsonDecode(utf8.decode(response.bodyBytes));
+      if (problem is Map<String, dynamic>) {
+        code = problem['code'] as String?;
+        message = (problem['title'] as String?) ?? message;
+      }
+    } on FormatException {
+      // Not a problem document: the status code is all we know.
+    }
+    return ApiException(message, statusCode: response.statusCode, code: code);
+  }
+
+  List<T> _list<T>(Object? body, T Function(Map<String, dynamic>) parse) {
+    if (body is! List) throw const ApiException('Expected a JSON list');
+    try {
+      return [for (final item in body) parse(item as Map<String, dynamic>)];
+    } on FormatException catch (e) {
+      throw ApiException('Unexpected data: ${e.message}');
+    } on TypeError catch (e) {
+      // A missing or wrongly typed field in an item.
+      throw ApiException('Unexpected data: $e');
+    }
+  }
+}

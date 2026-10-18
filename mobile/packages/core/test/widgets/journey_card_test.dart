@@ -17,8 +17,8 @@ JourneyCard card({
   VoidCallback? onTap,
 }) =>
     JourneyCard(
+      serviceNumber: '1001',
       name: 'Kandy Express',
-      trainType: 'Express',
       status: status,
       scheduledDeparture: t(11, 50),
       scheduledArrival: t(14, 28),
@@ -41,7 +41,8 @@ void main() {
     expect(find.text('17:20 → 19:58'), findsOneWidget);
     expect(find.text('On time'), findsOneWidget);
     expect(find.textContaining('scheduled'), findsNothing);
-    expect(find.textContaining('Kandy Express', findRichText: true), findsOneWidget);
+    expect(find.textContaining('1001 Kandy Express', findRichText: true), findsOneWidget);
+    expect(find.textContaining('· Express', findRichText: true), findsNothing);
     expect(find.text('Platform 1'), findsOneWidget);
   });
 
@@ -74,6 +75,7 @@ void main() {
   testWidgets('not running today: neutral badge, no status text', (tester) async {
     await pumpThemed(tester, card(status: const JourneyStatus(StatusKind.onTime, delayMinutes: 0), notRunningToday: true));
     expect(find.text('Does not run today'), findsOneWidget);
+    expect(tester.widget<Icon>(find.byType(Icon)).icon, Icons.calendar_today);
     expect(find.text('On time'), findsNothing);
   });
 

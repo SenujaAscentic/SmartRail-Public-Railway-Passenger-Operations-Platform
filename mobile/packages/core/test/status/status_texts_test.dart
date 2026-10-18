@@ -52,6 +52,9 @@ String _render(Map<String, dynamic> input, DateTime now) {
     // null (nothing to say) is written as an empty text in the fixtures.
     return freshnessText(f, age: updated == null ? null : now.difference(updated)) ?? '';
   }
+  if (input['runsToday'] == false) {
+    return doesNotRunTodayText;
+  }
   if (input.containsKey('offline')) {
     return offlineText(Duration(seconds: input['secondsSinceLastUpdate'] as int));
   }

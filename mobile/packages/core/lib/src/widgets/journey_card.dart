@@ -7,18 +7,14 @@ import '../theme/tokens.dart';
 import '../time/colombo_time.dart';
 import 'status_badge.dart';
 
-/// Text of the "not running today" badge (US-P6). Not in
-/// shared/status-fixtures.json yet: pending Senuja's approval.
-const doesNotRunTodayText = 'Does not run today';
-
 /// One search result: times, status, train and platform. Shows what the backend
 /// sent; it calculates nothing. The scheduled times appear (struck through,
 /// in a second line) only when they differ from the expected ones.
 class JourneyCard extends StatelessWidget {
   const JourneyCard({
     super.key,
+    required this.serviceNumber,
     required this.name,
-    required this.trainType,
     required this.status,
     required this.scheduledDeparture,
     required this.scheduledArrival,
@@ -30,8 +26,9 @@ class JourneyCard extends StatelessWidget {
     this.onTap,
   });
 
+  /// "1001"; shown before the name, as in "1001 Kandy Express" (the name already holds the type).
+  final String serviceNumber;
   final String name;
-  final String trainType;
   final JourneyStatus status;
   final DateTime scheduledDeparture;
   final DateTime scheduledArrival;
@@ -74,7 +71,7 @@ class JourneyCard extends StatelessWidget {
               ),
               const SizedBox(width: spaceSm),
               notRunningToday
-                  ? const StatusBadge.neutral(doesNotRunTodayText, icon: Icons.event_busy)
+                  ? const StatusBadge.neutral(doesNotRunTodayText)
                   : StatusBadge.journey(status),
             ],
           ),
@@ -92,8 +89,10 @@ class JourneyCard extends StatelessWidget {
               Expanded(
                 child: Text.rich(
                   TextSpan(children: [
-                    TextSpan(text: name, style: Theme.of(context).textTheme.labelLarge!.copyWith(fontSize: textSmall)),
-                    TextSpan(text: ' · $trainType', style: small),
+                    TextSpan(
+                      text: '$serviceNumber $name',
+                      style: Theme.of(context).textTheme.labelLarge!.copyWith(fontSize: textSmall),
+                    ),
                   ]),
                 ),
               ),
