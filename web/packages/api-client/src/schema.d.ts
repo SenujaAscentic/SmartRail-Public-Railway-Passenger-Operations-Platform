@@ -170,6 +170,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller holds the train at a station. Its expected departure follows the clock until it is released (R-22). */
+        post: operations["HoldJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/hold/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller lets a held train go. */
+        post: operations["ReleaseHold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -398,6 +432,16 @@ export interface components {
             index: number;
             reason: string;
         };
+        HoldRequest: {
+            /** Format: uuid */
+            stationId: null | string;
+            /** Format: int32 */
+            minutes: null | number;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
         JourneyDetailFreshnessResponse: {
             tracking: string;
             /** Format: date-time */
@@ -464,6 +508,39 @@ export interface components {
             expectedDeparture: null | string;
             platform: string;
             previousPlatform: null | string;
+        };
+        JourneyHeldEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyHeld";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                released: boolean;
+                /** Format: int32 */
+                minutes: null | number;
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
         };
         JourneyHoldResponse: {
             /** Format: uuid */
@@ -753,7 +830,7 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
         };
@@ -1252,6 +1329,112 @@ export interface operations {
         };
     };
     ClearDelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HoldJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["HoldRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleaseHold: {
         parameters: {
             query?: never;
             header?: never;

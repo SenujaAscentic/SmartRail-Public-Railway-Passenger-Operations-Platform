@@ -29,6 +29,10 @@ public sealed record JourneyEndedEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, JourneyEndedPayload Payload);
 
+public sealed record JourneyHeldEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, JourneyHeldPayload Payload);
+
 public sealed record TrainPositionUpdatedEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, TrainPositionUpdatedPayload Payload);

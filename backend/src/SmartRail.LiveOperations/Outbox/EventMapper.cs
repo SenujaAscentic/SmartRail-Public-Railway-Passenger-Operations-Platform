@@ -29,6 +29,12 @@ internal static class EventMapper
             new TrainPositionUpdatedPayload(
                 new GeoLocation(e.Location.Latitude, e.Location.Longitude), e.SpeedKmh, e.LastStationId, e.NextStationId, e.FractionToNext)),
 
+        // The held station's display and every station after it need to hear about the hold (the station may already be behind the
+        // train when a release comes from the train leaving, so it is named explicitly).
+        JourneyHeld e => Envelope(
+            journey, eventId, "JourneyHeld", e.At, e.Source, RemainingStations(journey).Union([e.StationId]).ToList(),
+            new JourneyHeldPayload(e.StationId, e.Released, e.Minutes, e.Reason)),
+
         // Every stop's display shows a running or finished train, so both events name all the stops.
         JourneyStarted e => Envelope(
             journey, eventId, "JourneyStarted", e.At, Source.Crew, AllStations(journey),

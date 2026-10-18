@@ -31,6 +31,9 @@ public sealed record EmptyPayload;
 
 public sealed record JourneyEndedPayload(JourneyEndReason Reason);
 
+// JourneyHeld: a hold was set (Released false, with its minutes and reason) or ended (Released true: the controller released it or the train left).
+public sealed record JourneyHeldPayload(Guid StationId, bool Released, int? Minutes, JourneyReason? Reason);
+
 public sealed record GeoLocation(double Latitude, double Longitude);
 
 public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);

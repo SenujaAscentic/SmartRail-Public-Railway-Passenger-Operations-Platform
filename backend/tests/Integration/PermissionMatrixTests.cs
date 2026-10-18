@@ -136,6 +136,18 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
         { "Driver", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
         { "DriverCab", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/hold and /hold/release: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold", HttpStatusCode.Forbidden },
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/hold/release", HttpStatusCode.Forbidden },
     };
 
     [Theory]

@@ -28,5 +28,10 @@ public sealed record StopStatusChanged(
 public sealed record DelayChanged(
     Guid JourneyId, int DelayMinutes, int PreviousDelayMinutes, Source Source, DateTime At, JourneyReason? Reason = null) : IDomainEvent;
 
+// The controller put a hold on the train at a station, or released it (also: the train left, which ends the hold). `Source` is
+// Controller for a decision and the source of the departure otherwise. Minutes and Reason are given when it is set.
+public sealed record JourneyHeld(
+    Guid JourneyId, Guid StationId, bool Released, int? Minutes, JourneyReason? Reason, Source Source, DateTime At) : IDomainEvent;
+
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;

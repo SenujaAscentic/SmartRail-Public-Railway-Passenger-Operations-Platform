@@ -35,7 +35,7 @@ internal static class JourneyViewBuilder
         new(journey.Id, service.Number, name, service.TrainType, journey.ServiceDate, Status(journey),
             From(journey, from, names), To(journey, to, names),
             new JourneyFreshnessResponse(journey.Tracking.ToString(), journey.LastPositionAt),
-            Hold: null, Reason(journey), journey.ControlVersion);
+            Hold(journey), Reason(journey), journey.ControlVersion);
 
     public static JourneyDetailResponse Detail(
         OperationalJourney journey, IReadOnlyDictionary<Guid, string> names, ServiceDetails service, TrainSetDetails? trainSet)
@@ -51,7 +51,7 @@ internal static class JourneyViewBuilder
             journey.Id, service.Number, Name(names[stops[^1].StationId], service.TrainType), service.TrainType, journey.ServiceDate,
             Status(journey), From(journey, stops[0], names), To(journey, stops[^1], names),
             new JourneyDetailFreshnessResponse(journey.Tracking.ToString(), journey.LastPositionAt, position),
-            Hold: null, Reason(journey), journey.ControlVersion,
+            Hold(journey), Reason(journey), journey.ControlVersion,
             stops.Select(s => new JourneyStopResponse(
                 s.Sequence, s.StationId, names[s.StationId], s.CallType.ToString(), s.Status.ToString(), IsAdded: false,
                 s.ScheduledArrival, s.ExpectedArrival(delay), s.ActualArrival,
@@ -60,6 +60,9 @@ internal static class JourneyViewBuilder
             trainSet is null ? null : new TrainSetResponse(
                 trainSet.Code, trainSet.Traction, trainSet.Coaches.Select(c => new CoachResponse(c.Position, c.Class, c.Seating)).ToList()));
     }
+
+    private static JourneyHoldResponse? Hold(OperationalJourney journey) =>
+        journey.Hold is { } hold ? new JourneyHoldResponse(hold.StationId, hold.Minutes) : null;
 
     private static JourneyReasonResponse? Reason(OperationalJourney journey) =>
         journey.Reason is { } reason ? new JourneyReasonResponse(reason.Code, reason.Note) : null;

@@ -80,6 +80,7 @@ public static class LiveOperationsModule
         CrewPositionsEndpoint.Map(routes);
         GetJourneyEndpoint.Map(routes);
         DelayEndpoints.Map(routes);
+        HoldEndpoints.Map(routes);
         return routes;
     }
 }

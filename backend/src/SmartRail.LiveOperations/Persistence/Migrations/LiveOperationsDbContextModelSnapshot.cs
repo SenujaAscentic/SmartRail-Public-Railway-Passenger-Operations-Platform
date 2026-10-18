@@ -47,6 +47,21 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<double?>("FractionToNext")
                         .HasColumnType("double precision");
 
+                    b.Property<int?>("HoldMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HoldReasonCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HoldReasonNote")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("HoldSetAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("HoldStationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("LastDecisionAt")
                         .HasColumnType("timestamp with time zone");
 

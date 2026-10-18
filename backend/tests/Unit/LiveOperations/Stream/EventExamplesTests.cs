@@ -79,6 +79,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("JourneyHeld")]
     [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
@@ -176,6 +177,15 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void JourneyHeld_as_sent_has_the_shape_of_its_example()
+    {
+        var journey = Journey();
+        journey.SetHoldByController(0, S2, 10, new JourneyReason("Congestion", "Waiting for the platform"), Guid.NewGuid(), At(6, 51));
+
+        Assert.Equal(Shape.Of(Example("JourneyHeld")), Shape.Of(RealEvent<JourneyHeld>(journey)));
+    }
+
+    [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
         var real = JsonSerializer.SerializeToElement(SnapshotReader.ToSnapshot(Journey(), sequence: 1), EventJson.Options);
@@ -200,6 +210,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged", typeof(DataFreshnessChangedEvent))]
     [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
     [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
+    [InlineData("JourneyHeld", typeof(JourneyHeldEvent))]
     [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
@@ -218,6 +229,7 @@ public class EventExamplesTests
     [InlineData("DataFreshnessChanged")]
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
+    [InlineData("JourneyHeld")]
     [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {

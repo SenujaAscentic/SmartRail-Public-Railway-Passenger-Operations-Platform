@@ -52,6 +52,8 @@ internal sealed class DecisionHandler(
                 {
                     case DecisionResult.StaleVersion:
                         return new Outcome(await VersionConflictAsync(http, journey, now, ct), null);
+                    case DecisionResult.UnknownStop:
+                        return new Outcome(Problems.Validation(http, new() { ["stationId"] = ["The station is not a stop of this journey."] }), null);
                     case DecisionResult.InvalidState:
                         return new Outcome(Problems.InvalidState(http, refused), null);
                 }

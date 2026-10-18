@@ -424,6 +424,98 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/hold':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller holds the train at a station. Its expected departure follows the clock until it is released (R-22).
+      operationId: HoldJourney
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/HoldRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/hold/release':
+    post:
+      tags:
+        - LiveOperations
+      summary: The controller lets a held train go.
+      operationId: ReleaseHold
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -922,6 +1014,38 @@ components:
           format: int32
         reason:
           type: string
+    HoldRequest:
+      required:
+        - stationId
+        - minutes
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        stationId:
+          type:
+            - 'null'
+            - string
+          format: uuid
+        minutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     JourneyDetailFreshnessResponse:
       required:
         - tracking
@@ -1096,6 +1220,80 @@ components:
           type:
             - 'null'
             - string
+    JourneyHeldEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - JourneyHeld
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - released
+            - minutes
+            - reason
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            released:
+              type: boolean
+            minutes:
+              type:
+                - 'null'
+                - integer
+              format: int32
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
     JourneyHoldResponse:
       required:
         - stationId
@@ -1827,6 +2025,7 @@ components:
         - $ref: '#/components/schemas/DataFreshnessChangedEvent'
         - $ref: '#/components/schemas/JourneyStartedEvent'
         - $ref: '#/components/schemas/JourneyEndedEvent'
+        - $ref: '#/components/schemas/JourneyHeldEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
       discriminator:
@@ -1837,6 +2036,7 @@ components:
           DataFreshnessChanged: '#/components/schemas/DataFreshnessChangedEvent'
           JourneyStarted: '#/components/schemas/JourneyStartedEvent'
           JourneyEnded: '#/components/schemas/JourneyEndedEvent'
+          JourneyHeld: '#/components/schemas/JourneyHeldEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:
       required:
