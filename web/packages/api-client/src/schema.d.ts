@@ -119,6 +119,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/crew/journeys/{journeyId}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A batch of GPS fixes from the cab tablet of the assigned driver, for a running journey. Fixes that fail the checks (R-08) are listed, not stored. */
+        post: operations["PostPositions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/journeys/{journeyId}": {
         parameters: {
             query?: never;
@@ -346,6 +363,11 @@ export interface components {
                 }[];
             };
         };
+        DiscardedPosition: {
+            /** Format: int32 */
+            index: number;
+            reason: string;
+        };
         JourneyDetailFreshnessResponse: {
             tracking: string;
             /** Format: date-time */
@@ -556,6 +578,30 @@ export interface components {
         PlatformResponse: {
             number: string;
             inService: boolean;
+        };
+        PositionBatchRequest: {
+            /** Format: uuid */
+            clientActionId: null | string;
+            positions: null | components["schemas"]["PositionRequest"][];
+        };
+        PositionBatchResult: {
+            /** Format: int32 */
+            accepted: number;
+            discarded: components["schemas"]["DiscardedPosition"][];
+        };
+        PositionRequest: {
+            /** Format: double */
+            lat: null | number;
+            /** Format: double */
+            lng: null | number;
+            /** Format: double */
+            speedKmh: null | number;
+            /** Format: double */
+            accuracyM: null | number;
+            /** Format: date-time */
+            gpsTime: null | string;
+            /** Format: date-time */
+            deviceTime: null | string;
         };
         PositionResponse: {
             /** Format: double */
@@ -928,6 +974,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CrewJourneyResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PostPositions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PositionBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionBatchResult"];
                 };
             };
             /** @description Bad Request */

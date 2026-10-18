@@ -145,6 +145,15 @@ Notation: **Who** = policy; **Story** = main story served.
 
 Starting is not a controller decision: it does not change the control version (R-18). `Start` makes the journey `Running`; the tracking status stays `NotStarted` until the first position is accepted (domain model 4.4). `End` makes it `Completed` and the tracking `Ended`. Both are announced on the stream as `JourneyStarted` (public payload **empty**: the tablet and cab session are staff-only, T-07) and `JourneyEnded { reason }`.
 
+**Positions (decided 18 Oct 2026).** Body `{ "clientActionId": "<uuid>", "positions": [ { "lat", "lng", "speedKmh", "accuracyM"?, "gpsTime"?, "deviceTime" } ] }`, 1 to 100 fixes, times as UTC ISO 8601 (`gpsTime` is the time the GPS gave, `deviceTime` the tablet's own clock; R-09 uses `gpsTime`, else `deviceTime` corrected by the offset measured at cab sign-in). Answer `200 { "accepted": n, "discarded": [ { "index", "reason" } ] }`; a discarded fix is one that failed R-08 (`OlderThanLastAccepted`, `OffRoute`, `ImpliedSpeedTooHigh`) and is not used. The fixes are worked through **oldest first**, whatever their order in the request. A repeated `clientActionId` is answered with the identical original answer and changes nothing. A badly shaped body is `400 VALIDATION_FAILED` with the field named (`positions[2].lat`). How each part of **R-07** is answered:
+
+| R-07 clause | Answer |
+|---|---|
+| A registered cab device with an active cab session | The token itself is refused: `401 UNAUTHENTICATED` once the session has ended (section 6). A tablet that is unknown or deactivated cannot sign in, so it has no token. (A tablet deactivated *after* it signed in keeps its token for at most one access-token life, 15 min: threat T-12.) A token without a cab session (a phone, staff) is `403` |
+| The journey's assigned driver | `403 OUT_OF_SCOPE`, logged with ids only; also when the journey has no driver |
+| A journey that is Running | `403 FORBIDDEN` (R-07 says 403), for Planned and Completed journeys alike |
+| Unknown or malformed journey id | `404 NOT_FOUND` |
+
 The **simulator** signs in as a seeded cab device and uses exactly these endpoints (US-B3).
 
 ### 3.5 Display devices

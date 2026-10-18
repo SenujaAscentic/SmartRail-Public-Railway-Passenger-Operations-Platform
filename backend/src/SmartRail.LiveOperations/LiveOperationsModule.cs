@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
 using SmartRail.LiveOperations.Features.CrewJourney;
+using SmartRail.LiveOperations.Features.CrewPositions;
 using SmartRail.LiveOperations.Features.GetJourney;
 using SmartRail.LiveOperations.Features.Idempotency;
 using SmartRail.LiveOperations.Features.RefreshTracking;
@@ -56,6 +57,7 @@ public static class LiveOperationsModule
         services.AddScoped<TrackingRefresher>();
         services.AddScoped<IdempotencyStore>();
         services.AddScoped<CrewJourneyHandler>();
+        services.AddScoped<CrewPositionsHandler>();
 
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
         services.AddHostedService<JourneyGenerationService>();       // then generates now and every hour
@@ -71,6 +73,7 @@ public static class LiveOperationsModule
         StreamEndpoint.Map(routes);
         SearchJourneysEndpoint.Map(routes);
         CrewJourneyEndpoints.Map(routes);
+        CrewPositionsEndpoint.Map(routes);
         GetJourneyEndpoint.Map(routes);
         return routes;
     }

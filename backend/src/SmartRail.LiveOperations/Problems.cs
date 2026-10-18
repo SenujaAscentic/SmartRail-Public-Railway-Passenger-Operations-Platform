@@ -16,6 +16,11 @@ internal static class Problems
     public static IResult OutOfScope(HttpContext http) =>
         Build(http, StatusCodes.Status403Forbidden, "out-of-scope", "Not allowed", "OUT_OF_SCOPE");
 
+    // 403 FORBIDDEN: the caller is known but the action is refused for a reason that is not about scope (for example R-07: positions
+    // are accepted only while the journey is running).
+    public static IResult Forbidden(HttpContext http, string detail) =>
+        Build(http, StatusCodes.Status403Forbidden, "forbidden", "Not allowed", "FORBIDDEN", detail: detail);
+
     // 409 INVALID_STATE: the action is not allowed in the journey's current state (already running, already ended, ...).
     public static IResult InvalidState(HttpContext http, string detail) =>
         Build(http, StatusCodes.Status409Conflict, "invalid-state", "The request conflicts with the current state", "INVALID_STATE", detail: detail);

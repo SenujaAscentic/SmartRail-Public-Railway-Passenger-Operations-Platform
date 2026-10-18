@@ -116,6 +116,14 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/end", HttpStatusCode.BadRequest },
+
+        // POST /crew/journeys/{id}/positions: CrewCab only (R-07, threat T-19). Empty body: a DriverCab caller gets past the policy and is
+        // answered 400; a phone token (Driver), staff and nobody are refused. Who may post for WHICH journey is in CrewPositionsR07Tests.
+        { "Anonymous", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.BadRequest },
     };
 
     [Theory]

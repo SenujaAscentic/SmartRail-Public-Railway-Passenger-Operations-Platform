@@ -257,6 +257,58 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/crew/journeys/{journeyId}/positions':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'A batch of GPS fixes from the cab tablet of the assigned driver, for a running journey. Fixes that fail the checks (R-08) are listed, not stored.'
+      operationId: PostPositions
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/PositionBatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionBatchResult'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   '/api/v1/journeys/{journeyId}':
     get:
       tags:
@@ -730,6 +782,17 @@ components:
                       - 'null'
                       - string
                     format: date-time
+    DiscardedPosition:
+      required:
+        - index
+        - reason
+      type: object
+      properties:
+        index:
+          type: integer
+          format: int32
+        reason:
+          type: string
     JourneyDetailFreshnessResponse:
       required:
         - tracking
@@ -1279,6 +1342,76 @@ components:
           type: string
         inService:
           type: boolean
+    PositionBatchRequest:
+      required:
+        - clientActionId
+        - positions
+      type: object
+      properties:
+        clientActionId:
+          type:
+            - 'null'
+            - string
+          format: uuid
+        positions:
+          type:
+            - 'null'
+            - array
+          items:
+            $ref: '#/components/schemas/PositionRequest'
+    PositionBatchResult:
+      required:
+        - accepted
+        - discarded
+      type: object
+      properties:
+        accepted:
+          type: integer
+          format: int32
+        discarded:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscardedPosition'
+    PositionRequest:
+      required:
+        - lat
+        - lng
+        - speedKmh
+        - accuracyM
+        - gpsTime
+        - deviceTime
+      type: object
+      properties:
+        lat:
+          type:
+            - 'null'
+            - number
+          format: double
+        lng:
+          type:
+            - 'null'
+            - number
+          format: double
+        speedKmh:
+          type:
+            - 'null'
+            - number
+          format: double
+        accuracyM:
+          type:
+            - 'null'
+            - number
+          format: double
+        gpsTime:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        deviceTime:
+          type:
+            - 'null'
+            - string
+          format: date-time
     PositionResponse:
       required:
         - latitude
