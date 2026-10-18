@@ -21,15 +21,23 @@ internal sealed class SseClient : IDisposable
     public string? ContentType => _response.Content.Headers.ContentType?.MediaType;
     public HttpResponseMessage Response => _response;
 
+    // True once the server has ended the stream (as opposed to a quiet stream that has simply sent nothing yet).
+    public bool IsClosed { get; private set; }
+
     private SseClient(HttpResponseMessage response, StreamReader? reader)
     {
         _response = response;
         _reader = reader;
     }
 
-    public static async Task<SseClient> ConnectAsync(HttpClient http, string pathAndQuery, string? lastEventId, CancellationToken ct)
+    public static async Task<SseClient> ConnectAsync(HttpClient http, string pathAndQuery, string? lastEventId, CancellationToken ct, string? bearerToken = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, pathAndQuery);
+        if (bearerToken is not null)
+        {
+            request.Headers.Add("Authorization", "Bearer " + bearerToken);
+        }
+
         if (lastEventId is not null)
         {
             request.Headers.Add("Last-Event-ID", lastEventId);
@@ -55,6 +63,7 @@ internal sealed class SseClient : IDisposable
                 var line = await _reader!.ReadLineAsync(timer.Token);
                 if (line is null)
                 {
+                    IsClosed = true;
                     return null;   // the server closed the stream
                 }
 

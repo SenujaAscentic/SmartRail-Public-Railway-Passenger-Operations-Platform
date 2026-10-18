@@ -68,6 +68,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Staff event stream (Server-Sent Events): the public events plus `source`. Ends when the access token expires. A station manager sees only their own station. */
+        get: operations["OpsStreamEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/journeys/search": {
         parameters: {
             query?: never;
@@ -232,6 +249,40 @@ export interface paths {
         put?: never;
         /** The controller reinstates a cancelled journey, only before its scheduled start (R-14). */
         post: operations["ReinstateJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller ends a running journey early at a station ahead of the train; the stops after it are skipped (R-14). */
+        post: operations["TerminateJourney"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller skips a stop the train has not reached; later stops gain its scheduled dwell, never below on time (R-21). */
+        post: operations["SkipStop"];
         delete?: never;
         options?: never;
         head?: never;
@@ -687,7 +738,7 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             /** @enum {string} */
-            status: "Planned" | "Running" | "Completed" | "Cancelled";
+            status: "Planned" | "Running" | "Completed" | "Cancelled" | "TerminatedEarly";
             /** Format: int32 */
             delayMinutes: number;
             /** @enum {string} */
@@ -902,6 +953,36 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        JourneyTerminatedEarlyEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "JourneyTerminatedEarly";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                atStationId: string;
+                reason: {
+                    code: string;
+                    note: null | string;
+                };
+            };
+        };
         JourneyToResponse: {
             /** Format: uuid */
             stationId: string;
@@ -1087,6 +1168,34 @@ export interface components {
             code: string;
             name: string;
         };
+        StopSkippedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "StopSkipped";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                /** Format: int32 */
+                sequence: number;
+            };
+        };
         StopStatusChangedEvent: {
             /** Format: uuid */
             eventId: string;
@@ -1122,9 +1231,17 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["StopSkippedEvent"] | components["schemas"]["JourneyTerminatedEarlyEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
+        };
+        TerminateRequest: {
+            /** Format: uuid */
+            atStationId: null | string;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
         TrainPositionUpdatedEvent: {
             /** Format: uuid */
@@ -1285,6 +1402,37 @@ export interface operations {
                 content: {
                     "text/event-stream": components["schemas"]["StreamEvent"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpsStreamEvents: {
+        parameters: {
+            query?: {
+                journeyIds?: string;
+                stationIds?: string;
+                lineIds?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -1838,6 +1986,113 @@ export interface operations {
             header?: never;
             path: {
                 journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TerminateJourney: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["TerminateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SkipStop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
             };
             cookie?: never;
         };

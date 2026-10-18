@@ -16,6 +16,11 @@ internal static class JourneyViewBuilder
             return new JourneyStatusResponse("Cancelled", null);
         }
 
+        if (journey.Status == JourneyStatus.TerminatedEarly)
+        {
+            return new JourneyStatusResponse("TerminatedEarly", null);
+        }
+
         if (journey.Status == JourneyStatus.Completed)
         {
             return new JourneyStatusResponse("Completed", journey.DelayMinutes);

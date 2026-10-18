@@ -122,4 +122,14 @@ public class PublicProjectionTests
         Assert.Single(stops);
         Assert.Equal(S2.ToString(), stops[0]!["stationId"]!.GetValue<string>());
     }
+
+    // T-07: the source travels with the event for the staff stream but the serialiser never writes it, so the public stream cannot send it.
+    [Fact]
+    public void The_source_of_an_event_is_never_serialised_by_the_public_event()
+    {
+        var publicEvent = PublicProjection.Of(Envelope("JourneyEnded", new JsonObject { ["reason"] = "Driver" }), 10)!;
+
+        Assert.Equal("Crew", publicEvent.Source);   // known to the staff stream
+        Assert.DoesNotContain("source", System.Text.Json.JsonSerializer.Serialize(publicEvent, EventJson.Options), StringComparison.OrdinalIgnoreCase);
+    }
 }

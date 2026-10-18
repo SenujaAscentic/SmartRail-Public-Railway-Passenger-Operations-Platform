@@ -317,9 +317,10 @@ Each rule gets unit tests before its code (section 10). Time-dependent rules use
 | DataFreshnessChanged | from, to, lastSeenAt, lastStationId |
 | JourneyHeld | stationId, released (bool), minutes?, reason? `{code, note}` *(minutes added 18 Oct)* |
 | PlatformChanged | stationId, platform, previousPlatform, leadTimeLevel, holdSet (bool); stored also: leadTimeMinutes (staff and audit only, not public) |
+| StopSkipped | stationId, sequence *(public; 18 Oct)* |
 | JourneyCancelled | reason `{code, note}` *(no incidentId until incidents exist, 18 Oct)* |
 | JourneyReinstated | – *(new 18 Oct; public payload `{}`)* |
-| JourneyTerminatedEarly | atStationId, reason |
+| JourneyTerminatedEarly | atStationId, reason `{code, note}` *(public; JourneyEnded with reason Controller follows)* |
 | StopSkipped / StopAdded | stationId, sequence, expectedArrival? (added only) |
 | UnscheduledStopDetected | location, stoppedSince, betweenStationIds[2] |
 | IncidentReported | reportId, type, location, note? |
