@@ -49,7 +49,8 @@ String _render(Map<String, dynamic> input, DateTime now) {
     // The fixture gives updatedAt and a fixed "now"; in the app this age comes
     // from a stopwatch, so here it is derived from the two fixture values.
     final updated = f.updatedAt;
-    return freshnessText(f, age: updated == null ? null : now.difference(updated))!;
+    // null (nothing to say) is written as an empty text in the fixtures.
+    return freshnessText(f, age: updated == null ? null : now.difference(updated)) ?? '';
   }
   if (input.containsKey('offline')) {
     return offlineText(Duration(seconds: input['secondsSinceLastUpdate'] as int));

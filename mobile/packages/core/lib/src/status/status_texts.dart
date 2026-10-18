@@ -12,21 +12,29 @@ String statusText(JourneyStatus status, {String? terminatesAt}) {
     case StatusKind.onTime:
       return 'On time';
     case StatusKind.late:
-      return '$delay min late';
+      return '${minutesText(delay!)} late';
     case StatusKind.early:
-      return '${delay!.abs()} min early';
+      return '${minutesText(delay!.abs())} early';
     case StatusKind.cancelled:
       return 'Cancelled';
     case StatusKind.terminatedEarly:
       return terminatesAt == null ? 'Terminates early' : 'Terminates at $terminatesAt';
     case StatusKind.held:
       // The delay is only added when it is a positive number of minutes.
-      return (delay != null && delay > 0) ? 'Held · $delay min late' : 'Held';
+      return (delay != null && delay > 0) ? 'Held · ${minutesText(delay)} late' : 'Held';
     case StatusKind.notStarted:
       return 'Not started';
     case StatusKind.completed:
       return 'Completed';
   }
+}
+
+/// "59 min", "1 h", "1 h 15 min": hours from 60 minutes (decided 12 Oct, fixtures S-05..S-05c).
+String minutesText(int minutes) {
+  if (minutes < 60) return '$minutes min';
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return m == 0 ? '$h h' : '$h h $m min';
 }
 
 /// "Platform 5 (was 2)" or "Platform 3".
