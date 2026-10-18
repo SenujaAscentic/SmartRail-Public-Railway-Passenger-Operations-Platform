@@ -47,6 +47,11 @@ internal static class EventMapper
         JourneyTerminatedEarly e => Envelope(
             journey, eventId, "JourneyTerminatedEarly", e.At, Source.Controller, AllStations(journey), new JourneyTerminatedEarlyPayload(e.AtStationId, e.Reason)),
 
+        // The skipped station's display, and the stations after it whose expected times may move.
+        StopSkipped e => Envelope(
+            journey, eventId, "StopSkipped", e.At, Source.Controller, RemainingStations(journey).Union([e.StationId]).ToList(),
+            new StopSkippedPayload(e.StationId, e.Sequence)),
+
         JourneyReinstated e => Envelope(
             journey, eventId, "JourneyReinstated", e.At, Source.Controller, AllStations(journey), new EmptyPayload()),
 

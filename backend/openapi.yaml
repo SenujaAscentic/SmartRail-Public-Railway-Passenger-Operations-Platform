@@ -654,6 +654,57 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/skip':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller skips a stop the train has not reached; later stops gain its scheduled dwell, never below on time (R-21).'
+      operationId: SkipStop
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview':
     post:
       tags:
@@ -2833,6 +2884,62 @@ components:
           type: string
         name:
           type: string
+    StopSkippedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - StopSkipped
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - sequence
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            sequence:
+              type: integer
+              format: int32
     StopStatusChangedEvent:
       required:
         - eventId
@@ -2922,6 +3029,7 @@ components:
         - $ref: '#/components/schemas/PlatformChangedEvent'
         - $ref: '#/components/schemas/JourneyCancelledEvent'
         - $ref: '#/components/schemas/JourneyReinstatedEvent'
+        - $ref: '#/components/schemas/StopSkippedEvent'
         - $ref: '#/components/schemas/JourneyTerminatedEarlyEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
       description: 'The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`.'
@@ -2937,6 +3045,7 @@ components:
           PlatformChanged: '#/components/schemas/PlatformChangedEvent'
           JourneyCancelled: '#/components/schemas/JourneyCancelledEvent'
           JourneyReinstated: '#/components/schemas/JourneyReinstatedEvent'
+          StopSkipped: '#/components/schemas/StopSkippedEvent'
           JourneyTerminatedEarly: '#/components/schemas/JourneyTerminatedEarlyEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'
     StreamResync:

@@ -86,6 +86,7 @@ public class EventExamplesTests
     [InlineData("JourneyCancelled")]
     [InlineData("JourneyReinstated")]
     [InlineData("JourneyTerminatedEarly")]
+    [InlineData("StopSkipped")]
     [InlineData("TrainPositionUpdated")]
     [InlineData("snapshot")]
     public void Examples_show_no_staff_fields(string name)
@@ -232,6 +233,18 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void StopSkipped_as_sent_has_the_shape_of_its_example()
+    {
+        var journey = OperationalJourney.Plan(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 14), Guid.NewGuid(),
+            [new PlannedStop(1, S1, CallType.Stop, null, 360, "1"), new PlannedStop(2, S2, CallType.Stop, 400, 402, "2"), new PlannedStop(3, S3, CallType.Stop, 450, null, "3")],
+            TimeZoneInfo.Utc, Guid.NewGuid());
+        journey.SkipStopByController(0, S2, Guid.NewGuid(), At(6, 50));
+
+        Assert.Equal(Shape.Of(Example("StopSkipped")), Shape.Of(RealEvent<StopSkipped>(journey)));
+    }
+
+    [Fact]
     public void The_snapshot_as_sent_has_the_shape_of_its_example()
     {
         var journey = Journey();
@@ -264,6 +277,7 @@ public class EventExamplesTests
     [InlineData("JourneyCancelled", typeof(JourneyCancelledEvent))]
     [InlineData("JourneyReinstated", typeof(JourneyReinstatedEvent))]
     [InlineData("JourneyTerminatedEarly", typeof(JourneyTerminatedEarlyEvent))]
+    [InlineData("StopSkipped", typeof(StopSkippedEvent))]
     [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
     [InlineData("snapshot", typeof(JourneySnapshot))]
     [InlineData("resync", typeof(StreamResync))]
@@ -287,6 +301,7 @@ public class EventExamplesTests
     [InlineData("JourneyCancelled")]
     [InlineData("JourneyReinstated")]
     [InlineData("JourneyTerminatedEarly")]
+    [InlineData("StopSkipped")]
     [InlineData("TrainPositionUpdated")]
     public void The_type_of_each_event_example_is_its_own_name(string name)
     {

@@ -84,6 +84,7 @@ public static class LiveOperationsModule
         HoldEndpoints.Map(routes);
         CancelEndpoints.Map(routes);
         TerminateEndpoints.Map(routes);
+        SkipEndpoints.Map(routes);
         PlatformEndpoints.Map(routes);
         return routes;
     }

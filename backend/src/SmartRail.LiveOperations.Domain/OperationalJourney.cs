@@ -373,6 +373,43 @@ public sealed class OperationalJourney
         return DecisionResult.Done;
     }
 
+    // R-15 and R-21: skip a stop the train has not reached. Not the origin or the terminus (terminate ends a journey early), not a stop
+    // where the train only passes. The later stops gain the stop's scheduled dwell: a running delay is reduced by it, never below on time;
+    // an on-time or early train is unchanged, and a controller delay is kept (R-05).
+    public DecisionResult SkipStopByController(int expectedVersion, Guid stationId, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        if (stop is null)
+        {
+            return DecisionResult.UnknownStop;
+        }
+
+        var (first, last) = (_stops.Min(s => s.Sequence), _stops.Max(s => s.Sequence));
+        if (!IsOpen || stop.Sequence == first || stop.Sequence == last || stop.CallType != CallType.Stop || stop.Status != StopStatus.Scheduled)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        stop.TryMoveTo(StopStatus.Skipped);
+        _events.Add(new StopSkipped(Id, stationId, stop.Sequence, now));
+
+        var dwell = stop.ScheduledArrival is { } arrival && stop.ScheduledDeparture is { } departure ? (int)(departure - arrival).TotalMinutes : 0;
+        var current = CurrentDelay.Value.Minutes;
+        if (current > 0 && dwell > 0 && DelaySource != Source.Controller)
+        {
+            // The reduced delay keeps the source of the one it comes from (a crew tap stays a crew value), so the status still shows it.
+            SetDelay(new SourcedDelay(new Delay(Math.Max(0, current - dwell)), DelaySource), now);
+        }
+
+        return DecisionResult.Done;
+    }
+
     // R-14: terminate a Running journey at a station ahead of the train (Scheduled, or the one it is standing at). Every stop after it that
     // the train has not reached is skipped, a hold ends, the journey ends (reason Controller) and tracking ends. The reason is public.
     public DecisionResult TerminateByController(int expectedVersion, Guid atStationId, JourneyReason reason, Guid actorId, DateTime now)
@@ -568,7 +605,7 @@ public sealed class OperationalJourney
         // R-04 for every stop the slice gave a distance for. _stops is in sequence order, so events come out in order.
         foreach (var stop in _stops)
         {
-            if (stop.Zone == ZonePhase.Finished || !sample.DistanceToStationsMetres.TryGetValue(stop.StationId, out var metres))
+            if (stop.Zone == ZonePhase.Finished || stop.Status == StopStatus.Skipped || !sample.DistanceToStationsMetres.TryGetValue(stop.StationId, out var metres))
             {
                 continue;
             }
@@ -591,6 +628,11 @@ public sealed class OperationalJourney
     {
         var stop = _stops.FirstOrDefault(s => s.StationId == stationId)
             ?? throw new ArgumentException("The station is not a stop of this journey.", nameof(stationId));
+
+        if (stop.Status == StopStatus.Skipped)
+        {
+            return;   // the controller said the train does not call here: a tap or a late sync from the tablet changes nothing
+        }
 
         if (kind == StopEventKind.Arrival)
         {

@@ -47,5 +47,8 @@ public sealed record PlatformChanged(
 // The controller ended the journey early at a station ahead of the train (R-14); the stops after it are skipped.
 public sealed record JourneyTerminatedEarly(Guid JourneyId, Guid AtStationId, JourneyReason Reason, DateTime At) : IDomainEvent;
 
+// The controller skipped a stop: the train will not call there (R-15).
+public sealed record StopSkipped(Guid JourneyId, Guid StationId, int Sequence, DateTime At) : IDomainEvent;
+
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;

@@ -255,6 +255,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller skips a stop the train has not reached; later stops gain its scheduled dwell, never below on time (R-21). */
+        post: operations["SkipStop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview": {
         parameters: {
             query?: never;
@@ -1134,6 +1151,34 @@ export interface components {
             code: string;
             name: string;
         };
+        StopSkippedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "StopSkipped";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                /** Format: int32 */
+                sequence: number;
+            };
+        };
         StopStatusChangedEvent: {
             /** Format: uuid */
             eventId: string;
@@ -1169,7 +1214,7 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["JourneyTerminatedEarlyEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["StopSkippedEvent"] | components["schemas"]["JourneyTerminatedEarlyEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
         };
@@ -1952,6 +1997,60 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": null | components["schemas"]["TerminateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SkipStop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
             };
         };
         responses: {

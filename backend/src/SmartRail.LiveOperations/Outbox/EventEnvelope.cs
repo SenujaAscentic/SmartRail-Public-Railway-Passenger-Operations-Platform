@@ -36,6 +36,8 @@ public sealed record JourneyHeldPayload(Guid StationId, bool Released, int? Minu
 
 public sealed record JourneyCancelledPayload(JourneyReason Reason);
 
+public sealed record StopSkippedPayload(Guid StationId, int Sequence);
+
 public sealed record JourneyTerminatedEarlyPayload(Guid AtStationId, JourneyReason Reason);
 
 // PlatformChanged: LeadTimeMinutes is for the staff and the audit; it is not in the public stream (PublicProjection). HoldSet is true only
