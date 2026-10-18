@@ -160,6 +160,18 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/reinstate", HttpStatusCode.Forbidden },
+
+        // POST /ops/journeys/{id}/stops/{stationId}/platform and /platform/preview: Controller only.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform", HttpStatusCode.Forbidden },
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/stops/00000000-0000-0000-0000-000000000002/platform/preview", HttpStatusCode.Forbidden },
     };
 
     [Theory]

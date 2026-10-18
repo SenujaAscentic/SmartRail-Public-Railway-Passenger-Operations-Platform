@@ -50,7 +50,7 @@ internal static class DelayEndpoints
         var reason = new JourneyReason(body.ReasonCode!, string.IsNullOrWhiteSpace(body.Note) ? null : body.Note.Trim());
         return handler.RunAsync(
             http, journeyId, body.ExpectedVersion,
-            new DecisionAudit("DelaySet", reason.Code, $"Delay set to {minutes} min"),
+            () => new DecisionAudit("DelaySet", reason.Code, $"Delay set to {minutes} min"),
             "A delay can be set only on a journey that has not been completed or cancelled.",
             (journey, actor, now) => journey.SetDelayByController(body.ExpectedVersion!.Value, new Delay(minutes), reason, actor, now), ct);
     }
@@ -58,7 +58,7 @@ internal static class DelayEndpoints
     private static Task<IResult> ClearAsync(string journeyId, [FromBody] VersionRequest? body, HttpContext http, DecisionHandler handler, CancellationToken ct) =>
         handler.RunAsync(
             http, journeyId, body?.ExpectedVersion,
-            new DecisionAudit("DelayCleared", null, "Controller delay cleared"),
+            () => new DecisionAudit("DelayCleared", null, "Controller delay cleared"),
             "There is no controller delay to clear on this journey.",
             (journey, actor, now) => journey.ClearDelayByController(body!.ExpectedVersion!.Value, actor, now), ct);
 }

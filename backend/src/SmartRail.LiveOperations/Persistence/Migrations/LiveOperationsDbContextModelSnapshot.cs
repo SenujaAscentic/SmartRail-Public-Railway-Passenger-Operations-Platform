@@ -248,6 +248,13 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                                 .HasMaxLength(10)
                                 .HasColumnType("character varying(10)");
 
+                            b1.Property<string>("Platform")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<string>("PreviousPlatform")
+                                .HasColumnType("text");
+
                             b1.Property<DateTime?>("ScheduledArrival")
                                 .HasColumnType("timestamp with time zone");
 

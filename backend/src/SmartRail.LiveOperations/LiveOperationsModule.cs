@@ -61,6 +61,7 @@ public static class LiveOperationsModule
         services.AddScoped<CrewJourneyHandler>();
         services.AddScoped<JourneyDetailReader>();
         services.AddScoped<DecisionHandler>();
+        services.AddScoped<PlatformConflictFinder>();
         services.AddScoped<CrewPositionsHandler>();
 
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
@@ -82,6 +83,7 @@ public static class LiveOperationsModule
         DelayEndpoints.Map(routes);
         HoldEndpoints.Map(routes);
         CancelEndpoints.Map(routes);
+        PlatformEndpoints.Map(routes);
         return routes;
     }
 }

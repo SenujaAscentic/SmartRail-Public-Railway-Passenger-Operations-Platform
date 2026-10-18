@@ -39,5 +39,10 @@ public sealed record JourneyCancelled(Guid JourneyId, JourneyReason Reason, Date
 // The controller reinstated a cancelled journey before its scheduled start: it runs again (US-O4 AC4).
 public sealed record JourneyReinstated(Guid JourneyId, DateTime At) : IDomainEvent;
 
+// The controller moved a stop to another platform (R-11). HoldSet is true only when a hold was really set with it: apps may say
+// "the train will wait" only then. LeadTimeMinutes is recorded for the audit and the staff (US-O5 AC2); it is not public.
+public sealed record PlatformChanged(
+    Guid JourneyId, Guid StationId, string Platform, string PreviousPlatform, LeadTimeLevel Level, int LeadTimeMinutes, bool HoldSet, DateTime At) : IDomainEvent;
+
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;

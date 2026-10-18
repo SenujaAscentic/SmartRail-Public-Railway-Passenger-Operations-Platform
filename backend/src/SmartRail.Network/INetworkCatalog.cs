@@ -15,6 +15,9 @@ public interface INetworkCatalog
     // has no track shape (logged 18 Oct), which is fine for the simulator and for short sections.
     Task<IReadOnlyList<RoutePoint>> GetRouteAsync(Guid serviceId, CancellationToken cancellationToken);
 
+    // The platforms of a station with their number and whether they are in service (R-13). Empty if the station is unknown.
+    Task<IReadOnlyList<PlatformDetails>> GetPlatformsAsync(Guid stationId, CancellationToken cancellationToken);
+
     // A train set with its coaches, or null.
     Task<TrainSetDetails?> GetTrainSetAsync(Guid trainSetId, CancellationToken cancellationToken);
 }
@@ -22,6 +25,8 @@ public interface INetworkCatalog
 public sealed record RoutePoint(Guid StationId, double Latitude, double Longitude);
 
 public sealed record ServiceDetails(string Number, string TrainType);
+
+public sealed record PlatformDetails(string Number, bool InService);
 
 public sealed record TrainSetDetails(string Code, string Traction, IReadOnlyList<CoachDetails> Coaches);
 

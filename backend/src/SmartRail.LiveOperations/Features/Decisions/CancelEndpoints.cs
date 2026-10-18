@@ -42,7 +42,7 @@ internal static class CancelEndpoints
         var reason = new JourneyReason(body!.ReasonCode!, string.IsNullOrWhiteSpace(body.Note) ? null : body.Note.Trim());
         return handler.RunAsync(
             http, journeyId, body.ExpectedVersion,
-            new DecisionAudit("JourneyCancelled", reason.Code, "Journey cancelled"),
+            () => new DecisionAudit("JourneyCancelled", reason.Code, "Journey cancelled"),
             "Only a planned or running journey can be cancelled.",
             (journey, actor, now) => journey.CancelByController(body.ExpectedVersion!.Value, reason, actor, now), ct);
     }
@@ -50,7 +50,7 @@ internal static class CancelEndpoints
     private static Task<IResult> ReinstateAsync(string journeyId, VersionRequest? body, HttpContext http, DecisionHandler handler, CancellationToken ct) =>
         handler.RunAsync(
             http, journeyId, body?.ExpectedVersion,
-            new DecisionAudit("JourneyReinstated", null, "Journey reinstated"),
+            () => new DecisionAudit("JourneyReinstated", null, "Journey reinstated"),
             "Only a cancelled journey can be reinstated, and only before its scheduled start.",
             (journey, actor, now) => journey.ReinstateByController(body!.ExpectedVersion!.Value, actor, now), ct);
 }

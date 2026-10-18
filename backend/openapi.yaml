@@ -608,6 +608,114 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'What a platform change would do (lead time, hold recommended, conflicts) without changing anything.'
+      operationId: PreviewPlatformChange
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/PlatformPreviewRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformPreviewResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+  '/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller moves a stop to another platform. Under 5 minutes of notice is a warning, not a block; a hold is optional.'
+      operationId: ChangePlatform
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/PlatformChangeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -1896,6 +2004,159 @@ components:
           type:
             - 'null'
             - string
+    PlatformChangedEvent:
+      required:
+        - eventId
+        - sequence
+        - type
+        - version
+        - occurredAt
+        - journeyId
+        - serviceDate
+        - stationIds
+        - lineId
+        - payload
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          format: int64
+        type:
+          enum:
+            - PlatformChanged
+          type: string
+        version:
+          type: integer
+          format: int32
+        occurredAt:
+          type: string
+          format: date-time
+        journeyId:
+          type: string
+          format: uuid
+        serviceDate:
+          type: string
+          format: date
+        stationIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        lineId:
+          type: string
+          format: uuid
+        payload:
+          required:
+            - stationId
+            - platform
+            - previousPlatform
+            - leadTimeLevel
+            - holdSet
+          type: object
+          properties:
+            stationId:
+              type: string
+              format: uuid
+            platform:
+              type: string
+            previousPlatform:
+              type: string
+            leadTimeLevel:
+              enum:
+                - Normal
+                - ShortNotice
+                - Late
+              type: string
+            holdSet:
+              type: boolean
+    PlatformChangeRequest:
+      required:
+        - platform
+        - setHold
+        - holdMinutes
+        - conflictsAcknowledged
+        - expectedVersion
+      type: object
+      properties:
+        platform:
+          type:
+            - 'null'
+            - string
+        setHold:
+          type:
+            - 'null'
+            - boolean
+        holdMinutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        conflictsAcknowledged:
+          type:
+            - 'null'
+            - boolean
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
+    PlatformConflictResponse:
+      required:
+        - journeyId
+        - serviceNumber
+        - platform
+        - expectedArrival
+        - expectedDeparture
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceNumber:
+          type: string
+        platform:
+          type: string
+        expectedArrival:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        expectedDeparture:
+          type:
+            - 'null'
+            - string
+          format: date-time
+    PlatformPreviewRequest:
+      required:
+        - platform
+      type: object
+      properties:
+        platform:
+          type:
+            - 'null'
+            - string
+    PlatformPreviewResponse:
+      required:
+        - leadTimeMinutes
+        - leadTimeLevel
+        - holdRecommended
+        - conflicts
+      type: object
+      properties:
+        leadTimeMinutes:
+          type: integer
+          format: int32
+        leadTimeLevel:
+          type: string
+        holdRecommended:
+          type: boolean
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformConflictResponse'
     PlatformResponse:
       required:
         - number
@@ -2249,6 +2510,7 @@ components:
         - $ref: '#/components/schemas/JourneyStartedEvent'
         - $ref: '#/components/schemas/JourneyEndedEvent'
         - $ref: '#/components/schemas/JourneyHeldEvent'
+        - $ref: '#/components/schemas/PlatformChangedEvent'
         - $ref: '#/components/schemas/JourneyCancelledEvent'
         - $ref: '#/components/schemas/JourneyReinstatedEvent'
         - $ref: '#/components/schemas/TrainPositionUpdatedEvent'
@@ -2262,6 +2524,7 @@ components:
           JourneyStarted: '#/components/schemas/JourneyStartedEvent'
           JourneyEnded: '#/components/schemas/JourneyEndedEvent'
           JourneyHeld: '#/components/schemas/JourneyHeldEvent'
+          PlatformChanged: '#/components/schemas/PlatformChangedEvent'
           JourneyCancelled: '#/components/schemas/JourneyCancelledEvent'
           JourneyReinstated: '#/components/schemas/JourneyReinstatedEvent'
           TrainPositionUpdated: '#/components/schemas/TrainPositionUpdatedEvent'

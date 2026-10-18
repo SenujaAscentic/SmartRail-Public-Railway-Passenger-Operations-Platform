@@ -20,6 +20,7 @@ internal static class StreamEventSchemas
         (typeof(JourneyStartedEvent), "JourneyStarted"),
         (typeof(JourneyEndedEvent), "JourneyEnded"),
         (typeof(JourneyHeldEvent), "JourneyHeld"),
+        (typeof(PlatformChangedEvent), "PlatformChanged"),
         (typeof(JourneyCancelledEvent), "JourneyCancelled"),
         (typeof(JourneyReinstatedEvent), "JourneyReinstated"),
         (typeof(TrainPositionUpdatedEvent), "TrainPositionUpdated"),

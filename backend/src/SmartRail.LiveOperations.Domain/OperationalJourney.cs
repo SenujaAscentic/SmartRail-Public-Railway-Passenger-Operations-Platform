@@ -11,7 +11,11 @@ public enum StartResult { Started, TooEarly, WrongState }
 // What became of a controller decision (domain model R-18). StaleVersion is checked first: if the journey changed since the
 // controller looked, they are told to look again, whatever else is wrong with the request.
 // UnknownStop: the station named in the decision is not a stop of this journey.
-public enum DecisionResult { Done, StaleVersion, InvalidState, UnknownStop }
+// PlatformUnavailable: no such platform at the station, or it is out of service (R-13). SamePlatform: the stop is already there.
+public enum DecisionResult { Done, StaleVersion, InvalidState, UnknownStop, PlatformUnavailable, SamePlatform }
+
+// A platform change's result: the notice the passengers got (R-11) and whether a hold was set with it.
+public sealed record PlatformChangeOutcome(DecisionResult Result, PlatformLeadTime? LeadTime, bool HoldSet);
 
 // Why the controller did something (delay, cancel): one of the agreed codes and an optional plain-text note. Public (US-P4).
 public sealed record JourneyReason(string Code, string? Note);
@@ -42,6 +46,10 @@ public sealed class JourneyStop
     public DateTime? ScheduledArrival { get; private set; }     // UTC
     public DateTime? ScheduledDeparture { get; private set; }   // UTC
     public string PlannedPlatform { get; private set; } = "";
+
+    // The platform now (the plan until the controller changes it) and the one before the last change, null if never changed.
+    public string Platform { get; private set; } = "";
+    public string? PreviousPlatform { get; private set; }
 
     // What has happened at this stop. Values and their sources are plain columns (not value-object types) so that
     // EF Core maps them without any configuration in the Domain project.
@@ -78,6 +86,12 @@ public sealed class JourneyStop
     {
         ActualDeparture = time.Value;
         ActualDepartureSource = time.Source;
+    }
+
+    internal void MoveToPlatform(string platform)
+    {
+        PreviousPlatform = Platform;
+        Platform = platform;
     }
 
     // A reinstated journey: the stops that were skipped by the cancellation are ahead of the train again.
@@ -123,6 +137,7 @@ public sealed class JourneyStop
         ScheduledArrival = arrival;
         ScheduledDeparture = departure;
         PlannedPlatform = plannedPlatform;
+        Platform = plannedPlatform;
     }
 }
 
@@ -254,10 +269,76 @@ public sealed class OperationalJourney
         }
 
         CountDecision(actorId, now);
+        PutHold(stationId, minutes, reason, now);
+        return DecisionResult.Done;
+    }
+
+    private void PutHold(Guid stationId, int minutes, JourneyReason? reason, DateTime now)
+    {
         (HoldStationId, HoldMinutes, HoldSetAt) = (stationId, minutes, now);
         (HoldReasonCode, HoldReasonNote) = (reason?.Code, reason?.Note);
         _events.Add(new JourneyHeld(Id, stationId, Released: false, minutes, reason, Source.Controller, now));
-        return DecisionResult.Done;
+    }
+
+    // The notice a platform change at this stop would give if it were made now (R-11): the preview and the change both use it.
+    // Null if the station is not a stop of the journey.
+    public PlatformLeadTime? LeadTimeAt(Guid stationId, DateTime now)
+    {
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        var delay = CurrentDelay.Value;
+        return stop is null ? null : PlatformRules.LeadTime(stop.ExpectedArrival(delay), stop.ExpectedDeparture(delay), now);
+    }
+
+    // US-O5, R-11 and R-13: move a stop to another platform. Allowed for a stop that is Scheduled or Arrived, to a platform that
+    // exists and is in service at the station (the caller passes those). A lead time under 5 minutes is a warning, not a block;
+    // `holdMinutes` sets a hold at the same time, and only then is HoldSet true. One decision, one version.
+    public PlatformChangeOutcome ChangePlatformByController(
+        int expectedVersion, Guid stationId, string platform, IReadOnlyCollection<string> platformsInService, int? holdMinutes, Guid actorId, DateTime now)
+    {
+        PlatformChangeOutcome Refused(DecisionResult result) => new(result, null, false);
+
+        if (expectedVersion != ControlVersion)
+        {
+            return Refused(DecisionResult.StaleVersion);
+        }
+
+        var stop = _stops.FirstOrDefault(s => s.StationId == stationId);
+        if (stop is null)
+        {
+            return Refused(DecisionResult.UnknownStop);
+        }
+
+        if (!IsOpen || stop.Status is not (StopStatus.Scheduled or StopStatus.Arrived))
+        {
+            return Refused(DecisionResult.InvalidState);
+        }
+
+        if (!platformsInService.Contains(platform))
+        {
+            return Refused(DecisionResult.PlatformUnavailable);
+        }
+
+        if (platform == stop.Platform)
+        {
+            return Refused(DecisionResult.SamePlatform);
+        }
+
+        if (holdMinutes is not null && (Hold is not null || stop.ScheduledDeparture is null))
+        {
+            return Refused(DecisionResult.InvalidState);   // one hold at a time, and the terminus has no departure to hold
+        }
+
+        var leadTime = LeadTimeAt(stationId, now)!;
+        CountDecision(actorId, now);
+        var previous = stop.Platform;
+        stop.MoveToPlatform(platform);
+        _events.Add(new PlatformChanged(Id, stationId, platform, previous, leadTime.Level, leadTime.Minutes, HoldSet: holdMinutes is not null, now));
+        if (holdMinutes is { } minutes)
+        {
+            PutHold(stationId, minutes, reason: null, now);
+        }
+
+        return new PlatformChangeOutcome(DecisionResult.Done, leadTime, holdMinutes is not null);
     }
 
     // R-14: cancel a Planned or Running journey. Every stop the train has not reached becomes Skipped; a stop it is standing at keeps

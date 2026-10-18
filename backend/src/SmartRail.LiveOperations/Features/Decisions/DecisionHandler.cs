@@ -20,10 +20,11 @@ internal sealed class DecisionHandler(
     ILogger<DecisionHandler> log)
 {
     // `apply` calls the Domain method (it gets the journey, the actor's account id and the time). `refused` is the 409 text for a
-    // decision the journey's state does not allow.
+    // decision the journey's state does not allow. `audit` is asked only after the decision was made, so it can describe what happened.
+    // `precheck` may refuse before the Domain is asked, but only when the version is current (a stale decision is always a 409 first).
     public async Task<IResult> RunAsync(
-        HttpContext http, string journeyId, int? expectedVersion, DecisionAudit audit, string refused,
-        Func<OperationalJourney, Guid, DateTime, DecisionResult> apply, CancellationToken ct)
+        HttpContext http, string journeyId, int? expectedVersion, Func<DecisionAudit> audit, string refused,
+        Func<OperationalJourney, Guid, DateTime, DecisionResult> apply, CancellationToken ct, Func<OperationalJourney, Task<IResult?>>? precheck = null)
     {
         if (expectedVersion is null or < 0)
         {
@@ -48,12 +49,21 @@ internal sealed class DecisionHandler(
                 }
 
                 var now = clock.GetUtcNow().UtcDateTime;
+                if (journey.ControlVersion == expectedVersion && precheck is not null && await precheck(journey) is { } refusal)
+                {
+                    return new Outcome(refusal, null);
+                }
+
                 switch (apply(journey, actor, now))
                 {
                     case DecisionResult.StaleVersion:
                         return new Outcome(await VersionConflictAsync(http, journey, now, ct), null);
                     case DecisionResult.UnknownStop:
                         return new Outcome(Problems.Validation(http, new() { ["stationId"] = ["The station is not a stop of this journey."] }), null);
+                    case DecisionResult.PlatformUnavailable:
+                        return new Outcome(Problems.RuleViolation(http, "The station has no such platform in service."), null);
+                    case DecisionResult.SamePlatform:
+                        return new Outcome(Problems.RuleViolation(http, "The stop is already at that platform."), null);
                     case DecisionResult.InvalidState:
                         return new Outcome(Problems.InvalidState(http, refused), null);
                 }
@@ -67,7 +77,7 @@ internal sealed class DecisionHandler(
                 return outcome.Problem;
             }
 
-            await RecordAuditAsync(http, actor, outcome.Journey!, audit, ct);
+            await RecordAuditAsync(http, actor, outcome.Journey!, audit(), ct);
             return Results.Ok(await reader.BuildAsync(outcome.Journey!, ct));
         }
         catch (Exception ex) when (OptimisticRetry.IsCollision(ex))

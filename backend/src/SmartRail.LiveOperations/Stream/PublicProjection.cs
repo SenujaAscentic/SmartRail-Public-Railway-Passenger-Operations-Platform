@@ -15,6 +15,7 @@ internal static class PublicProjection
         ["DataFreshnessChanged"] = ["from", "to", "lastSeenAt", "lastStationId"],
         ["JourneyStarted"] = [],            // the stored payload (device, cab session) is staff-only: nothing of it is public
         ["JourneyEnded"] = ["reason"],
+        ["PlatformChanged"] = ["stationId", "platform", "previousPlatform", "leadTimeLevel", "holdSet"],   // not leadTimeMinutes: staff only
         ["JourneyCancelled"] = ["reason"],
         ["JourneyReinstated"] = [],
         ["JourneyHeld"] = ["stationId", "released", "minutes", "reason"],

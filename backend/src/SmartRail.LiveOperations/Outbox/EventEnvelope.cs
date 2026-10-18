@@ -36,6 +36,10 @@ public sealed record JourneyHeldPayload(Guid StationId, bool Released, int? Minu
 
 public sealed record JourneyCancelledPayload(JourneyReason Reason);
 
+// PlatformChanged: LeadTimeMinutes is for the staff and the audit; it is not in the public stream (PublicProjection). HoldSet is true only
+// when a hold was set with the change: apps may say "the train will wait" only then.
+public sealed record PlatformChangedPayload(Guid StationId, string Platform, string PreviousPlatform, LeadTimeLevel LeadTimeLevel, int LeadTimeMinutes, bool HoldSet);
+
 public sealed record GeoLocation(double Latitude, double Longitude);
 
 public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);

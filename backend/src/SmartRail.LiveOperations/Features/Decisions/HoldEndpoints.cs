@@ -57,7 +57,7 @@ internal static class HoldEndpoints
             : new JourneyReason(body.ReasonCode, string.IsNullOrWhiteSpace(body.Note) ? null : body.Note.Trim());
         return handler.RunAsync(
             http, journeyId, body.ExpectedVersion,
-            new DecisionAudit("HoldSet", reason?.Code, $"Held at station {station} for {minutes} min"),
+            () => new DecisionAudit("HoldSet", reason?.Code, $"Held at station {station} for {minutes} min"),
             "A train can be held only at a station it has not left, on a journey that is not completed or cancelled, and only one hold at a time.",
             (journey, actor, now) => journey.SetHoldByController(body.ExpectedVersion!.Value, station, minutes, reason, actor, now), ct);
     }
@@ -65,7 +65,7 @@ internal static class HoldEndpoints
     private static Task<IResult> ReleaseAsync(string journeyId, VersionRequest? body, HttpContext http, DecisionHandler handler, CancellationToken ct) =>
         handler.RunAsync(
             http, journeyId, body?.ExpectedVersion,
-            new DecisionAudit("HoldReleased", null, "Hold released"),
+            () => new DecisionAudit("HoldReleased", null, "Hold released"),
             "There is no hold to release on this journey.",
             (journey, actor, now) => journey.ReleaseHoldByController(body!.ExpectedVersion!.Value, actor, now), ct);
 }

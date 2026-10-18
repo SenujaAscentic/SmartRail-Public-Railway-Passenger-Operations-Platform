@@ -61,7 +61,7 @@ internal static class JourneyViewBuilder
                 s.Sequence, s.StationId, names[s.StationId], s.CallType.ToString(), s.Status.ToString(), IsAdded: false,
                 s.ScheduledArrival, s.ExpectedArrival(delay), s.ActualArrival,
                 s.ScheduledDeparture, s.ExpectedDeparture(delay), s.ActualDeparture,
-                s.PlannedPlatform, s.PlannedPlatform, PreviousPlatform: null)).ToList(),
+                s.PlannedPlatform, s.Platform, s.PreviousPlatform)).ToList(),
             trainSet is null ? null : new TrainSetResponse(
                 trainSet.Code, trainSet.Traction, trainSet.Coaches.Select(c => new CoachResponse(c.Position, c.Class, c.Seating)).ToList()));
     }
@@ -72,10 +72,9 @@ internal static class JourneyViewBuilder
     private static JourneyReasonResponse? Reason(OperationalJourney journey) =>
         journey.Reason is { } reason ? new JourneyReasonResponse(reason.Code, reason.Note) : null;
 
-    // `platform` is the planned platform until a platform change exists (Phase 3).
     private static JourneyFromResponse From(OperationalJourney journey, JourneyStop stop, IReadOnlyDictionary<Guid, string> names) =>
         new(stop.StationId, names[stop.StationId], stop.ScheduledDeparture, stop.ExpectedDeparture(journey.CurrentDelay.Value),
-            stop.PlannedPlatform, PreviousPlatform: null);
+            stop.Platform, stop.PreviousPlatform);
 
     private static JourneyToResponse To(OperationalJourney journey, JourneyStop stop, IReadOnlyDictionary<Guid, string> names) =>
         new(stop.StationId, names[stop.StationId], stop.ScheduledArrival, stop.ExpectedArrival(journey.CurrentDelay.Value));

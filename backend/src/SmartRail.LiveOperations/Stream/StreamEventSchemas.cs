@@ -1,3 +1,4 @@
+using SmartRail.LiveOperations.Domain;
 using SmartRail.LiveOperations.Outbox;
 
 namespace SmartRail.LiveOperations.Stream;
@@ -32,6 +33,13 @@ public sealed record JourneyEndedEvent(
 public sealed record JourneyHeldEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
     IReadOnlyList<Guid> StationIds, Guid LineId, JourneyHeldPayload Payload);
+
+// The public PlatformChanged: the payload without leadTimeMinutes, which only staff and the audit see.
+public sealed record PlatformChangedPublicPayload(Guid StationId, string Platform, string PreviousPlatform, LeadTimeLevel LeadTimeLevel, bool HoldSet);
+
+public sealed record PlatformChangedEvent(
+    Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,
+    IReadOnlyList<Guid> StationIds, Guid LineId, PlatformChangedPublicPayload Payload);
 
 public sealed record JourneyCancelledEvent(
     Guid EventId, long Sequence, string Type, int Version, DateTime OccurredAt, Guid JourneyId, DateOnly ServiceDate,

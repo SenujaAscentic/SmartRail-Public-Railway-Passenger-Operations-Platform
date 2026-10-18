@@ -238,6 +238,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a platform change would do (lead time, hold recommended, conflicts) without changing anything. */
+        post: operations["PreviewPlatformChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/journeys/{journeyId}/stops/{stationId}/platform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller moves a stop to another platform. Under 5 minutes of notice is a warning, not a block; a hold is optional. */
+        post: operations["ChangePlatform"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -781,6 +815,66 @@ export interface components {
             staffNumber: null | string;
             password: null | string;
         };
+        PlatformChangedEvent: {
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            sequence: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "PlatformChanged";
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            journeyId: string;
+            /** Format: date */
+            serviceDate: string;
+            stationIds: string[];
+            /** Format: uuid */
+            lineId: string;
+            payload: {
+                /** Format: uuid */
+                stationId: string;
+                platform: string;
+                previousPlatform: string;
+                /** @enum {string} */
+                leadTimeLevel: "Normal" | "ShortNotice" | "Late";
+                holdSet: boolean;
+            };
+        };
+        PlatformChangeRequest: {
+            platform: null | string;
+            setHold: null | boolean;
+            /** Format: int32 */
+            holdMinutes: null | number;
+            conflictsAcknowledged: null | boolean;
+            /** Format: int32 */
+            expectedVersion: null | number;
+        };
+        PlatformConflictResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            platform: string;
+            /** Format: date-time */
+            expectedArrival: null | string;
+            /** Format: date-time */
+            expectedDeparture: null | string;
+        };
+        PlatformPreviewRequest: {
+            platform: null | string;
+        };
+        PlatformPreviewResponse: {
+            /** Format: int32 */
+            leadTimeMinutes: number;
+            leadTimeLevel: string;
+            holdRecommended: boolean;
+            conflicts: components["schemas"]["PlatformConflictResponse"][];
+        };
         PlatformResponse: {
             number: string;
             inService: boolean;
@@ -921,7 +1015,7 @@ export interface components {
             };
         };
         /** @description The data of a live event frame (`event:` is the type, `id:` the sequence). Told apart by `type`. */
-        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
+        StreamEvent: components["schemas"]["StopStatusChangedEvent"] | components["schemas"]["DelayChangedEvent"] | components["schemas"]["DataFreshnessChangedEvent"] | components["schemas"]["JourneyStartedEvent"] | components["schemas"]["JourneyEndedEvent"] | components["schemas"]["JourneyHeldEvent"] | components["schemas"]["PlatformChangedEvent"] | components["schemas"]["JourneyCancelledEvent"] | components["schemas"]["JourneyReinstatedEvent"] | components["schemas"]["TrainPositionUpdatedEvent"];
         StreamResync: {
             reason: string;
         };
@@ -1675,6 +1769,123 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewPlatformChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PlatformPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ChangePlatform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PlatformChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

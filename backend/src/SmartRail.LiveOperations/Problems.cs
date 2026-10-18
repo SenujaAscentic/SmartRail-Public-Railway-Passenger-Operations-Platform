@@ -35,6 +35,13 @@ internal static class Problems
         Build(http, StatusCodes.Status409Conflict, "version-conflict", "Journey was changed by someone else", "VERSION_CONFLICT", detail: detail,
             more: new Dictionary<string, object?> { ["currentVersion"] = currentVersion, ["journey"] = journey });
 
+    // 422 CONFLICT_NOT_ACKNOWLEDGED (contract 3.5, R-12): another train is expected at the chosen platform and the controller did not
+    // confirm they know. The answer lists the conflicts so the dialog can show them.
+    public static IResult ConflictNotAcknowledged(HttpContext http, object conflicts) =>
+        Build(http, StatusCodes.Status422UnprocessableEntity, "conflict-not-acknowledged", "Platform conflict not acknowledged", "CONFLICT_NOT_ACKNOWLEDGED",
+            detail: "Another train is expected at that platform around the same time. Confirm with conflictsAcknowledged.",
+            more: new Dictionary<string, object?> { ["conflicts"] = conflicts });
+
     private static IResult Build(
         HttpContext http, int status, string type, string title, string code, Dictionary<string, string[]>? errors = null, string? detail = null,
         Dictionary<string, object?>? more = null)

@@ -80,6 +80,7 @@ public class EventExamplesTests
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
     [InlineData("JourneyHeld")]
+    [InlineData("PlatformChanged")]
     [InlineData("JourneyCancelled")]
     [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
@@ -188,6 +189,18 @@ public class EventExamplesTests
     }
 
     [Fact]
+    public void PlatformChanged_as_sent_has_the_shape_of_its_example_and_hides_the_lead_time_minutes()
+    {
+        var journey = Journey();
+        journey.ChangePlatformByController(0, S2, "5", ["1", "2", "3", "4", "5"], holdMinutes: 5, Guid.NewGuid(), At(6, 52));   // standing at S2, held
+
+        var real = RealEvent<PlatformChanged>(journey);
+
+        Assert.Equal(Shape.Of(Example("PlatformChanged")), Shape.Of(real));
+        Assert.False(real.GetProperty("payload").TryGetProperty("leadTimeMinutes", out _));   // staff and audit only
+    }
+
+    [Fact]
     public void JourneyCancelled_and_JourneyReinstated_as_sent_have_the_shape_of_their_examples()
     {
         var journey = Journey();
@@ -231,6 +244,7 @@ public class EventExamplesTests
     [InlineData("JourneyStarted", typeof(JourneyStartedEvent))]
     [InlineData("JourneyEnded", typeof(JourneyEndedEvent))]
     [InlineData("JourneyHeld", typeof(JourneyHeldEvent))]
+    [InlineData("PlatformChanged", typeof(PlatformChangedEvent))]
     [InlineData("JourneyCancelled", typeof(JourneyCancelledEvent))]
     [InlineData("JourneyReinstated", typeof(JourneyReinstatedEvent))]
     [InlineData("TrainPositionUpdated", typeof(TrainPositionUpdatedEvent))]
@@ -252,6 +266,7 @@ public class EventExamplesTests
     [InlineData("JourneyStarted")]
     [InlineData("JourneyEnded")]
     [InlineData("JourneyHeld")]
+    [InlineData("PlatformChanged")]
     [InlineData("JourneyCancelled")]
     [InlineData("JourneyReinstated")]
     [InlineData("TrainPositionUpdated")]
