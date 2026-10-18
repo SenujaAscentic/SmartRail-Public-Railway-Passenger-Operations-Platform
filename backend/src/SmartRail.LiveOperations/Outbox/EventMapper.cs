@@ -16,7 +16,7 @@ internal static class EventMapper
         // The stops still ahead (or at the platform): every display of those stations needs the new delay.
         DelayChanged e => Envelope(
             journey, eventId, "DelayChanged", e.At, e.Source, RemainingStations(journey),
-            new DelayChangedPayload(e.DelayMinutes, e.PreviousDelayMinutes, RemainingStops(journey))),
+            new DelayChangedPayload(e.DelayMinutes, e.PreviousDelayMinutes, RemainingStops(journey), e.Reason)),
 
         // The source is Gps: freshness is the age of the GPS data, even when the clock is what notices that it got old.
         DataFreshnessChanged e => Envelope(

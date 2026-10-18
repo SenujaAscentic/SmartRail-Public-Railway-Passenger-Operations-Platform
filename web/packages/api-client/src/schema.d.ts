@@ -152,6 +152,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/journeys/{journeyId}/delay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The controller sets the delay of a journey, with a reason. It stays until cleared (R-05). */
+        post: operations["SetDelay"];
+        /** The controller removes the delay they set; the delay of the latest stop event applies again. */
+        delete: operations["ClearDelay"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -361,7 +379,19 @@ export interface components {
                     /** Format: date-time */
                     expectedDeparture: null | string;
                 }[];
+                reason?: {
+                    code: string;
+                    note: null | string;
+                };
             };
+        };
+        DelayRequest: {
+            /** Format: int32 */
+            minutes: null | number;
+            reasonCode: null | string;
+            note: null | string;
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
         DiscardedPosition: {
             /** Format: int32 */
@@ -634,6 +664,9 @@ export interface components {
             instance?: null | string;
             code: string;
             requestId: string;
+            /** Format: int32 */
+            currentVersion?: number;
+            journey?: Record<string, never>;
             errors?: {
                 [key: string]: string[];
             };
@@ -766,6 +799,10 @@ export interface components {
             code: string;
             traction: string;
             coaches: components["schemas"]["CoachResponse"][];
+        };
+        VersionRequest: {
+            /** Format: int32 */
+            expectedVersion: null | number;
         };
     };
     responses: never;
@@ -1152,6 +1189,112 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetDelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["DelayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ClearDelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                journeyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneyDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

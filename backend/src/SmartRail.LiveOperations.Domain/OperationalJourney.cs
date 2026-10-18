@@ -8,6 +8,13 @@ public enum JourneyEndReason { Driver, Terminus, Controller }
 
 public enum StartResult { Started, TooEarly, WrongState }
 
+// What became of a controller decision (domain model R-18). StaleVersion is checked first: if the journey changed since the
+// controller looked, they are told to look again, whatever else is wrong with the request.
+public enum DecisionResult { Done, StaleVersion, InvalidState }
+
+// Why the controller did something (delay, cancel): one of the agreed codes and an optional plain-text note. Public (US-P4).
+public sealed record JourneyReason(string Code, string? Note);
+
 public enum EndResult { Ended, WrongState }
 
 public enum CallType { Stop, Pass }
@@ -180,9 +187,66 @@ public sealed class OperationalJourney
         return true;
     }
 
-    // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation. No decision
-    // exists yet, so it stays 0; it is here so the API can show it from the first day (apps' generated types must not change later).
+    // R-18. Only DECISIONS bump it (delay, hold, cancel, ...), never GPS, detection, crew taps or ETA recalculation.
     public int ControlVersion { get; private set; }
+
+    // Who made the last decision and when: so a refused, stale decision can say "Changed by <name> a moment ago" (US-O4 AC6).
+    public Guid? LastDecisionBy { get; private set; }
+    public DateTime? LastDecisionAt { get; private set; }
+
+    // The reason of the delay the controller set (cleared with it). Two plain columns, see JourneyStop.
+    public string? ReasonCode { get; private set; }
+    public string? ReasonNote { get; private set; }
+    public JourneyReason? Reason => ReasonCode is null ? null : new JourneyReason(ReasonCode, ReasonNote);
+
+    // Every decision calls this once it is accepted: count it and remember who made it. (The version was checked by the caller.)
+    private void CountDecision(Guid actorId, DateTime now)
+    {
+        ControlVersion++;
+        LastDecisionBy = actorId;
+        LastDecisionAt = now;
+    }
+
+    private bool IsOpen => Status is JourneyStatus.Planned or JourneyStatus.Running;
+
+    // US-O4: the controller sets the delay. R-05: it wins over crew and GPS until cleared. The event is sent even if the minutes are
+    // unchanged, because the reason is news.
+    public DecisionResult SetDelayByController(int expectedVersion, Delay delay, JourneyReason reason, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        (ReasonCode, ReasonNote) = (reason.Code, reason.Note);
+        SetDelay(CurrentDelay.Apply(delay, Source.Controller), now, reason, announceAlways: true);
+        return DecisionResult.Done;
+    }
+
+    // Clears the controller's delay (see ClearControllerDelay). Refused when there is none to clear.
+    public DecisionResult ClearDelayByController(int expectedVersion, Guid actorId, DateTime now)
+    {
+        if (expectedVersion != ControlVersion)
+        {
+            return DecisionResult.StaleVersion;
+        }
+
+        if (!IsOpen || DelaySource != Source.Controller)
+        {
+            return DecisionResult.InvalidState;
+        }
+
+        CountDecision(actorId, now);
+        (ReasonCode, ReasonNote) = (null, null);
+        SetDelay(CurrentDelay.ClearController(DelayFromLatestStopEvent()), now, reason: null, announceAlways: true);
+        return DecisionResult.Done;
+    }
     public JourneyStatus Status { get; private set; }
     public IReadOnlyList<JourneyStop> Stops => _stops;
 
@@ -394,14 +458,15 @@ public sealed class OperationalJourney
     }
 
     // Stores the delay; announces it only when the whole minutes changed (a change of source alone is not news).
-    private void SetDelay(SourcedDelay next, DateTime at)
+    // `announceAlways` is for the controller's decisions, whose reason is news even when the minutes stay the same.
+    private void SetDelay(SourcedDelay next, DateTime at, JourneyReason? reason = null, bool announceAlways = false)
     {
         var previous = CurrentDelay;
         DelayMinutes = next.Value.Minutes;
         DelaySource = next.Source;
-        if (next.Value != previous.Value)
+        if (announceAlways || next.Value != previous.Value)
         {
-            _events.Add(new DelayChanged(Id, next.Value.Minutes, previous.Value.Minutes, next.Source, at));
+            _events.Add(new DelayChanged(Id, next.Value.Minutes, previous.Value.Minutes, next.Source, at, reason));
         }
     }
 

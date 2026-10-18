@@ -333,6 +333,97 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/ops/journeys/{journeyId}/delay':
+    post:
+      tags:
+        - LiveOperations
+      summary: 'The controller sets the delay of a journey, with a reason. It stays until cleared (R-05).'
+      operationId: SetDelay
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/DelayRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
+    delete:
+      tags:
+        - LiveOperations
+      summary: The controller removes the delay they set; the delay of the latest stop event applies again.
+      operationId: ClearDelay
+      parameters:
+        - name: journeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JourneyDetailResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -782,6 +873,44 @@ components:
                       - 'null'
                       - string
                     format: date-time
+            reason:
+              required:
+                - code
+                - note
+              type: object
+              properties:
+                code:
+                  type: string
+                note:
+                  type:
+                    - 'null'
+                    - string
+    DelayRequest:
+      required:
+        - minutes
+        - reasonCode
+        - note
+        - expectedVersion
+      type: object
+      properties:
+        minutes:
+          type:
+            - 'null'
+            - integer
+          format: int32
+        reasonCode:
+          type:
+            - 'null'
+            - string
+        note:
+          type:
+            - 'null'
+            - string
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
     DiscardedPosition:
       required:
         - index
@@ -1487,6 +1616,11 @@ components:
           type: string
         requestId:
           type: string
+        currentVersion:
+          type: integer
+          format: int32
+        journey:
+          type: object
         errors:
           type: object
           additionalProperties:
@@ -1803,6 +1937,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CoachResponse'
+    VersionRequest:
+      required:
+        - expectedVersion
+      type: object
+      properties:
+        expectedVersion:
+          type:
+            - 'null'
+            - integer
+          format: int32
   securitySchemes:
     Bearer:
       type: http

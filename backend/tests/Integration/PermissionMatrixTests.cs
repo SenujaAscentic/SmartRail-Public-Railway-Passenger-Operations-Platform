@@ -124,6 +124,18 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
         { "Driver", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.Forbidden },
         { "DriverCab", "POST", "/api/v1/crew/journeys/00000000-0000-0000-0000-000000000001/positions", HttpStatusCode.BadRequest },
+
+        // POST and DELETE /ops/journeys/{id}/delay: Controller only (policy Controller). The empty body makes the Controller's request a 400, so it is past the policy; every other role is refused.
+        { "Anonymous", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.BadRequest },
+        { "StationManager", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+        { "Driver", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+        { "DriverCab", "POST", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+        { "Anonymous", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Unauthorized },
+        { "Controller", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.BadRequest },
+        { "StationManager", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+        { "Driver", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
+        { "DriverCab", "DELETE", "/api/v1/ops/journeys/00000000-0000-0000-0000-000000000001/delay", HttpStatusCode.Forbidden },
     };
 
     [Theory]

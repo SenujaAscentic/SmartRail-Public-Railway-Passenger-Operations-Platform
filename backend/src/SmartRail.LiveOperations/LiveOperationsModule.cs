@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SmartRail.LiveOperations.Features.GenerateJourneys;
 using SmartRail.LiveOperations.Features.CrewJourney;
+using SmartRail.LiveOperations.Features.Decisions;
+using SmartRail.LiveOperations.Features.JourneyViews;
 using SmartRail.LiveOperations.Features.CrewPositions;
 using SmartRail.LiveOperations.Features.GetJourney;
 using SmartRail.LiveOperations.Features.Idempotency;
@@ -57,6 +59,8 @@ public static class LiveOperationsModule
         services.AddScoped<TrackingRefresher>();
         services.AddScoped<IdempotencyStore>();
         services.AddScoped<CrewJourneyHandler>();
+        services.AddScoped<JourneyDetailReader>();
+        services.AddScoped<DecisionHandler>();
         services.AddScoped<CrewPositionsHandler>();
 
         services.AddHostedService<LiveOperationsStartupService>();   // fails the start if the database or the assignments are wrong
@@ -75,6 +79,7 @@ public static class LiveOperationsModule
         CrewJourneyEndpoints.Map(routes);
         CrewPositionsEndpoint.Map(routes);
         GetJourneyEndpoint.Map(routes);
+        DelayEndpoints.Map(routes);
         return routes;
     }
 }

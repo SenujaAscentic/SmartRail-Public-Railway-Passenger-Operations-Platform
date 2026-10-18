@@ -37,7 +37,8 @@ public sealed record TrainPositionUpdatedPayload(GeoLocation Location, double Sp
 
 public sealed record RemainingStop(Guid StationId, DateTime? ExpectedArrival, DateTime? ExpectedDeparture);
 
-public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops);
+// Reason is present only when the controller set the delay: the code and the plain-text note passengers see.
+public sealed record DelayChangedPayload(int DelayMinutes, int PreviousDelayMinutes, IReadOnlyList<RemainingStop> Stops, JourneyReason? Reason = null);
 
 public sealed record DataFreshnessChangedPayload(TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, Guid? LastStationId);
 

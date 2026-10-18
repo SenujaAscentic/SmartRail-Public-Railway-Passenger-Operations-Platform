@@ -24,8 +24,9 @@ public sealed record JourneyEnded(Guid JourneyId, DateTime At, JourneyEndReason 
 public sealed record StopStatusChanged(
     Guid JourneyId, Guid StationId, int Sequence, StopStatus From, StopStatus To, DateTime At, Source Source) : IDomainEvent;
 
+// Reason is set only when the controller set the delay (or cleared it: then it is null); the passenger app shows why.
 public sealed record DelayChanged(
-    Guid JourneyId, int DelayMinutes, int PreviousDelayMinutes, Source Source, DateTime At) : IDomainEvent;
+    Guid JourneyId, int DelayMinutes, int PreviousDelayMinutes, Source Source, DateTime At, JourneyReason? Reason = null) : IDomainEvent;
 
 public sealed record DataFreshnessChanged(
     Guid JourneyId, TrackingStatus From, TrackingStatus To, DateTime? LastSeenAt, DateTime At) : IDomainEvent;

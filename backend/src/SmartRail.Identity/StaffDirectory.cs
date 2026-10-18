@@ -13,4 +13,7 @@ internal sealed class StaffDirectory(IdentityModuleDbContext db) : IStaffDirecto
             .AsNoTracking()
             .Where(u => staffNumbers.Contains(u.UserName!) && u.Role == StaffRole.Driver && u.IsActive)
             .ToDictionaryAsync(u => u.UserName!, u => u.Id, cancellationToken);
+
+    public async Task<string?> GetDisplayNameAsync(Guid accountId, CancellationToken cancellationToken) =>
+        await db.Users.AsNoTracking().Where(u => u.Id == accountId).Select(u => u.Name).SingleOrDefaultAsync(cancellationToken);
 }

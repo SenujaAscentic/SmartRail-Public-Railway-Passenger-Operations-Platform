@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using SmartRail.LiveOperations.Features.JourneyViews;
 using SmartRail.LiveOperations.Persistence;
-using SmartRail.Network;
 
 namespace SmartRail.LiveOperations.Features.GetJourney;
 
@@ -22,7 +21,7 @@ internal static class GetJourneyEndpoint
 
     // The id is read as text so that a malformed id gets the same 404 NOT_FOUND as an unknown one (contract section 6).
     private static async Task<IResult> HandleAsync(
-        string journeyId, HttpContext http, LiveOperationsDbContext db, INetworkCatalog catalog, CancellationToken ct)
+        string journeyId, HttpContext http, LiveOperationsDbContext db, JourneyDetailReader reader, CancellationToken ct)
     {
         var journey = Guid.TryParse(journeyId, out var id)
             ? await db.Journeys.AsNoTracking().Include(j => j.Stops).SingleOrDefaultAsync(j => j.Id == id, ct)
@@ -32,15 +31,6 @@ internal static class GetJourneyEndpoint
             return Problems.NotFound(http);
         }
 
-        var names = await catalog.GetStationNamesAsync(journey.Stops.Select(s => s.StationId).ToList(), ct);
-        var service = (await catalog.GetServicesAsync([journey.ServiceId], ct)).GetValueOrDefault(journey.ServiceId);
-        if (service is null || journey.Stops.Any(s => !names.ContainsKey(s.StationId)))
-        {
-            // The journey points at a service or station that Network no longer has: a data fault, not something to guess around.
-            throw new InvalidOperationException($"Journey {journey.Id} refers to a service or station that is not in the network.");
-        }
-
-        var trainSet = await catalog.GetTrainSetAsync(journey.TrainSetId, ct);
-        return Results.Ok(JourneyViewBuilder.Detail(journey, names, service, trainSet));
+        return Results.Ok(await reader.BuildAsync(journey, ct));
     }
 }

@@ -129,7 +129,11 @@ public class EventExamplesTests
     [Fact]
     public void DelayChanged_as_sent_has_the_shape_of_its_example()
     {
-        Assert.Equal(Shape.Of(Example("DelayChanged")), Shape.Of(RealEvent<DelayChanged>(Journey())));
+        // Set by the controller, so the optional reason is part of what is sent.
+        var journey = Journey();
+        journey.SetDelayByController(0, new Delay(4), new JourneyReason("SignalFailure", "Signal fault near Ragama"), Guid.NewGuid(), At(6, 51));
+
+        Assert.Equal(Shape.Of(Example("DelayChanged")), Shape.Of(RealEvent<DelayChanged>(journey)));
     }
 
     [Fact]
