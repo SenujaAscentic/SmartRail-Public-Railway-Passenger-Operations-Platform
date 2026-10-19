@@ -44,6 +44,27 @@ describe("tokensToCss", () => {
     expect(display).not.toContain("--touch-target");   // displays are not touched
   });
 
+  it("a fixed theme gives the display surface one theme with no media query for the colours", () => {
+    const display = tokensToCss(tokens, "display", "dark");
+    expect(display).toContain("color-scheme: dark;");
+    expect(display).toContain("--color-background: #0B1A2B;");
+    expect(display).toContain("--status-on-time-fg: #6EE7A0;");
+    expect(display).not.toContain("prefers-color-scheme");
+    expect(display).toContain("--font-size-time: 72px;");
+    expect(display).toContain("--font-size-platform: 88px;");
+    expect(display).toContain("--font-size-platform-board: 72px;");
+    expect(display).toContain("prefers-reduced-motion");
+  });
+
+  it("writes the display colours (tokens.json -> display) as --display-* variables, and leaves the note out", () => {
+    const display = tokensToCss(tokens, "display", "dark");
+    expect(display).toContain("--display-surface: #1A4F8C;");
+    expect(display).toContain("--display-on-surface: #FFFFFF;");
+    expect(display).toContain("--display-on-surface-muted: #B8C4D0;");
+    expect(display).not.toContain("--display-note");
+    expect(lightBlock).toContain("--display-surface: #1A4F8C;");
+  });
+
   it("names the font without the explanation in brackets and adds fallbacks (no font package)", () => {
     expect(lightBlock).toContain('--font-family: "Noto Sans", system-ui, sans-serif;');
     expect(lightBlock).toContain('--font-family-mono: "Noto Sans Mono", ui-monospace, monospace;');

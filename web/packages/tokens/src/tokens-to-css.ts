@@ -19,6 +19,16 @@ function themeVariables(tokens: TokensFile, theme: ThemeName): string[] {
   return lines;
 }
 
+// The colours of the station displays (tokens.json -> display): --display-surface, --display-on-surface, ...
+// Written for every surface, so the generator needs no special case; only the displays use them.
+function displayVariables(tokens: TokensFile): string[] {
+  const lines: string[] = [];
+  for (const [name, value] of Object.entries(tokens.display ?? {})) {
+    if (name !== "note") lines.push(`--display-${kebab(name)}: ${value};`);
+  }
+  return lines;
+}
+
 // The variables that do not change with the theme. `surface` picks one row of the typography table
 // ("ops" for the ops web; a display app would pass "display").
 function fixedVariables(tokens: TokensFile, surface: string): string[] {
@@ -49,10 +59,26 @@ const block = (selector: string, lines: string[], indent = ""): string =>
 
 // Turns shared/tokens.json into one CSS file. The light theme is the default; the dark theme applies when the system
 // asks for it (the ops web follows the system setting, tokens.json rules). Reduced motion zeroes the duration.
-export function tokensToCss(tokens: TokensFile, surface = "ops"): string {
+//
+// [fixedTheme] is for a surface that has ONE theme whatever the system says (the station displays are always dark,
+// tokens.json rule): then :root holds just that theme's colours, with no media query for the colours.
+export function tokensToCss(tokens: TokensFile, surface = "ops", fixedTheme?: ThemeName): string {
+  if (fixedTheme) {
+    return [
+      "/* Generated from shared/tokens.json by packages/tokens. Do not edit; run `npm run build` in web/packages/tokens. */",
+      block(":root", [
+        `color-scheme: ${fixedTheme};`,
+        ...themeVariables(tokens, fixedTheme),
+        ...displayVariables(tokens),
+        ...fixedVariables(tokens, surface),
+      ]),
+      `@media (prefers-reduced-motion: reduce) {\n${block(":root", ["--motion-duration: 0ms;"], "  ")}\n}`,
+      "",
+    ].join("\n\n");
+  }
   return [
     "/* Generated from shared/tokens.json by packages/tokens. Do not edit; run `npm run build` in web/packages/tokens. */",
-    block(":root", ["color-scheme: light dark;", ...themeVariables(tokens, "light"), ...fixedVariables(tokens, surface)]),
+    block(":root", ["color-scheme: light dark;", ...themeVariables(tokens, "light"), ...displayVariables(tokens), ...fixedVariables(tokens, surface)]),
     `@media (prefers-color-scheme: dark) {\n${block(":root", themeVariables(tokens, "dark"), "  ")}\n}`,
     `@media (prefers-reduced-motion: reduce) {\n${block(":root", ["--motion-duration: 0ms;"], "  ")}\n}`,
     "",

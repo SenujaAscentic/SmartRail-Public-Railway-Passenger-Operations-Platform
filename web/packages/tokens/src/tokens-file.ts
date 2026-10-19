@@ -8,6 +8,8 @@ export interface TokensFile {
     fontFamilyMono: string;
     surfaces: Record<string, Record<string, number | string>>;
   };
+  // Colours of the station displays only (dark theme), e.g. surface, onSurface, onSurfaceMuted. The "note" is text.
+  display?: Record<string, string>;
   space: Record<string, number>;
   radius: Record<string, number>;
   touchTarget: Record<string, number>;

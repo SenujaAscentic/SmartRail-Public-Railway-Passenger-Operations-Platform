@@ -7,8 +7,13 @@ import type { TokensFile } from "../src/tokens-file.ts";
 const packageDir = resolve(import.meta.dirname, "..");
 const tokensPath = resolve(packageDir, "../../../shared/tokens.json");
 const outputPath = resolve(packageDir, "dist/tokens.css");
+const displayOutputPath = resolve(packageDir, "dist/tokens-display.css");
 
 const tokens = JSON.parse(readFileSync(tokensPath, "utf8")) as TokensFile;
 mkdirSync(dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, tokensToCss(tokens, "ops"));
 console.log(`Wrote ${outputPath}`);
+
+// The station displays: the display type sizes and always the dark theme (tokens.json: displays are dark).
+writeFileSync(displayOutputPath, tokensToCss(tokens, "display", "dark"));
+console.log(`Wrote ${displayOutputPath}`);
