@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.TestHost;
+using SmartRail.LiveOperations.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using SmartRail.IntegrationTests.Identity;
 using Xunit;
@@ -65,6 +66,24 @@ public class OpsStreamTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal("Controller", seenByStaff.GetProperty("source").GetString());
         Assert.False(seenByPublic.TryGetProperty("source", out _));
         Assert.Equal(seenByPublic.GetProperty("payload").GetRawText(), seenByStaff.GetProperty("payload").GetRawText());   // the same event plus one field
+    }
+
+    [Fact]
+    public async Task The_staff_snapshot_says_who_supplied_the_delay_and_each_actual_time_and_the_public_snapshot_does_not()
+    {
+        var journeyId = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Day, j =>
+            j.RecordCrewTime(j.Stops[1].StationId, StopEventKind.Arrival, j.Stops[1].ScheduledArrival!.Value.AddMinutes(4)));
+        using var staff = await Connect(await StaffToken("CTRL-01"), $"?journeyIds={journeyId}");
+        using var open = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={journeyId}", null, Ct);
+
+        var staffSnapshot = (await staff.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!.Json;
+        var publicSnapshot = (await open.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!;
+
+        Assert.Equal("Crew", staffSnapshot.GetProperty("delaySource").GetString());
+        var stops = staffSnapshot.GetProperty("stops").EnumerateArray().ToList();
+        Assert.Equal("Crew", stops[1].GetProperty("actualArrivalSource").GetString());
+        Assert.False(stops[0].TryGetProperty("actualArrivalSource", out _));   // the origin has only an inferred departure
+        Assert.DoesNotContain("Source", publicSnapshot.Data!);                 // the public snapshot has no source field at all
     }
 
     [Fact]
