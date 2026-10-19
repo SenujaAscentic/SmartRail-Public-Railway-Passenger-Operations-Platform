@@ -493,6 +493,8 @@ export interface components {
             trainType: string;
             origin: components["schemas"]["JourneyStationResponse"];
             destination: components["schemas"]["JourneyStationResponse"];
+            /** Format: date */
+            serviceDate: string;
             /** Format: date-time */
             time: string;
             /** Format: date-time */
