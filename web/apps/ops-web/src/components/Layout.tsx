@@ -64,8 +64,10 @@ function Brand() {
   );
 }
 
-// The time in Sri Lanka, 24 hours (design). Display only: nothing is decided from this clock.
+// The time in Sri Lanka, 24 hours (design), on the SERVER's clock. Display only: nothing is decided from this clock. It ticks every
+// second so that, once the first answer has taught the page the server's time, the wrong device time is gone within a second (a 10 s
+// tick left it on screen after sign-in).
 function Clock() {
-  const now = useNow(10_000);
+  const now = useNow(1000);
   return <time className="topbar-clock" dateTime={new Date(now).toISOString()}>{formatClock(new Date(now).toISOString())}</time>;
 }

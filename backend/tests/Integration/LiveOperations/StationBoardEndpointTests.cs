@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using SmartRail.IntegrationTests.Identity;
 using SmartRail.LiveOperations.Domain;
 using Xunit;
@@ -97,6 +100,39 @@ public class StationBoardEndpointTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal("Cancelled", cancelled.GetProperty("status").GetProperty("kind").GetString());
         Assert.Equal("TrainFault", cancelled.GetProperty("reason").GetProperty("code").GetString());
         Assert.False(cancelled.GetProperty("hold").GetBoolean());
+    }
+
+    [Fact]
+    public async Task The_board_shows_only_todays_service_day_and_each_row_says_which_day()
+    {
+        var today = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Today);
+        var tomorrow = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Today.AddDays(1));   // same 11:07 at Peradeniya
+
+        var board = await Board(await Station("PDA"));
+
+        var row = RowOf(board, today);
+        Assert.Equal("2026-10-14", row.GetProperty("serviceDate").GetString());
+        Assert.DoesNotContain(board.EnumerateArray(), r => r.GetProperty("journeyId").GetGuid() == tomorrow);
+    }
+
+    [Fact]
+    public async Task Late_in_the_day_with_nothing_left_the_board_is_empty_and_does_not_fall_through_to_tomorrow()
+    {
+        // 23:30 in Colombo on 14 Oct (18:00 UTC): today's 1004 left long ago, tomorrow's is not shown.
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 18, 0, 0, TimeSpan.Zero));
+        using var factory = api.CreateFactory(builder => builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(clock)));
+        await RealJourneys.CreateAsync(factory.Services, "1004", Today);
+        await RealJourneys.CreateAsync(factory.Services, "1004", Today.AddDays(1));
+        var peradeniya = (await RealJourneys.StationsAsync(factory.Services, "PDA"))["PDA"];
+
+        var board = await factory.CreateClient().GetFromJsonAsync<JsonElement>($"/api/v1/stations/{peradeniya}/board", Ct);
+
+        Assert.Equal(0, board.GetArrayLength());
+
+        clock.Advance(TimeSpan.FromMinutes(31));   // 00:01 on 15 Oct in Colombo: the new service day begins
+        var next = await factory.CreateClient().GetFromJsonAsync<JsonElement>($"/api/v1/stations/{peradeniya}/board", Ct);
+        Assert.NotEqual(0, next.GetArrayLength());   // the generator's own 15 Oct services are there too
+        Assert.All(next.EnumerateArray(), r => Assert.Equal("2026-10-15", r.GetProperty("serviceDate").GetString()));
     }
 
     [Fact]
