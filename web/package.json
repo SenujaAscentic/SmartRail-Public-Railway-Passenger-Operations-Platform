@@ -2,7 +2,7 @@
   "name": "smartrail-web",
   "private": true,
   "type": "module",
-  "description": "SmartRail web front ends (ADR-06): ops-web, and later station-display, with shared packages.",
+  "description": "SmartRail web front ends (ADR-06): ops-web and station-display, with shared packages.",
   "engines": {
     "node": ">=24"
   },
@@ -13,7 +13,7 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build -w @smartrail/tokens && npm run build -w @smartrail/ops-web"
+    "build": "npm run build -w @smartrail/tokens && npm run build -w @smartrail/ops-web && npm run build -w @smartrail/station-display"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

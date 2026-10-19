@@ -188,6 +188,7 @@ export const TEXT = {
   noTrainsOnPlatform: "No trains on this platform",
   loading: "Loading",
   unknownStation: "This station is not known.",
+  unknownPage: "This page does not exist. Use /board/<station code> or /platform/<station code>/<platform>.",
   loadFailed: "The timetable could not be loaded. Please ask staff.",
   // "Train 1520 to Kandy now departs from Platform 5" (US-D2 AC3)
   movedAway: (service: string, destination: string, platform: string) => `Train ${service} to ${destination} now departs from Platform ${platform}`,
