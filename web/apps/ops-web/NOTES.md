@@ -83,3 +83,53 @@ The backend code guide and AI log are not touched here (agent B owns them); this
 - **Secure cookie on `http://localhost`:** Chrome and Firefox accept it; Safari does not. The demo uses Chrome.
 - **`@microsoft/fetch-event-source`, CI pin dates:** the `actions/setup-node` v7.0.0 release date could not be checked (no `gh`); please confirm it meets the one-week rule.
 - **Not built (out of scope here):** the dashboard, station-display, Playwright E2E, `GET /lines` use, role-based screens for station managers.
+
+## Screens (19 Oct 2026, branch `feature/ops-web`)
+
+Dashboard, journey page with the controller's decisions, platform change dialog, audit log. One line of reason per decision.
+
+### Where the data comes from
+- **The Main Line comes from `GET /lines` (the first line); `VITE_MAIN_LINE_ID` is no longer needed for the new screens.** The setting still exists for the bare `/live` events view.
+- **`STREAM_PATH` is now `/api/v1/ops/stream`.** The ops screens need the SOURCE of each value (US-O3 star criterion), and only the staff stream sends it. It also ends when the access token expires; the existing reconnect logic gets a fresh token and carries on.
+- **A snapshot gives a whole journey (`snapshot.journey` = what `GET /journeys/{id}` answers); an event only marks the journey "changed" and the page reads it again from the API.** The screens do not re-implement the backend's rules. Two events are applied at once because they are frequent and complete in themselves: `TrainPositionUpdated` (the position) and the source of a value.
+- **Sources (Driver / GPS / Controller / Schedule) come from the staff stream:** `delaySource` and the source of each actual time in the snapshot, `source` on every event. A value whose source is not known yet says "unknown" instead of guessing.
+- **Ages count from the time the page was told, with a one-second tick.** The server decides what is stale; the page only shows how old a value is.
+
+### Wording and states
+- **All status wording is in `status/status-text.ts` and the test runs every case of `shared/status-fixtures.json` against it** (CLAUDE.md section 5, step 6). The cases that belong to the passenger app and the displays are skipped by the test.
+- **A held train says "Held · 3 min late" (S-08).** The API sends the hold apart from the status kind, so the page combines them; it never invents a delay.
+- **Every state is icon + words + border + colour from the status tokens.**
+
+### Dashboard (handoff 4b)
+- **Alerts:** a running train whose position is Stale or Lost, Lost first, then the newest. Unacknowledged instructions and catering health are not built (crew messages and the provider panel are deferred).
+- **Disrupted trains:** late, cancelled, terminated early or held; cancelled and terminated count as the worst, then the most late. On-time trains are not listed.
+- **Line view:** a list of the stations of each direction, with each running train under the station it last passed, and the backend's "how far to the next station". A list, not a drawing: it reads in order with a screen reader and needs no layout code. The page positions nothing itself.
+- **Filters:** station, and a section (from / to). A section keeps the journeys that go from one chosen station to the other, in that order.
+- **A station manager sees the trains of their own station (the server decides that) and a notice that decisions are the controller's.**
+
+### Journey page (handoff 4c) and decisions
+- **Decisions are offered only to a controller (`GET /staff/me`).** The server checks every request anyway; hiding a button is courtesy.
+- **Every decision sends the journey's version.** On `409 VERSION_CONFLICT` the page shows the server's words ("Changed by R. Perera 4 s ago – reload") and a Reload button that takes the journey from the 409 body.
+- **Cancel, terminate and skip show a confirmation that lists the stations affected and name the passenger apps and information screens.** The `impact-preview` endpoint was never built, so the list is the journey's own remaining stops. Catering is not named: the journey detail does not know which stations have it.
+- **The per-stop buttons have a hidden station name in their label** ("Platform… at Rambukkana"), so a screen reader can tell them apart.
+- **Add stop and unskip are not on the page** (deferred, re-plan 2).
+- **The GPS-contradicts-override warning (handoff 4c) is not built:** the backend sends no such flag yet.
+
+### Platform change dialog (US-O5, handoff 4d)
+- **Choose stop and new platform; the dialog asks the preview endpoint and shows the lead time in minutes and as one of three levels.** The lead time is the backend's number; the page never computes it.
+- **Under 5 minutes: a warning in words and the hold option marked "(recommended)". It is not blocked** (decided by Senuja, 18 Oct).
+- **"What people will see" shows two lines from the fixtures: the platform text (S-10) and the information-screen text (S-19 with a hold, S-20 without).** "The train will wait" appears only after the hold box is ticked (A-113); a test checks both.
+- **A conflict is listed in words ("Platform 4 is expected to be occupied by 1520 at 18:04") and Confirm stays disabled until the person ticks that they have seen it.**
+- **Only platforms in service, other than the current one, are offered** (`GET /stations/{id}`).
+- **The lead time is as at the preview; the server works it out again at confirm.** The audit entry keeps the one the server used.
+
+### Audit log (handoff 4g)
+- **Filters: journey id, staff number, from, to. Times typed are Sri Lanka time and sent as UTC.** Newest first; names are shown only here, to the controller.
+
+### Tests
+- Status wording (20 fixtures), the journey store (9), the dashboard (6), the journey page and platform dialog (13), the audit log (4). The screens run against the fake backend; none has run against the real API in a browser.
+
+### Open points (screens)
+- **Not tried in a browser against the running backend yet.** The typed client, the stream parsing of the shared snapshot example and the backend's own tests are the safety net.
+- **Source and age of a delay set before the page opened:** the age is taken from the latest actual stop time (the backend does not send when a controller delay was set). A controller delay shows no age until an event arrives.
+- **The raw `/live` events page is a technical view and stays in the menu until the demo.**

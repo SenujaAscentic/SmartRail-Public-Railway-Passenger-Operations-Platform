@@ -74,22 +74,35 @@ internal sealed class StreamHandler(
             case ResumeAction.Resync:
                 // No id on this event: it must not change the client's last event id.
                 await WriteAsync(response, SseFormat.Event(null, "resync", ResyncData), cancellationToken);
-                await SendSnapshotsAsync(response, filter, covered, cancellationToken);
+                await SendSnapshotsAsync(response, filter, covered, staff, cancellationToken);
                 break;
 
             default:
-                await SendSnapshotsAsync(response, filter, covered, cancellationToken);
+                await SendSnapshotsAsync(response, filter, covered, staff, cancellationToken);
                 break;
         }
 
         await SendLiveAsync(response, subscription, covered, staff, cancellationToken);
     }
 
-    private async Task SendSnapshotsAsync(HttpResponse response, StreamFilter filter, long sequence, CancellationToken ct)
+    private async Task SendSnapshotsAsync(HttpResponse response, StreamFilter filter, long sequence, bool staff, CancellationToken ct)
     {
         foreach (var snapshot in await snapshots.ReadAsync(filter, sequence, ct))
         {
-            await WriteAsync(response, SseFormat.Event(sequence, "snapshot", JsonSerializer.Serialize(snapshot, EventJson.Options)), ct);
+            var json = JsonSerializer.SerializeToNode(snapshot, EventJson.Options)!.AsObject();
+            if (staff)
+            {
+                // Staff only (US-O3 star criterion): who supplied the delay and each stop's actual times.
+                json["delaySource"] = snapshot.DelaySource;
+                var stops = json["stops"]!.AsArray();
+                for (var i = 0; i < snapshot.Stops.Count; i++)
+                {
+                    if (snapshot.Stops[i].ActualArrivalSource is { } arrival) stops[i]!["actualArrivalSource"] = arrival;
+                    if (snapshot.Stops[i].ActualDepartureSource is { } departure) stops[i]!["actualDepartureSource"] = departure;
+                }
+            }
+
+            await WriteAsync(response, SseFormat.Event(sequence, "snapshot", json.ToJsonString(EventJson.Options)), ct);
         }
     }
 

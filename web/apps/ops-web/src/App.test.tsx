@@ -26,7 +26,7 @@ describe("signing in and out", () => {
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 
-  it("lands on the home page after signing in, shows who is signed in, and sends the Bearer token", async () => {
+  it("lands on the dashboard after signing in, shows who is signed in, and sends the Bearer token", async () => {
     const { services, calls } = fakeBackend();
     renderApp(services, "/sign-in");
     const user = userEvent.setup();
@@ -36,7 +36,7 @@ describe("signing in and out", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByText("Signed in as Demo Controller (Controller)")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("SmartRail Operations");
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Dashboard");
     expect(calls(SIGN_IN)).toHaveLength(1);
     await waitFor(() => expect(calls(ME)[0]?.headers.get("authorization")).toBe("Bearer token-1"));
   });

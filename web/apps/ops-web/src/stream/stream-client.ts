@@ -1,8 +1,9 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
-// ONE constant for the stream's address. The public stream is used for now; the ops stream (`/api/v1/ops/stream`,
-// Controller and StationManager only) replaces it later by changing this line.
-export const STREAM_PATH = "/api/v1/stream";
+// ONE constant for the stream's address: the staff stream (Controller and StationManager only). It sends the same events as the
+// public stream plus the SOURCE of each value, which the ops screens show (US-O3), and it ends when the access token expires,
+// after which this client asks for a fresh token and reconnects. A station manager always gets their own station.
+export const STREAM_PATH = "/api/v1/ops/stream";
 
 // Where the connection stands, for the page to show (in words and an icon, never colour alone).
 export type StreamConnection = "connecting" | "live" | "reconnecting" | "failed" | "closed";

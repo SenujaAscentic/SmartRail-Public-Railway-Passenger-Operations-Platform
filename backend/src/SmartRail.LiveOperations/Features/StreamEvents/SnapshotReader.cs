@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using SmartRail.LiveOperations.Domain;
 using SmartRail.LiveOperations.Features.JourneyViews;
@@ -22,7 +23,9 @@ public sealed record JourneySnapshot(
     // The same public journey detail as GET /journeys/{id} (hold, reason, platforms, version, last position, freshness): added 18 Oct so a
     // reconnecting app does not have to ask again. The flat fields above stay for the apps that already read them.
     JourneyDetailResponse Journey,
-    long Sequence);
+    long Sequence,
+    // Who supplied the delay (Controller, Crew, Gps, Schedule). Staff only (T-07): never serialised here; /ops/stream writes it by hand.
+    [property: JsonIgnore] string? DelaySource = null);
 
 // The same fields as GET /journeys/{id} freshness.lastPosition and the TrainPositionUpdated payload.
 public sealed record SnapshotPosition(double Latitude, double Longitude, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
@@ -35,7 +38,10 @@ public sealed record SnapshotStop(
     DateTime? ActualArrival,
     DateTime? ActualDeparture,
     DateTime? ExpectedArrival,
-    DateTime? ExpectedDeparture);
+    DateTime? ExpectedDeparture,
+    // Who supplied the actual times at this stop. Staff only, like DelaySource.
+    [property: JsonIgnore] string? ActualArrivalSource = null,
+    [property: JsonIgnore] string? ActualDepartureSource = null);
 
 internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider clock, JourneyDetailReader detailReader)
 {
@@ -80,8 +86,9 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
             journey.Id, journey.ServiceDate, journey.LineId, journey.Status, journey.DelayMinutes, journey.Tracking, journey.LastPositionAt, position,
             journey.Stops.OrderBy(s => s.Sequence).Select(s => new SnapshotStop(
                 s.StationId, s.Sequence, s.Status, s.ActualArrival, s.ActualDeparture,
-                s.ExpectedArrival(delay), s.ExpectedDeparture(delay))).ToList(),
+                s.ExpectedArrival(delay), s.ExpectedDeparture(delay), s.ActualArrivalSource?.ToString(), s.ActualDepartureSource?.ToString())).ToList(),
             detail,
-            sequence);
+            sequence,
+            journey.DelaySource.ToString());
     }
 }
