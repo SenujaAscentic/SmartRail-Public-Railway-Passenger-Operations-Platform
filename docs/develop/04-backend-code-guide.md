@@ -435,6 +435,30 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 ### 4.20 `delaySetAt` (20 Oct)
 `OperationalJourney.DelaySetAt` is the time the delay last changed (its minutes or its source); migration `DelaySetAt`. The staff snapshot (`/ops/stream`) carries it as `delaySetAt`; the public snapshot does not. `DelayChanged` events already carry their own time, so the ops web updates the age from the event. Tests: `ControlVersionTests` (set, clear, crew tap), `OpsStreamTests`.
 
+### 4.21 Catering: webhooks to RailBites (20 Oct)
+**What it is.** `SmartRail.CateringIntegration` tells the catering provider (RailBites, a separate service in `provider/`, own database) when a train will reach a catering station late, or will not reach it (US-F2, E2E flow 5). No passenger data is sent.
+
+**Files.**
+- `LiveOperations/IJourneyFeed.cs`: the public door the relay reads through. `ReadAfterAsync(sequence, limit)` gives the dispatched outbox events in stream order, passed through `PublicProjection` (so nothing the public stream hides is given to another module); `GetStateAsync(journeyId)` gives the journey as it is now (status, reason, every call with its expected arrival). No tables are shared and no broker was added.
+- `Network/INetworkCatalog.GetCateringStationsAsync`: station id, code and name of the stations with `IsCateringStation`.
+- `CateringIntegration/Persistence/CateringDbContext.cs`, schema `catering`, migration `InitialCatering`: `RelayCursor` (the last sequence read, one row), `Delivery` (one webhook: its body, status Pending / Delivered / Failed, attempts, next attempt, a short error code), `SentEta` (the last ETA told per journey and station).
+- `Relay/ProviderEventRules.cs` (pure, unit-tested): which provider events a journey event causes. `DelayChanged` gives `provider.eta-updated` for each catering stop not yet reached whose expected arrival differs by at least 1 minute from the last one told (the schedule for the first); `JourneyCancelled` / `JourneyTerminatedEarly` give `provider.journey-changed` (`Cancelled` / `Terminated`) for the catering stops that are now Skipped, with the reason as plain text. The journey's state NOW is used, not the event's payload, so a cancellation reinstated in the meantime sends nothing.
+- `Relay/RelayService.cs`: a background service. Each round (every 2 s, a real timer on purpose) it (1) reads new events, stores the webhooks they cause, advances the cursor and `SentEta` in ONE transaction, then (2) sends the webhooks that are due. Storing first means a provider outage loses nothing. First start: the cursor begins at the newest event, so history is not replayed.
+- Delivery: `POST {Catering:ProviderUrl}/provider-api/v1/webhooks/smartrail`, headers `X-SmartRail-Event-Id`, `X-SmartRail-Timestamp`, `X-SmartRail-Signature: sha256=` + HMAC-SHA256(`Catering:SharedSecret`, timestamp + body); 5 s timeout. Any 2xx = delivered. Otherwise retry after 10 s, 30 s, 1 min, 5 min, 15 min, then `Failed` (6 attempts). The provider ignores a repeated event id, so a retry is harmless.
+- `CateringIntegrationModule.cs`: registration and the start-up migration (same pattern as Network). Registered in `Program.cs` after LiveOperations.
+
+**Settings (user-secrets / environment, never in the repo):** `Catering:ProviderUrl`, `Catering:SharedSecret`, `Catering:ProviderApiKey` (menu pull, next step). With no url or secret the relay does nothing and logs one line. `Catering:RelayEnabled=false` switches the loop off (tests call `RunOnceAsync`).
+
+**Decisions to know.**
+- `stationRef` is OUR station code (PLG, PDA). Domain model 8.3 says the provider's own id; a mapping table is post-MVP (assumption).
+- Architecture test: `CateringIntegration -> LiveOperations` and `-> Network` added to the allowed pairs (recorded change, one-way, no cycle).
+- Logs: only the event id, the attempt count and a short code (`HTTP 500`, `Timeout`, `Unreachable`); never the body, the secret or the response.
+- `StopSkipped` is not relayed (cut).
+
+**Watch out.** The relay reads only `Dispatched` outbox rows, so an ETA reaches the provider a moment after the dispatcher has published the event. On the demo clock RailBites must run on the same clock settings, or its 5-minute replay check refuses the webhooks.
+
+**Tests.** `ProviderEventRulesTests` (unit, 8), `CateringRelayTests` (integration, both applications in memory on one clock: delay, repeated delay, cancel, provider down then back, the full retry schedule ending in Failed), the architecture test, and RailBites' own `RailBitesTests` (11).
+
 ## 5. The Identity module (`SmartRail.Identity`)
 
 Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
@@ -672,3 +696,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 20 Oct 2026 | **Ops web follow-up:** `delaySetAt` in the staff snapshot (age of a delay); ops web aligned to the design; accepted gaps and design-versus-rule differences logged |
 | 20 Oct 2026 | **Board shows today only:** `GET /stations/{id}/board` filters `ServiceDate == today` and each row has `serviceDate`; `openapi.yaml` and `schema.d.ts` regenerated; two integration tests |
 | 19 Oct 2026 | **One-command demo setup:** `scripts/demo-reset.ps1` and `scripts/demo-start.ps1` (section 4.15); no backend code changed |
+| 20 Oct 2026 | **Catering webhooks:** `IJourneyFeed`, `INetworkCatalog.GetCateringStationsAsync`, the `catering` schema (`InitialCatering`), `RelayService`, `ProviderEventRules`; architecture test allows CateringIntegration -> LiveOperations / Network (section 4.21); RailBites in `provider/` |
