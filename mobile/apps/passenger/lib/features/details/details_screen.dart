@@ -250,12 +250,20 @@ class _Body extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text(Strings.stationColumn, style: theme.textTheme.bodySmall)),
-              Text(Strings.scheduledColumn, style: theme.textTheme.bodySmall),
-              const SizedBox(width: spaceSm),
-              SizedBox(
-                width: 56,
-                child: Text(Strings.expectedColumn, textAlign: TextAlign.end, style: theme.textTheme.bodySmall),
-              ),
+              // A train that has not started has no live "expected" time, only its schedule: one column, "Sched.".
+              if (journey.status.kind == StatusKind.notStarted)
+                SizedBox(
+                  width: 56,
+                  child: Text(Strings.scheduledColumn, textAlign: TextAlign.end, style: theme.textTheme.bodySmall),
+                )
+              else ...[
+                Text(Strings.scheduledColumn, style: theme.textTheme.bodySmall),
+                const SizedBox(width: spaceSm),
+                SizedBox(
+                  width: 56,
+                  child: Text(Strings.expectedColumn, textAlign: TextAlign.end, style: theme.textTheme.bodySmall),
+                ),
+              ],
             ],
           ),
         ),

@@ -8,7 +8,7 @@ import { boardRows, groupByDirection, type Direction } from "../rows.ts";
 import { useServices } from "../services.tsx";
 import { formatTime } from "../format.ts";
 import type { BoardRow, LineInfo, StationRef } from "../types.ts";
-import { platformCell, rowStatus, styleOf, TEXT } from "../wording.ts";
+import { platformCell, rowStatus, TEXT } from "../wording.ts";
 import { StationGate } from "./StationGate.tsx";
 
 // The main departures board (US-D1): the next departures of the station, one column for each direction. Address: /board/FOT.
@@ -66,8 +66,8 @@ function BoardColumn({ column, offline }: { column: Direction; offline: boolean 
   );
 }
 
-// One train: the scheduled time, where it goes and what type it is, its status (and the time to expect when that differs),
-// and its platform ("Platform 5 (was 2)" when it changed). Offline it only says "Scheduled": nothing live is known.
+// One train: the scheduled time with the time to expect under it (when that differs), where it goes and what type it is, its
+// status, and its platform ("Platform 5 (was 2)" when it changed). Offline it only says "Scheduled": nothing live is known.
 function BoardLine({ row, offline }: { row: BoardRow; offline: boolean }) {
   const status = rowStatus(row, offline);
   const platform = platformCell(row);
@@ -76,20 +76,22 @@ function BoardLine({ row, offline }: { row: BoardRow; offline: boolean }) {
 
   return (
     <li className="line">
-      <time className="line-time">{formatTime(row.time)}</time>
+      <div className="line-time-cell">
+        <time className="line-time">{formatTime(row.time)}</time>
+        {status.expected !== null && (
+          <span className="expected">
+            {TEXT.expected} <time>{status.expected}</time>
+          </span>
+        )}
+      </div>
       <div className="line-main">
         <div className="line-destination">
-          <span className="destination">{row.destination.name}</span> <span className="train-type">{row.trainType}</span>
+          <span className="destination">{row.destination.name}</span>
+          <span className="train-type">{row.trainType}</span>
         </div>
         <div className="line-status">
           <StatusBadge text={status.text} style={status.style} />
-          {changed && platform.changedText !== null && <StatusBadge text={platform.changedText} style={styleOf("platform-changed")} />}
           {status.extra !== null && <span className="extra">{status.extra}</span>}
-          {status.expected !== null && (
-            <span className="expected">
-              {TEXT.expected} <time>{status.expected}</time>
-            </span>
-          )}
         </div>
       </div>
       <div className="line-platform">
@@ -98,9 +100,14 @@ function BoardLine({ row, offline }: { row: BoardRow; offline: boolean }) {
             –
           </span>
         ) : changed ? (
-          <span className="platform-changed">
-            <Icon name="arrows-exchange" />
-            <span className="platform-number">{platform.number}</span>
+          // The full words ("Platform 5 (was 2)", fixture S-10) are the label; the cell is too narrow to show them, so it shows the
+          // number and "(was 2)" under it, with the changed-platform icon and colours.
+          <span className="platform-changed" role="img" aria-label={platform.changedText ?? undefined}>
+            <span className="platform-changed-top">
+              <Icon name="arrows-exchange" />
+              <span className="platform-number">{platform.number}</span>
+            </span>
+            <span className="platform-was">{platform.wasText}</span>
           </span>
         ) : (
           <span className="platform-number">{platform.number}</span>

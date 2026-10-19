@@ -120,11 +120,24 @@ describe("what a line says", () => {
     expect(screen.queryByText("On time")).toBeNull();
   });
 
-  it("a platform change reads 'Platform 5 (was 2)'", async () => {
+  it("a platform change reads 'Platform 5 (was 2)' (S-10): the number and '(was 2)' in the platform cell, the full words as its label", async () => {
     await openBoard(({ backend }) => (backend.board = [toKandy(1, { platform: "5", previousPlatform: "2" })]));
 
-    expect(await screen.findByText("Platform 5 (was 2)")).toBeTruthy();
-    expect(screen.getByText("5")).toBeTruthy();
+    const cell = await screen.findByLabelText("Platform 5 (was 2)");
+    expect(within(cell).getByText("5")).toBeTruthy();
+    expect(within(cell).getByText("(was 2)")).toBeTruthy();
+  });
+
+  it("a delayed row: 'Expected' sits under the time and the status line holds only the badge (the row keeps its height)", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "Late", delayMinutes: 8 }, expectedTime: "2026-10-20T01:50:00Z", platform: "5", previousPlatform: "2" })];
+    });
+
+    const expected = (await screen.findByText("Expected")).closest(".line-time-cell")!;
+    expect(within(expected as HTMLElement).getByText("07:20")).toBeTruthy(); // the time cell: 07:12 and Expected 07:20
+    const line = expected.closest(".line")!.querySelector(".line-status")!;
+    expect(within(line as HTMLElement).getByText("8 min late")).toBeTruthy();
+    expect(line.querySelectorAll(".status-badge")).toHaveLength(1); // only the status; "(was 2)" is in the platform cell
   });
 
   it("a train that ends early: 'Terminates at ...' with the termination station", async () => {
@@ -379,5 +392,16 @@ describe("offline (US-D4)", () => {
 
     expect(screen.queryByText("Offline")).toBeNull();
     expect(screen.queryByText("Live information unavailable – check announcements or ask staff")).toBeNull();
+  });
+});
+
+describe("a train that has not started (rehearsal #3)", () => {
+  it("shows 'Not started' and no 'Expected' time under its time", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "NotStarted", delayMinutes: null } })];
+    });
+
+    expect(await screen.findByText("Not started")).toBeTruthy();
+    expect(screen.queryByText("Expected")).toBeNull();
   });
 });

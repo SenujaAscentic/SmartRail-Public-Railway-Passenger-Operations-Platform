@@ -26,6 +26,21 @@ body {
   overflow: hidden; /* a display has no scrollbars */
 }
 
+/* The fixed 1920 x 1080 picture (components/Stage.tsx scales it to the window). */
+.stage-frame {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-background);
+}
+
+.stage {
+  position: absolute;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+}
+
 .display {
   height: 100%;
   display: flex;
@@ -210,10 +225,13 @@ time {
 /* ---- departures board ---- */
 
 .columns {
+  /* Time, Destination (the rest), Platform. */
+  --board-columns: 260px minmax(0, 1fr) 128px;
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Exactly half each, whatever is inside (minmax(0, ...) stops long content from widening a panel). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .column {
@@ -237,13 +255,24 @@ time {
   padding: var(--space-sm) var(--space-lg);
   font-size: var(--font-size-title);
   font-weight: 700;
+  white-space: nowrap; /* the heading is always one line */
+}
+
+.column-heading span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-heading .icon {
+  font-size: var(--font-size-title);
 }
 
 /* Column labels: muted, the smallest display size (36 px), a thin divider below. */
 .column-labels {
   display: grid;
-  grid-template-columns: 240px 1fr 220px;
-  padding: var(--space-xs) var(--space-lg);
+  grid-template-columns: var(--board-columns);
+  padding: var(--space-xs) var(--space-md);
   font-size: var(--font-size-small);
   font-weight: 400;
   color: var(--display-on-surface-muted);
@@ -263,12 +292,20 @@ time {
   overflow: hidden;
 }
 
+/* Every row has the same height (126 px), so the two panels always line up; Time and Platform have fixed widths, the
+   destination takes the rest and is cut with an ellipsis. */
 .line {
   display: grid;
-  grid-template-columns: 240px 1fr 220px;
+  grid-template-columns: var(--board-columns);
   align-items: center;
-  padding: var(--space-sm) var(--space-lg);
+  height: 126px;
+  padding: 0 var(--space-md);
+  overflow: hidden;
   border-bottom: 1px solid var(--color-border);
+}
+
+.line-main {
+  min-width: 0;
 }
 
 /* Rows are dark with a thin divider; no bright blue in a row. */
@@ -282,28 +319,63 @@ time {
 }
 
 .line-destination {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
   font-size: var(--font-size-body);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .destination {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 700;
 }
 
 .train-type {
+  flex: none;
   font-size: var(--font-size-small);
   color: var(--display-on-surface-muted);
 }
 
+/* The time cell: the scheduled time, and under it "Expected 07:09" when that differs. Nothing here can change the row height. */
+.line-time-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.line-time-cell .expected {
+  font-size: var(--font-size-small);
+  line-height: 1;
+}
+
+/* The status badge on ONE line (an ellipsis only for a very long station name inside it). */
 .line-status {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
+  flex-wrap: nowrap;
+  gap: var(--space-sm);
   margin-top: var(--space-xs);
   font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.line-status .status-badge {
+  min-width: 0;
+}
+
+.line-status .status-badge span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-status .extra {
+  flex: none;
 }
 
 .expected,
@@ -332,14 +404,26 @@ time {
   color: var(--display-on-surface-muted);
 }
 
+/* A changed platform: the number with the changed-platform icon, and "(was 2)" under it, in the changed-platform colours. */
 .platform-changed {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-sm);
   border-radius: var(--radius-md);
   background: var(--status-platform-changed-bg);
   color: var(--status-platform-changed-fg);
+  font-size: var(--font-size-small);
+  line-height: 1;
+}
+
+.platform-changed-top {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.platform-changed-top .icon {
   font-size: var(--font-size-small);
 }
 
@@ -442,7 +526,32 @@ time {
 }
 
 .next-destination {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  min-width: 0;
   font-size: var(--font-size-title);
+  white-space: nowrap;
+}
+
+.next-destination .destination,
+.then-destination .destination {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.next-destination .train-type,
+.then-destination .train-type {
+  flex: none;
+}
+
+.then-destination {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .hold-line {
@@ -509,10 +618,11 @@ time {
 
 .then-line {
   display: grid;
-  grid-template-columns: 220px 1fr auto 330px;
+  grid-template-columns: 220px minmax(0, 1fr) auto 340px;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-xs) 0;
+  height: 88px; /* every "Then" line is the same height */
+  overflow: hidden;
   border-bottom: 1px solid var(--color-border);
   font-size: var(--font-size-body);
 }

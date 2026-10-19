@@ -358,6 +358,19 @@ The cab tablet can now drive a journey: start it, send GPS, end it, and the publ
 - Why it is built this way: the secrets live only in the environment of the script and the simulator window (never in a file, the command line or the output); the API runs with `--no-launch-profile` (the profile would open a browser) so `ASPNETCORE_ENVIRONMENT=Development` is set in its window; it refuses to start when port 5045, 5173 or 5174 is already in use (an old demo is still open). Optional parameters: `-ApiPort` (another port; the dev servers follow, the passenger app then needs `--dart-define=API_BASE_URL=http://10.0.2.2:<port>`), `-Service`, `-Device`, `-Driver`, `-From`, `-To`.
 - Watch out: the demo clock keeps running from the moment the API starts, so a slow start of the simulator (a long wait at the secrets prompt cannot happen: it is asked first) eats into the 5 minutes before departure. A rehearsal that must not touch your demo database: set `ConnectionStrings__SmartRail` to another database name in the same shell and pass `-ApiPort 5046`. `demo-reset.ps1` always acts on the compose project of this folder, so it is never part of such a rehearsal.
 
+**Rehearsal changes to `demo-start.ps1` (19 Oct).**
+- **Web preparation first:** the design tokens are generated, not committed, so the script runs `npm run build -w @smartrail/tokens` in `web/` before it starts the web apps. `npm ci` runs only when `web/node_modules` is missing or with `-ReinstallWeb`; before it, the script looks for `node` processes started from this repository (an old dev server holds files in `node_modules`). If it finds any it lists them and **exits without killing anything**: close the old windows and run it again.
+- **The simulator is built once** (`dotnet build`) and both simulator windows use `dotnet run --no-build`: two windows building the same project at the same moment made one fail.
+- **`-WithSlowTrain`** starts a second simulator for **2001** (Slow, Colombo Fort 06:00 to Kandy). The seed gives 2001 the train set LH-01, so its driver is **DRV-03** and its cab is **CAB-02** (`shared/seed/service-assignments.json`, `cab-devices.json`); DRV-02 is not assigned to it, and the backend correctly answers 403 `OUT_OF_SCOPE`. It needs CAB-02's own secret (`SMARTRAIL_CAB_SECRET_SLOW` in the environment, or asked for; same demo password). With this switch the clock defaults to **05:55**; the script warns that **2001 must be started before 06:00 server time**. Without the switch the default stays 06:25 (1001 leaves 06:30). Changing the service, device or driver: `-SlowService`, `-SlowDevice`, `-SlowDriver`. With 05:55 the 1001 simulator waits until 06:25 to start its train (it starts 5 minutes before departure).
+- Which cab and driver belong to which service (from the seed):
+
+| Services | Train set | Driver | Cab |
+|---|---|---|---|
+| 1001, 1002 | DPS-01 | DRV-01 | CAB-01 |
+| 1003, 1004 | DPS-02 | DRV-02 | CAB-03 |
+| 2001, 2002 | LH-01 | DRV-03 | CAB-02 |
+| 2003, 2004 | LH-02 | DRV-04 | CAB-04 |
+
 **Demo runbook (matches section 7; PowerShell, from the repository root).** The database and the secrets are the ones of section 7 (`docker compose up -d`, `dotnet user-secrets set ...`, including `Seed:CabDevice:CAB-01:Token` and `CAB-03`). The ONLY demo settings are `Clock__Start` and, for rehearsals, `Clock__Speed`. The API runs on its default port **5045** (the passenger app and the ops-web proxy expect it), so there is no `--urls`. In Development the console shows only warnings from Entity Framework (`appsettings.Development.json`), so "Now listening" does not scroll away.
 
 ```powershell
@@ -378,9 +391,9 @@ curl.exe -s http://localhost:5045/api/v1/journeys/<journey id>     # status, sto
 
 # 4. Stop scenario at 30x (rehearsal only, never for the real demo): stop the API, then
 $env:Clock__Start = "2026-10-20T05:40:00+05:30"; $env:Clock__Speed = "30"
-dotnet run --project backend/src/SmartRail.Api       # (the secrets of step 2 must be the ones for CAB-03 in the simulator window)
-$env:SMARTRAIL_CAB_SECRET = "<the Seed:CabDevice:CAB-03:Token value>"
-dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5045 --device CAB-03 --driver DRV-03 --service 2001 --from FOT --to KDT --scenario stop --stop-minutes 10 --speed 30
+dotnet run --project backend/src/SmartRail.Api       # (the secrets of step 2 must be the ones for CAB-02 in the simulator window: 2001 runs on LH-01)
+$env:SMARTRAIL_CAB_SECRET = "<the Seed:CabDevice:CAB-02:Token value>"
+dotnet run --project backend/src/SmartRail.Simulator -- --api http://localhost:5045 --device CAB-02 --driver DRV-03 --service 2001 --from FOT --to KDT --scenario stop --stop-minutes 10 --speed 30
 ```
 
 **In the passenger app:** search the SAME date as the demo clock (the clock says 20 Oct, so search 20 Oct). Before the train has left, search from its origin (Colombo Fort); once it has left, search from a station AHEAD of the train, because search hides a train that has already left the departure station. The controller's requests are in `backend/demo.http` (port 5045).
@@ -672,3 +685,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 20 Oct 2026 | **Ops web follow-up:** `delaySetAt` in the staff snapshot (age of a delay); ops web aligned to the design; accepted gaps and design-versus-rule differences logged |
 | 20 Oct 2026 | **Board shows today only:** `GET /stations/{id}/board` filters `ServiceDate == today` and each row has `serviceDate`; `openapi.yaml` and `schema.d.ts` regenerated; two integration tests |
 | 19 Oct 2026 | **One-command demo setup:** `scripts/demo-reset.ps1` and `scripts/demo-start.ps1` (section 4.15); no backend code changed |
+| 19 Oct 2026 | **Rehearsal fixes to the demo script:** tokens build, node-process guard, simulator built once, optional second simulator for 2001 (DRV-03 / CAB-02); the runbook step for 2001 named CAB-03 and is corrected; no backend code changed |

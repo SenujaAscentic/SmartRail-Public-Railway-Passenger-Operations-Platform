@@ -154,18 +154,28 @@ export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
   };
 }
 
+// The "time to expect" line of the platform display: "Expected 15:09" for a train that runs, but "Scheduled 15:09" for a train that has not
+// started (nothing live is known about it: its expected time is only its schedule). Offline: nothing live, so no such line.
+export function timeLine(row: BoardRow, offline: boolean): { label: string; time: string } | null {
+  if (offline) return null;
+  if (row.status.kind === "NotStarted") return { label: TEXT.columnScheduled, time: formatTime(row.time) };
+  return { label: TEXT.expected, time: formatTime(row.expectedTime ?? row.time) };
+}
+
 // The platform cell: the number, and the words "Platform 5 (was 2)" when it changed. An empty platform (cancelled, not known) is a dash.
 export interface PlatformCell {
   number: string;
   changedText: string | null;
+  // Only the "(was 2)" part of changedText, for the narrow platform column of the board.
+  wasText: string | null;
 }
 
 export function platformCell(row: BoardRow): PlatformCell {
-  if (row.platform === "") return { number: "–", changedText: null };
-  return {
-    number: row.platform,
-    changedText: row.previousPlatform === null ? null : platformText(row.platform, row.previousPlatform),
-  };
+  if (row.platform === "") return { number: "–", changedText: null, wasText: null };
+  const changedText = row.previousPlatform === null ? null : platformText(row.platform, row.previousPlatform);
+  // The words after "Platform 5 ": cut from the fixture text, never typed again.
+  const wasText = changedText === null ? null : changedText.slice(`Platform ${row.platform} `.length);
+  return { number: row.platform, changedText, wasText };
 }
 
 // ---- Wording that is NOT a status (the design, docs/design/display; for Senuja's approval, see NOTES.md) ----

@@ -8,7 +8,7 @@ import { loadPlatform, type PlatformData } from "../loaders.ts";
 import { callingPointsAfter, platformDirection, platformView } from "../rows.ts";
 import { useServices } from "../services.tsx";
 import type { BoardRow, LineInfo, StationRef } from "../types.ts";
-import { holdNotice, NEXT_TRAIN_DOES_NOT_STOP, rowStatus, statusText, styleForKind, styleOf, TEXT } from "../wording.ts";
+import { holdNotice, NEXT_TRAIN_DOES_NOT_STOP, rowStatus, statusText, styleForKind, styleOf, TEXT, timeLine } from "../wording.ts";
 import { StationGate } from "./StationGate.tsx";
 
 // The platform display (US-D2): the next train on one platform with the stations it still calls at, and the following two.
@@ -119,10 +119,10 @@ function NextTrain({ row, calling, offline }: { row: BoardRow; calling: string[]
         </span>
         <StatusBadge text={passes && !offline ? "Does not stop" : status.text} style={passes && !offline ? styleForKind("Cancelled") : status.style} />
       </div>
-      {!offline && (
+      {timeLine(row, offline) !== null && (
         <div className="next-expected">
-          <span className="label">{TEXT.expected}</span>
-          <time className="next-time">{formatTime(row.expectedTime ?? row.time)}</time>
+          <span className="label">{timeLine(row, offline)?.label}</span>
+          <time className="next-time">{timeLine(row, offline)?.time}</time>
           {row.hold && !passes && <span className="hold-line">{holdNotice(true, row.platform)}</span>}
         </div>
       )}
@@ -140,9 +140,9 @@ function ThenLine({ row, offline }: { row: BoardRow; offline: boolean }) {
       <span className="then-destination">
         <span className="destination">{row.destination.name}</span> <span className="train-type">{row.trainType}</span>
       </span>
-      {!offline && (
+      {timeLine(row, offline) !== null && (
         <span className="then-expected">
-          {TEXT.expected} <time>{formatTime(row.expectedTime ?? row.time)}</time>
+          {timeLine(row, offline)?.label} <time>{timeLine(row, offline)?.time}</time>
         </span>
       )}
       <StatusBadge text={passes ? "Does not stop" : status.text} style={passes ? styleForKind("Cancelled") : status.style} />

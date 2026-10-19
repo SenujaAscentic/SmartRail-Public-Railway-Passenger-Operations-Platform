@@ -187,7 +187,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final (label, shown, showScheduled) = switch (boarding.state) {
       StopState.arrived => (Strings.arrivedAt(boarding.name), times.expected, false),
       StopState.departed || StopState.passed => (Strings.leftStation(boarding.name), passedAt(boarding), false),
-      _ => (Strings.expectedAt(boarding.name), times.expected, true),
+      // A train that has not started has no live expected time: its time is the schedule, and it says so.
+      _ => (
+        journey.status.kind == StatusKind.notStarted ? Strings.scheduledAt(boarding.name) : Strings.expectedAt(boarding.name),
+        times.expected,
+        true,
+      ),
     };
     final platformChanged = boarding.platform != null && boarding.previousPlatform != null;
 
