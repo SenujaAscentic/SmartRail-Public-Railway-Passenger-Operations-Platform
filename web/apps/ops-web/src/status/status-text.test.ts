@@ -55,7 +55,7 @@ describe("status wording (shared/status-fixtures.json)", () => {
     expect(statusView({ kind: "Late", delayMinutes: 3 }, { hold: true }).text).toBe("Held · 3 min late");
   });
 
-  it("an on-time train that is held says so in words", () => {
-    expect(statusView({ kind: "OnTime", delayMinutes: 0 }, { hold: true }).text).toBe("Held · on time");
+  it("a held train with no delay says just Held (S-21), also when the hold comes apart from the kind", () => {
+    expect(statusView({ kind: "OnTime", delayMinutes: 0 }, { hold: true }).text).toBe("Held");
   });
 });

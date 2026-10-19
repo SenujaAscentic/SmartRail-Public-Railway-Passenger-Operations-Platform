@@ -17,7 +17,13 @@ export interface View {
   tone: Tone;
 }
 
-const minutes = (n: number) => `${Math.abs(n)} min`;
+// S-05: whole minutes below an hour, then hours ("59 min", "1 h", "1 h 15 min"); never "0 min".
+const minutes = (n: number) => {
+  const total = Math.abs(n);
+  if (total < 60) return `${total} min`;
+  const rest = total % 60;
+  return rest === 0 ? `${Math.floor(total / 60)} h` : `${Math.floor(total / 60)} h ${rest} min`;
+};
 
 function delayView(kind: string, delayMinutes: number | null | undefined): View {
   const n = delayMinutes ?? 0;
@@ -32,14 +38,15 @@ export function statusView(status: Status, extra: { terminatesAt?: string | null
   const { kind, delayMinutes } = status;
   if (kind === "Cancelled") return { text: "Cancelled", icon: "x-circle", tone: "cancelled" };
   if (kind === "TerminatedEarly") {
-    return { text: extra.terminatesAt ? `Terminates at ${extra.terminatesAt}` : "Terminated early", icon: "x-circle", tone: "terminated-early" };
+    return { text: extra.terminatesAt ? `Terminates at ${extra.terminatesAt}` : "Terminates early", icon: "x-circle", tone: "terminated-early" };
   }
   if (kind === "NotStarted") return { text: "Not started", icon: "clock", tone: "not-started" };
-  if (kind === "Completed") return { text: "Completed", icon: "check-circle", tone: "on-time" };
+  if (kind === "Completed") return { text: "Completed", icon: "calendar", tone: "not-started" };
 
   const delay = delayView(kind === "Held" ? "Late" : kind, delayMinutes);
   if (kind === "Held" || extra.hold) {
-    return { text: `Held · ${delay.text === "On time" ? "on time" : delay.text}`, icon: "hand-stop", tone: "held" };
+    // S-21: no delay to add, so just "Held"; S-08: "Held · 3 min late".
+    return { text: (delayMinutes ?? 0) === 0 ? "Held" : `Held · ${delay.text}`, icon: "hand-stop", tone: "held" };
   }
   return delay;
 }
@@ -71,8 +78,8 @@ export function freshnessView(freshness: Pick<Freshness, "tracking" | "updatedAt
     return { text: at ? `Last seen ${at}${near}` : "Last seen earlier", icon: "signal-weak", tone: "stale" };
   }
   if (tracking === "Live" && updatedAt) return { text: `Updated ${age(updatedAt, nowMs)} ago`, icon: "check-circle", tone: "on-time" };
-  if (tracking === "Ended") return { text: "Journey ended", icon: "clock", tone: "not-started" };
-  return { text: "No live position yet", icon: "clock", tone: "not-started" };
+  // S-25 to S-27: NotStarted, Ended and Live without an age have nothing to say; the status badge already does (decided 20 Oct).
+  return { text: "", icon: "clock", tone: "not-started" };
 }
 
 // "30 s", "4 min", "1 h 5 min": the age of a value, counted from the time the page was told it.

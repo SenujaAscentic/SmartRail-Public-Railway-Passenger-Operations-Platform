@@ -29,6 +29,7 @@ const ICONS = {
   "arrow-left": ["M19 12H5", "M12 19l-7-7 7-7"],
   undo: ["M3 7v6h6", "M3 13a9 9 0 1 0 3-7.7"],
   "skip-forward": ["M5 4l10 8-10 8Z", "M19 5v14"],
+  calendar: ["M3 5h18v16H3Z", "M3 10h18", "M8 3v4", "M16 3v4"],
   filter: ["M3 5h18", "M7 12h10", "M10 19h4"],
 } as const;
 
