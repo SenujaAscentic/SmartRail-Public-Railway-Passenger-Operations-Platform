@@ -8,7 +8,7 @@ import { loadPlatform, type PlatformData } from "../loaders.ts";
 import { callingPointsAfter, platformDirection, platformView } from "../rows.ts";
 import { useServices } from "../services.tsx";
 import type { BoardRow, LineInfo, StationRef } from "../types.ts";
-import { holdNotice, NEXT_TRAIN_DOES_NOT_STOP, rowStatus, statusText, styleForKind, styleOf, TEXT, timeLine } from "../wording.ts";
+import { holdNotice, NEXT_TRAIN_DOES_NOT_STOP, rowStatus, shownStatus, statusText, styleForKind, styleOf, TEXT, timeLine } from "../wording.ts";
 import { StationGate } from "./StationGate.tsx";
 
 // The platform display (US-D2): the next train on one platform with the stations it still calls at, and the following two.
@@ -99,7 +99,7 @@ function MovedAwayNotice({ row, offline }: { row: BoardRow; offline: boolean }) 
       <div className="notice-line notice-hold">
         <Icon name={held ? "hand-stop" : "walk"} />
         <span>{holdNotice(held, row.platform)}</span>
-        {held && <StatusBadge text={statusText(row.status)} style={styleOf("held")} />}
+        {held && <StatusBadge text={statusText(shownStatus(row))} style={styleOf("held")} />}
       </div>
     </div>
   );

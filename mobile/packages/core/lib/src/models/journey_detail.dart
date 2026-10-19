@@ -77,6 +77,9 @@ class JourneyDetail {
   /// Null unless the controller has set a hold.
   final JourneyHold? hold;
 
+  /// The status to show: Held while a hold is set, else `status`.
+  JourneyStatus get shownStatus => status.shownWithHold(hold);
+
   /// The controller's reason for a delay, cancellation or early end; null when none was given.
   final JourneyReason? reason;
   final int version;

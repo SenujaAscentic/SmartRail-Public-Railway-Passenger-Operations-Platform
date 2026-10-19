@@ -201,7 +201,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         label: label,
         time: shown ?? times.scheduled,
         scheduled: showScheduled ? times.scheduled : null,
-        status: journey.status,
+        status: journey.shownStatus,
         side: boarding.platform == null ? null : _PlatformBox(platform: boarding.platform!),
       ),
       if (platformChanged) ...[
@@ -228,7 +228,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           label: reached ? Strings.arrivedAt(destination.name) : Strings.arrivesAt(destination.name),
           time: times.expected ?? times.scheduled,
           scheduled: reached ? null : times.scheduled,
-          status: journey.status,
+          status: journey.shownStatus,
         ),
     ];
   }
