@@ -340,6 +340,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stations/{stationId}/catering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetStationCatering"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/sign-in": {
         parameters: {
             query?: never;
@@ -1086,6 +1102,16 @@ export interface components {
             name: string;
             routes: components["schemas"]["RouteResponse"][];
         };
+        MenuItemResponse: {
+            name: string;
+            /** Format: int32 */
+            price: number;
+            available: boolean;
+        };
+        OpeningHoursResponse: {
+            opens: string;
+            closes: string;
+        };
         PasswordSignInRequest: {
             staffNumber: null | string;
             password: null | string;
@@ -1236,6 +1262,13 @@ export interface components {
             role: string;
             /** Format: uuid */
             stationId: null | string;
+        };
+        StationCateringResponse: {
+            available: boolean;
+            openNow: boolean;
+            hotline: string;
+            openingHours: null | components["schemas"]["OpeningHoursResponse"];
+            menu: components["schemas"]["MenuItemResponse"][];
         };
         StationResponse: {
             /** Format: uuid */
@@ -2378,6 +2411,37 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStationCatering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationCateringResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

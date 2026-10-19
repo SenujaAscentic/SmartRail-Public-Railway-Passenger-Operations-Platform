@@ -472,6 +472,22 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 
 **Tests.** `ProviderEventRulesTests` (unit, 8), `CateringRelayTests` (integration, both applications in memory on one clock: delay, repeated delay, cancel, provider down then back, the full retry schedule ending in Failed), the architecture test, and RailBites' own `RailBitesTests` (11).
 
+### 4.22 Catering: the menu pull and `GET /stations/{id}/catering` (20 Oct)
+**What it is.** SmartRail fetches the provider's stations and menus every 5 minutes into its own cache, and the passenger app reads the cache through one public endpoint (US-F3, US-P8). Train information never depends on the provider.
+
+**Files.**
+- `Persistence/CateringDbContext.cs`: `CachedStation` (one row per catering station: name, hotline, opening hours "HH:mm", `ProviderAvailable`, the menu as one JSON text, `FetchedAt`); migration `StationCache`. The menu is read and replaced as a whole, so one JSON column is the simplest fit.
+- `Menus/MenuPuller.cs`: `GET {ProviderUrl}/provider-api/v1/stations`, then `/stations/{ref}/menu` for each station SmartRail knows as a catering station, with the `X-Api-Key` header (`Catering:ProviderApiKey`), 5 s timeout. A failure is logged as its type only and keeps the old cache (the change tracker is cleared).
+- `Relay/RelayService.cs`: every round first checks "is a pull due?" by `TimeProvider` (every 5 min, the first round at once), so the pull is tested with a fake clock and shares the relay's loop.
+- `Menus/CateringRules.cs` (pure, unit-tested): `IsOpenNow` (Colombo time of day, closing time exclusive, hours past midnight allowed, unreadable hours = closed) and `IsAvailable` (provider takes orders and the cache is at most 15 minutes old).
+- `Features/GetStationCatering/`: the endpoint. Unknown or malformed id: 404; known station: 200 from the cache. Registered with `MapCateringIntegrationEndpoints()` in `Program.cs`.
+
+**Decisions to know.** "Unavailable" is `200 available:false`, not an error (contract 3.6). A cache older than 15 minutes is not shown, because old prices and sold-out flags could mislead. Opening hours are a Colombo time of day, a stated exception to "UTC everywhere".
+
+**Watch out.** Without `Catering:ProviderUrl` / `ProviderApiKey` nothing is pulled and every station answers `available:false`. The endpoint reads only this module's cache and Network's public catalog.
+
+**Tests.** `CateringRulesTests` (unit), `CateringEndpointTests` (integration: shape, openNow, provider down for 6 and 16 minutes, recovery, nothing cached, non-catering and unknown station), permission matrix rows.
+
 ## 5. The Identity module (`SmartRail.Identity`)
 
 Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
@@ -711,3 +727,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 19 Oct 2026 | **One-command demo setup:** `scripts/demo-reset.ps1` and `scripts/demo-start.ps1` (section 4.15); no backend code changed |
 | 20 Oct 2026 | **Catering webhooks:** `IJourneyFeed`, `INetworkCatalog.GetCateringStationsAsync`, the `catering` schema (`InitialCatering`), `RelayService`, `ProviderEventRules`; architecture test allows CateringIntegration -> LiveOperations / Network (section 4.21); RailBites in `provider/` |
 | 19 Oct 2026 | **Rehearsal fixes to the demo script:** tokens build, node-process guard, simulator built once, optional second simulator for 2001 (DRV-03 / CAB-02); the runbook step for 2001 named CAB-03 and is corrected; no backend code changed |
+| 20 Oct 2026 | **Catering menu pull and `GET /stations/{id}/catering`:** `CachedStation` (migration `StationCache`), `MenuPuller`, `CateringRules`; `openapi.yaml` and `schema.d.ts` regenerated; contract 3.6 gets the response shape (section 4.22) |

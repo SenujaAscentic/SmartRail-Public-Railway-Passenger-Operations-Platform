@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SmartRail.CateringIntegration.Menus;
 using SmartRail.CateringIntegration.Persistence;
 using SmartRail.LiveOperations;
 using SmartRail.Network;
@@ -26,7 +27,7 @@ public sealed class CateringOptions
 // Two steps in one loop: (1) read new events from LiveOperations' feed and store the webhooks they cause (with the cursor, one
 // transaction); (2) send the webhooks that are due. Storing before sending means a provider outage loses nothing.
 internal sealed class RelayService(
-    IServiceScopeFactory scopes, IHttpClientFactory httpClients, IOptions<CateringOptions> options, TimeProvider time, ILogger<RelayService> logger)
+    IServiceScopeFactory scopes, IHttpClientFactory httpClients, MenuPuller menus, IOptions<CateringOptions> options, TimeProvider time, ILogger<RelayService> logger)
     : BackgroundService
 {
     // The wait between attempts: 10 s, 30 s, 1 min, 5 min, 15 min, then the delivery is marked Failed (US-F2 AC3).
@@ -61,8 +62,23 @@ internal sealed class RelayService(
     internal async Task RunOnceAsync(CancellationToken ct)
     {
         await using var scope = scopes.CreateAsyncScope();
+        await PullMenusIfDueAsync(scope.ServiceProvider, ct);
         await ReadNewEventsAsync(scope.ServiceProvider, ct);
         await DeliverDueAsync(scope.ServiceProvider, ct);
+    }
+
+    // Every 5 minutes by TimeProvider (the first round pulls at once). A failure is handled inside the puller and never stops the webhooks.
+    private DateTimeOffset _nextMenuPull = DateTimeOffset.MinValue;
+
+    private async Task PullMenusIfDueAsync(IServiceProvider services, CancellationToken ct)
+    {
+        if (time.GetUtcNow() < _nextMenuPull)
+        {
+            return;
+        }
+
+        _nextMenuPull = time.GetUtcNow() + MenuPuller.Every;
+        await menus.PullAsync(services.GetRequiredService<CateringDbContext>(), services.GetRequiredService<INetworkCatalog>(), ct);
     }
 
     private async Task ReadNewEventsAsync(IServiceProvider services, CancellationToken ct)

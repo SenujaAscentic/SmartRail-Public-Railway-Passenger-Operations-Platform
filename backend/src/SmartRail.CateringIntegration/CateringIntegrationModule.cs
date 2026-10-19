@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Routing;
+using SmartRail.CateringIntegration.Features.GetStationCatering;
+using SmartRail.CateringIntegration.Menus;
 using SmartRail.CateringIntegration.Persistence;
 using SmartRail.CateringIntegration.Relay;
 
@@ -22,11 +25,19 @@ public static class CateringIntegrationModule
         });
 
         services.AddHttpClient("railbites");
+        services.AddSingleton<MenuPuller>();
         services.AddHostedService<CateringStartupService>();   // migrate first ...
         services.AddSingleton<RelayService>();                 // a singleton too, so the tests can run one round (RunOnceAsync)
         services.AddHostedService(sp => sp.GetRequiredService<RelayService>());   // ... then relay
 
         return services;
+    }
+
+    // The host decides the URL prefix (/api/v1) and passes the group in.
+    public static IEndpointRouteBuilder MapCateringIntegrationEndpoints(this IEndpointRouteBuilder routes)
+    {
+        GetStationCateringEndpoint.Map(routes);
+        return routes;
     }
 }
 
