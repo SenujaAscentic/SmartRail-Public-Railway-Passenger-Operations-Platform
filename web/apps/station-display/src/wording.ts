@@ -158,14 +158,16 @@ export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
 export interface PlatformCell {
   number: string;
   changedText: string | null;
+  // Only the "(was 2)" part of changedText, for the narrow platform column of the board.
+  wasText: string | null;
 }
 
 export function platformCell(row: BoardRow): PlatformCell {
-  if (row.platform === "") return { number: "–", changedText: null };
-  return {
-    number: row.platform,
-    changedText: row.previousPlatform === null ? null : platformText(row.platform, row.previousPlatform),
-  };
+  if (row.platform === "") return { number: "–", changedText: null, wasText: null };
+  const changedText = row.previousPlatform === null ? null : platformText(row.platform, row.previousPlatform);
+  // The words after "Platform 5 ": cut from the fixture text, never typed again.
+  const wasText = changedText === null ? null : changedText.slice(`Platform ${row.platform} `.length);
+  return { number: row.platform, changedText, wasText };
 }
 
 // ---- Wording that is NOT a status (the design, docs/design/display; for Senuja's approval, see NOTES.md) ----
