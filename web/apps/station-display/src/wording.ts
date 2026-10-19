@@ -154,6 +154,14 @@ export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
   };
 }
 
+// The "time to expect" line of the platform display: "Expected 15:09" for a train that runs, but "Scheduled 15:09" for a train that has not
+// started (nothing live is known about it: its expected time is only its schedule). Offline: nothing live, so no such line.
+export function timeLine(row: BoardRow, offline: boolean): { label: string; time: string } | null {
+  if (offline) return null;
+  if (row.status.kind === "NotStarted") return { label: TEXT.columnScheduled, time: formatTime(row.time) };
+  return { label: TEXT.expected, time: formatTime(row.expectedTime ?? row.time) };
+}
+
 // The platform cell: the number, and the words "Platform 5 (was 2)" when it changed. An empty platform (cancelled, not known) is a dash.
 export interface PlatformCell {
   number: string;

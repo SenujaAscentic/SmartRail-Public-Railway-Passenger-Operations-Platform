@@ -394,3 +394,14 @@ describe("offline (US-D4)", () => {
     expect(screen.queryByText("Live information unavailable – check announcements or ask staff")).toBeNull();
   });
 });
+
+describe("a train that has not started (rehearsal #3)", () => {
+  it("shows 'Not started' and no 'Expected' time under its time", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "NotStarted", delayMinutes: null } })];
+    });
+
+    expect(await screen.findByText("Not started")).toBeTruthy();
+    expect(screen.queryByText("Expected")).toBeNull();
+  });
+});

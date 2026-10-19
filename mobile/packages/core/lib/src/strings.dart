@@ -95,6 +95,8 @@ abstract final class Strings {
   static const yesOnBoard = "Yes, I'm on board";
   static const noMissedIt = 'No, I missed it';
   static String expectedAt(String station) => 'Expected at $station';
+  // The same for a train that has not started (nothing live is known, so it is not "expected").
+  static String scheduledAt(String station) => 'Scheduled at $station';
   static String arrivedAt(String station) => 'Arrived at $station';
   static String leftStation(String station) => 'Left $station';
   static String arrivesAt(String station) => 'Arrives at $station';
