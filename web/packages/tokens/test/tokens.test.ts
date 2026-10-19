@@ -84,3 +84,45 @@ describe("shared/tokens.json contrast", () => {
     }
   });
 });
+
+// Added 19 Oct (Senuja, contrast checked): warning colours and the station-display colours.
+describe("warning and display tokens", () => {
+  const themes: ThemeName[] = ["light", "dark"];
+  const display = (tokens as unknown as { display: { surface: string; onSurface: string; onSurfaceMuted: string } }).display;
+
+  it.each(themes)("warning text (onWarning) is readable on warning (%s)", (theme) => {
+    const colours = tokens.color[theme];
+    expect(contrastRatio(colours.onWarning!, colours.warning!), theme).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(themes)("warning and onWarning reach the CSS (%s)", (theme) => {
+    const block = theme === "light" ? lightBlock : darkBlock;
+    expect(block).toContain("--color-warning: #D46B5D;");
+    expect(block).toContain("--color-on-warning: #14202B;");
+  });
+
+  it("text and muted text are readable on the display surface", () => {
+    expect(contrastRatio(display.onSurface, display.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(display.onSurfaceMuted, display.surface)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("status colours on the display surface reach 3:1, the large-text limit (they are only used at 36 px and above)", () => {
+    for (const [status, colours] of Object.entries(tokens.status)) {
+      // PlatformChanged is a block: dark text ON its yellow background (already tested at 4.5:1 above), not coloured text.
+      if (status === "PlatformChanged") continue;
+      expect(contrastRatio(colours.dark.fg, display.surface), status).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("the display typography has a size for the departures board (72) and for the platform display (88)", () => {
+    expect(tokens.typography.surfaces.display!.platformBoard).toBe(72);
+    expect(tokens.typography.surfaces.display!.platform).toBe(88);
+  });
+
+  it("the rules for warning blocks and display status colours are written down", () => {
+    const rules = (tokens as unknown as { rules: string[] }).rules;
+    expect(rules.some((r) => r.startsWith("Warning blocks use dark text (onWarning) on warning"))).toBe(true);
+    expect(rules.some((r) => r.startsWith("On display.surface, status colours are used only at display text sizes"))).toBe(true);
+  });
+});
+

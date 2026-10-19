@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The Flutter tool also needs INTERNET in debug for hot reload; the main
+         manifest declares it for release as well. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>
