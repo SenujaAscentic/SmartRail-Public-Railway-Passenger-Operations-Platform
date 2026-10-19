@@ -35,7 +35,7 @@ describe("the dashboard", () => {
     const table = await screen.findByRole("table", {}, { timeout: 3000 });
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);                                   // 2001 is on time: not here
-    expect(within(rows[0]!).getByText(/1002/)).toBeTruthy();       // cancelled counts as the worst
+    expect(within(rows[0]!).getByRole("rowheader", { name: /1002/ })).toBeTruthy();   // cancelled counts as the worst
     expect(within(rows[0]!).getByText("Cancelled")).toBeTruthy();
     expect(within(rows[1]!).getByText("8 min late")).toBeTruthy();
   });
@@ -55,8 +55,9 @@ describe("the dashboard", () => {
     renderApp(backend.services, "/");
 
     const alerts = (await screen.findByRole("heading", { name: "Alerts" }, { timeout: 3000 })).closest("section")!;
-    expect(await within(alerts).findByText("Live location unavailable – scheduled times shown")).toBeTruthy();
-    expect(within(alerts).getByRole("link", { name: /1003/ })).toBeTruthy();
+    expect(await within(alerts).findByText(/Live location unavailable – scheduled times shown/)).toBeTruthy();
+    expect(within(alerts).getByText(/1003/)).toBeTruthy();
+    expect(within(alerts).getByRole("link", { name: "Open journey" })).toBeTruthy();
   });
 
   it("puts a running train on the line, between its last and next station, with the backend's fraction", async () => {
@@ -66,7 +67,7 @@ describe("the dashboard", () => {
 
     const line = (await screen.findByRole("heading", { name: "Line view" }, { timeout: 3000 })).closest("section")!;
     // Two trains are running with a position (1001 and 2001); the cancelled one and the one without a position are not on the line.
-    expect(await within(line).findAllByText(/25% of the way to Rambukkana/)).toHaveLength(2);
+    expect(await within(line).findAllByText(/between Colombo Fort and Rambukkana/)).toHaveLength(2);
     expect(within(line).getByText("Kandy")).toBeTruthy();
   });
 
@@ -89,6 +90,6 @@ describe("the dashboard", () => {
 
     renderApp(backend.services, "/");
 
-    expect(await screen.findByText("Live", {}, { timeout: 3000 })).toBeTruthy();
+    expect(await screen.findByText("Live · connected", {}, { timeout: 3000 })).toBeTruthy();
   });
 });

@@ -1,11 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { ApiClient } from "@smartrail/api-client";
+import { ConfirmImpact } from "../../components/ConfirmImpact.tsx";
 import { Message } from "../../components/Message.tsx";
 import type { Detail } from "../../journeys/journey-store.ts";
 import type { ActionState } from "../../journeys/useAction.ts";
+import { statusView, stopText } from "../../status/status-text.ts";
 
 // The controller's decisions as small forms (US-O4). Each form only collects what the person decides and sends it with the journey's
-// version (R-18); what happens next is the backend's rule. Cancel, terminate and skip show what they will affect before they go.
+// version (R-18); what happens next is the backend's rule. Cancel, terminate and skip are shown in a ConfirmImpactDialog that lists
+// what they will affect before they go.
 export interface FormContext {
   api: ApiClient;
   detail: Detail;
@@ -42,7 +45,7 @@ function ReasonFields({ idPrefix, code, setCode, note, setNote, errors, optional
 }) {
   return (
     <>
-      <Field id={`${idPrefix}-reason`} label={optional ? "Reason (optional)" : "Reason"} error={errors.reasonCode}>
+      <Field id={`${idPrefix}-reason`} label={optional ? "Reason code (optional)" : "Reason code"} error={errors.reasonCode}>
         <select id={`${idPrefix}-reason`} value={code} onChange={(e) => setCode(e.target.value)} aria-invalid={Boolean(errors.reasonCode)}>
           <option value="">{optional ? "No reason" : "Choose a reason"}</option>
           {REASONS.map(([value, label]) => (
@@ -51,7 +54,7 @@ function ReasonFields({ idPrefix, code, setCode, note, setNote, errors, optional
         </select>
       </Field>
       <Field id={`${idPrefix}-note`} label={`Note (optional, plain text, at most ${MAX_NOTE} characters)`} error={errors.note}>
-        <textarea id={`${idPrefix}-note`} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} rows={2} />
+        <input id={`${idPrefix}-note`} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} />
       </Field>
     </>
   );
@@ -60,26 +63,15 @@ function ReasonFields({ idPrefix, code, setCode, note, setNote, errors, optional
 // The stops that are still ahead of the train, as the backend says (Scheduled, or Arrived: the train is standing there).
 export const aheadStops = (detail: Detail) => detail.stops.filter((s) => s.status === "Scheduled" || s.status === "Arrived");
 
-// "What will be affected" (US-O4 AC3): the passenger apps and the information screens of every station still to be served.
-export function Impact({ stations, what }: { stations: string[]; what: string }) {
-  return (
-    <div className="impact">
-      <p>
-        <strong>{what}</strong> will affect:
-      </p>
-      <ul>
-        <li>passenger apps and information screens at {stations.length === 0 ? "no station" : `${stations.length} stations`}: {stations.join(", ") || "none"}</li>
-        <li>everyone who follows this train, who is told at once</li>
-      </ul>
-    </div>
-  );
-}
+// The stops the controller may skip: still Scheduled, a real stop (not a pass), neither the origin nor the terminus (R-15).
+export const skippableStops = (detail: Detail) =>
+  detail.stops.filter((s, index) => s.status === "Scheduled" && s.callType === "Stop" && index > 0 && index < detail.stops.length - 1);
 
-function Buttons({ busy, label, close }: { busy: boolean; label: string; close: () => void }) {
+function Buttons({ busy, label, close, closeLabel = "Close", danger = false, disabled = false }: { busy: boolean; label: string; close: () => void; closeLabel?: string; danger?: boolean; disabled?: boolean }) {
   return (
     <p className="buttons">
-      <button type="submit" disabled={busy}>{busy ? "Working…" : label}</button>
-      <button type="button" className="secondary" onClick={close}>Close</button>
+      <button type="submit" disabled={busy || disabled} className={danger ? "danger" : undefined}>{busy ? "Working…" : label}</button>
+      <button type="button" className="secondary" onClick={close}>{closeLabel}</button>
     </p>
   );
 }
@@ -103,14 +95,13 @@ export function DelayForm({ api, detail, action, close }: FormContext) {
   };
 
   return (
-    <form className="form action-form" onSubmit={submit} aria-label="Set a delay">
-      <h3>Set a delay</h3>
+    <form className="form action-form inline-form" onSubmit={submit} aria-label="Set a delay">
       <Field id="delay-minutes" label="Delay in minutes" error={errors.minutes}>
         <input id="delay-minutes" type="number" min={0} max={1440} step={1} value={minutes} onChange={(e) => setMinutes(e.target.value)} aria-invalid={Boolean(errors.minutes)} />
       </Field>
       <ReasonFields idPrefix="delay" code={code} setCode={setCode} note={note} setNote={setNote} errors={errors} />
-      <p>The delay stays until you clear it; crew and GPS times do not replace it.</p>
       <Buttons busy={action.busy} label="Set delay" close={close} />
+      <p className="hint">The delay stays until you clear it; crew and GPS times do not replace it.</p>
     </form>
   );
 }
@@ -134,8 +125,7 @@ export function HoldForm({ api, detail, action, close }: FormContext) {
   };
 
   return (
-    <form className="form action-form" onSubmit={submit} aria-label="Hold the train">
-      <h3>Hold the train</h3>
+    <form className="form action-form inline-form" onSubmit={submit} aria-label="Hold the train">
       <Field id="hold-station" label="Station" error={errors.stationId}>
         <select id="hold-station" value={station} onChange={(e) => setStation(e.target.value)}>
           {options.map((s) => <option key={s.stationId} value={s.stationId}>{s.name}</option>)}
@@ -167,10 +157,9 @@ export function CancelForm({ api, detail, action, close }: FormContext) {
 
   return (
     <form className="form action-form" onSubmit={submit} aria-label="Cancel the journey">
-      <h3>Cancel the journey</h3>
-      <Impact what="Cancelling" stations={aheadStops(detail).map((s) => s.name)} />
       <ReasonFields idPrefix="cancel" code={code} setCode={setCode} note={note} setNote={setNote} errors={errors} />
-      <Buttons busy={action.busy} label="Confirm: cancel the journey" close={close} />
+      <ConfirmImpact stations={aheadStops(detail).map((s) => s.name)} badge={statusView({ kind: "Cancelled", delayMinutes: null })} displayText="Cancelled" />
+      <Buttons busy={action.busy} label="Cancel journey" close={close} closeLabel="Back" danger />
     </form>
   );
 }
@@ -183,6 +172,7 @@ export function TerminateForm({ api, detail, action, close }: FormContext) {
   const errors = action.problem?.fields ?? {};
   const chosen = options.findIndex((s) => s.stationId === station);
   const skipped = chosen < 0 ? [] : options.slice(chosen + 1).map((s) => s.name);
+  const name = options[chosen]?.name ?? "";
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -196,24 +186,27 @@ export function TerminateForm({ api, detail, action, close }: FormContext) {
 
   return (
     <form className="form action-form" onSubmit={submit} aria-label="Terminate the journey early">
-      <h3>Terminate early</h3>
       <Field id="terminate-station" label="The journey ends at" error={errors.atStationId ?? errors.stationId}>
         <select id="terminate-station" value={station} onChange={(e) => setStation(e.target.value)}>
           {options.map((s) => <option key={s.stationId} value={s.stationId}>{s.name}</option>)}
         </select>
       </Field>
-      <Impact what="Terminating here" stations={skipped} />
       <ReasonFields idPrefix="terminate" code={code} setCode={setCode} note={note} setNote={setNote} errors={errors} />
-      <Buttons busy={action.busy} label="Confirm: terminate early" close={close} />
+      <ConfirmImpact stations={skipped} badge={statusView({ kind: "TerminatedEarly", delayMinutes: null }, { terminatesAt: name })} displayText={`Terminates at ${name}`} />
+      <Buttons busy={action.busy} label="Terminate early" close={close} closeLabel="Back" danger />
     </form>
   );
 }
 
-export function SkipForm({ api, detail, action, close, station }: FormContext & { station: string }) {
+export function SkipForm({ api, detail, action, close }: FormContext) {
+  const options = skippableStops(detail);
+  const [station, setStation] = useState(options[0]?.stationId ?? "");
   const stop = detail.stops.find((s) => s.stationId === station);
+  const text = stopText("Skipped") ?? "";   // S-12: "Does not stop"
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!station) return;
     void action.run(() =>
       api.POST("/api/v1/ops/journeys/{journeyId}/stops/{stationId}/skip", {
         params: { path: { journeyId: detail.journeyId, stationId: station } },
@@ -224,10 +217,14 @@ export function SkipForm({ api, detail, action, close, station }: FormContext & 
 
   return (
     <form className="form action-form" onSubmit={submit} aria-label="Skip the stop">
-      <h3>Skip {stop?.name ?? "the stop"}</h3>
-      <Impact what="Skipping this stop" stations={stop ? [stop.name] : []} />
-      <p>The time the train would have waited there is taken off the delay of the stops after it.</p>
-      <Buttons busy={action.busy} label="Confirm: skip this stop" close={close} />
+      <Field id="skip-station" label="Stop to skip">
+        <select id="skip-station" value={station} onChange={(e) => setStation(e.target.value)}>
+          {options.map((s) => <option key={s.stationId} value={s.stationId}>{s.name}</option>)}
+        </select>
+      </Field>
+      <ConfirmImpact stations={stop ? [stop.name] : []} badge={{ text, icon: "ban", tone: "cancelled" }} displayText={text} />
+      <p className="hint">The time the train would have waited there is taken off the delay of the stops after it.</p>
+      <Buttons busy={action.busy} disabled={!station} label="Skip stop" close={close} closeLabel="Back" danger />
     </form>
   );
 }

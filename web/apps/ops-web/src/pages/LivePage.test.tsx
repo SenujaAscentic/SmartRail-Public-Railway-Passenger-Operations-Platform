@@ -43,10 +43,10 @@ describe("the stream request", () => {
 });
 
 describe("what the page shows", () => {
-  it("says 'Live' once connected, in words and an icon (never colour alone)", async () => {
+  it("says 'Live · connected' once connected, in words and an icon (never colour alone)", async () => {
     openLive("");
 
-    const badge = await screen.findByText("Live");
+    const badge = await screen.findByText("Live · connected");
     expect(badge.closest("[role='status']")?.querySelector("svg[aria-hidden='true']")).toBeTruthy();
   });
 
@@ -148,7 +148,7 @@ describe("who may see it", () => {
     const backend = fakeBackend();   // the refresh is refused: nobody is signed in
     renderApp(backend.services, "/live");
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Staff sign-in" })).toBeTruthy();
     expect(backend.stream.requests).toHaveLength(0);
   });
 });

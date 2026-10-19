@@ -30,12 +30,12 @@ describe("the audit log", () => {
     renderApp(b.services, "/audit");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Show" }, { timeout: 3000 }));
+    await user.click(await screen.findByRole("button", { name: "Apply" }, { timeout: 3000 }));
 
     const table = await screen.findByRole("table");
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]!).getByText("DelayCleared")).toBeTruthy();
+    expect(within(rows[0]!).getByText(/DelayCleared/)).toBeTruthy();
     expect(within(rows[1]!).getByText("Demo Controller (CTRL-01)")).toBeTruthy();
     expect(within(rows[1]!).getByText("14 Oct, 10:00:00")).toBeTruthy();   // 04:30 UTC
     expect(within(rows[1]!).getByText("Weather")).toBeTruthy();
@@ -49,7 +49,7 @@ describe("the audit log", () => {
     await user.type(await screen.findByLabelText("Staff number", {}, { timeout: 3000 }), "CTRL-01");
     await user.type(screen.getByLabelText("Journey id"), "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01");
     await user.type(screen.getByLabelText("From (Sri Lanka time)"), "2026-10-14T10:00");
-    await user.click(screen.getByRole("button", { name: "Show" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     await screen.findByRole("table");
 
     const url = new URL(b.calls(AUDIT)[0]!.url);
@@ -65,7 +65,7 @@ describe("the audit log", () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText("Journey id", {}, { timeout: 3000 }), "nope");
-    await user.click(screen.getByRole("button", { name: "Show" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(await screen.findByText("The journey id is not valid.")).toBeTruthy();
   });
@@ -76,6 +76,6 @@ describe("the audit log", () => {
     renderApp(b.services, "/audit");
 
     expect(await screen.findByText("Only the controller can read the audit log.", {}, { timeout: 3000 })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Show" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
   });
 });

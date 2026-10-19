@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { components } from "@smartrail/api-client";
+import { Icon } from "../components/Icon.tsx";
 import { Message } from "../components/Message.tsx";
 import { formatColombo } from "../format.ts";
 import { toProblem } from "../journeys/useAction.ts";
@@ -58,42 +59,47 @@ export function AuditPage() {
 
   return (
     <>
-      <h1>Audit log</h1>
+      <div className="page-head">
+        <h1>Audit log<span className="h1-note"> · read-only</span></h1>
+      </div>
       <form className="filters" onSubmit={(event) => void search(event)} aria-label="Audit filters">
         <Filter id="audit-journey" label="Journey id" value={journeyId} onChange={setJourneyId} errors={fieldErrors.journeyId} />
         <Filter id="audit-staff" label="Staff number" value={staff} onChange={setStaff} errors={fieldErrors.staff} />
         <Filter id="audit-from" label="From (Sri Lanka time)" type="datetime-local" value={from} onChange={setFrom} errors={fieldErrors.from} />
         <Filter id="audit-to" label="To (Sri Lanka time)" type="datetime-local" value={to} onChange={setTo} errors={fieldErrors.to} />
-        <div className="field"><button type="submit" disabled={busy}>{busy ? "Searching…" : "Show"}</button></div>
+        <div className="field"><button type="submit" disabled={busy} className="filter-button"><Icon name="filter" /><span>{busy ? "Searching…" : "Apply"}</span></button></div>
       </form>
       {error && <Message kind="error">{error}</Message>}
-      {entries && (entries.length === 0 ? <p>Nothing recorded for these filters.</p> : (
+      {entries && (entries.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
+        <div className="panel"><div className="panel-body flush">
         <table>
-          <caption>Newest first</caption>
+          <caption className="visually-hidden">The audit trail, newest first</caption>
           <thead>
             <tr>
               <th scope="col">When</th>
-              <th scope="col">Who</th>
+              <th scope="col">Staff</th>
+              <th scope="col">Role</th>
               <th scope="col">Action</th>
-              <th scope="col">Target</th>
+              <th scope="col">Journey</th>
               <th scope="col">Reason</th>
-              <th scope="col">What</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.id}>
-                <td>{formatColombo(entry.at)}</td>
+                <td className="mono">{formatColombo(entry.at)}</td>
                 <td>{entry.actor ? `${entry.actor.name} (${entry.actor.staffNumber})` : "unknown"}</td>
-                <td>{entry.action}</td>
-                <td>{entry.targetType} {entry.targetId.slice(0, 8)}…</td>
+                <td>{entry.actor?.role ?? "—"}</td>
+                <td>{entry.summary} <span className="source">({entry.action})</span></td>
+                <td className="mono">{entry.targetType === "Journey" ? `${entry.targetId.slice(0, 8)}…` : "—"}</td>
                 <td>{entry.reason ?? "—"}</td>
-                <td>{entry.summary}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div></div>
       ))}
+      {entries && entries.length > 0 && <p className="source">Showing {entries.length} · newest first · entries can't be edited or deleted</p>}
     </>
   );
 }

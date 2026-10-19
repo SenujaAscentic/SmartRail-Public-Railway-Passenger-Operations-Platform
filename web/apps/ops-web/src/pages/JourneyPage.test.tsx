@@ -23,10 +23,9 @@ const preview = (level: string, minutes: number, extra: Record<string, unknown> 
   json(200, { leadTimeMinutes: minutes, leadTimeLevel: level, holdRecommended: level === "Late", conflicts: [], ...extra });
 
 async function openPlatformDialog(user: ReturnType<typeof userEvent.setup>, platform = "4") {
-  await user.click(await screen.findByRole("button", { name: /Platform….*Rambukkana/ }, { timeout: 3000 }));
+  await user.click(await screen.findByRole("button", { name: "Change platform" }, { timeout: 3000 }));
   const form = await screen.findByRole("form", { name: "Change platform" });
-  await waitFor(() => expect(within(form).getByRole("option", { name: "Platform 4" })).toBeTruthy());
-  await user.selectOptions(within(form).getByLabelText("New platform"), platform);
+  await user.click(await within(form).findByRole("button", { name: `Platform ${platform}` }));
   return form;
 }
 
@@ -49,8 +48,8 @@ describe("the journey page", () => {
     renderApp(backend.services, `/journeys/${ID}`);
 
     expect(await screen.findByText("Only the controller can make decisions on a journey.", {}, { timeout: 3000 })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Delay…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Platform…/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delay" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change platform" })).toBeNull();
   });
 
   it("shows who changed the journey first when a decision is refused with 409, and reloads it on request", async () => {
@@ -60,9 +59,9 @@ describe("the journey page", () => {
     renderApp(backend.services, `/journeys/${ID}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Delay…" }, { timeout: 3000 }));
+    await user.click(await screen.findByRole("button", { name: "Delay" }, { timeout: 3000 }));
     await user.type(screen.getByLabelText("Delay in minutes"), "9");
-    await user.selectOptions(screen.getByLabelText("Reason"), "Weather");
+    await user.selectOptions(screen.getByLabelText("Reason code"), "Weather");
     await user.click(screen.getByRole("button", { name: "Set delay" }));
 
     expect(await screen.findByText(/Changed by R\. Perera 4 s ago – reload/)).toBeTruthy();
@@ -81,9 +80,9 @@ describe("the journey page", () => {
     renderApp(backend.services, `/journeys/${ID}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Delay…" }, { timeout: 3000 }));
+    await user.click(await screen.findByRole("button", { name: "Delay" }, { timeout: 3000 }));
     await user.type(screen.getByLabelText("Delay in minutes"), "9");
-    await user.selectOptions(screen.getByLabelText("Reason"), "Weather");
+    await user.selectOptions(screen.getByLabelText("Reason code"), "Weather");
     await user.type(screen.getByLabelText(/Note/), "Heavy rain");
     await user.click(screen.getByRole("button", { name: "Set delay" }));
 
@@ -110,7 +109,7 @@ describe("the journey page", () => {
     const backend = backendFor(journey({ status: { kind: "Late", delayMinutes: 9 } }), "Crew");
     renderApp(backend.services, `/journeys/${ID}`);
 
-    await screen.findByRole("button", { name: "Delay…" }, { timeout: 3000 });
+    await screen.findByRole("button", { name: "Delay" }, { timeout: 3000 });
 
     expect(screen.queryByRole("button", { name: "Clear the delay" })).toBeNull();
   });
@@ -120,11 +119,12 @@ describe("the journey page", () => {
     renderApp(backend.services, `/journeys/${ID}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Cancel journey…" }, { timeout: 3000 }));
+    await user.click(await screen.findByRole("button", { name: "Cancel journey" }, { timeout: 3000 }));
 
     const form = screen.getByRole("form", { name: "Cancel the journey" });
-    expect(within(form).getByText(/Rambukkana, Kandy/)).toBeTruthy();
-    expect(within(form).getByText("Cancelling")).toBeTruthy();
+    expect(within(form).getByText("This will affect")).toBeTruthy();
+    expect(within(form).getByText(/Rambukkana, Kandy \(remaining stops\)/)).toBeTruthy();
+    expect(within(form).getByText(/2 stations show "Cancelled"/)).toBeTruthy();
     expect(backend.calls(`POST ${BASE}/cancel`)).toHaveLength(0);   // nothing is sent until the person confirms
   });
 
@@ -134,8 +134,8 @@ describe("the journey page", () => {
     renderApp(backend.services, `/journeys/${ID}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Cancel journey…" }, { timeout: 3000 }));
-    await user.click(screen.getByRole("button", { name: "Confirm: cancel the journey" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel journey" }, { timeout: 3000 }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel journey" }));
 
     expect((await screen.findAllByText(/Give a reason code/)).length).toBeGreaterThan(0);
   });
@@ -150,10 +150,10 @@ describe("the platform change dialog (US-O5, the star screen)", () => {
 
     const form = await openPlatformDialog(user);
 
-    expect(await within(form).findByText(/Normal notice/)).toBeTruthy();
-    expect(within(form).queryByText(/Warning: less than 5 minutes/)).toBeNull();
-    expect(within(form).getByText("Passengers and displays: Platform 4 (was 2)")).toBeTruthy();
-    expect(within(form).getByText("Information screens: Now departing from Platform 4")).toBeTruthy();
+    expect(await within(form).findByText(/more than 15 min/)).toBeTruthy();
+    expect(within(form).queryByText(/under 5 min/)).toBeNull();
+    expect(within(form).getByText("Platform 4 (was 2)")).toBeTruthy();
+    expect(within(form).getByText("Now departing from Platform 4")).toBeTruthy();
   });
 
   it("under 5 minutes: warns before confirming, offers a hold, and promises the train will wait ONLY with the hold", async () => {
@@ -164,15 +164,15 @@ describe("the platform change dialog (US-O5, the star screen)", () => {
     const user = userEvent.setup();
     const form = await openPlatformDialog(user);
 
-    expect(await within(form).findByText(/Warning: less than 5 minutes/)).toBeTruthy();
-    expect(within(form).getByLabelText(/Hold the train at the new platform \(recommended\)/)).toBeTruthy();
-    expect(within(form).getByText("Information screens: Now departing from Platform 4")).toBeTruthy();   // no hold: no promise
+    expect(await within(form).findByText(/under 5 min/)).toBeTruthy();
+    expect(within(form).getByLabelText(/Set a hold at the new platform \(recommended\)/)).toBeTruthy();
+    expect(within(form).getByText("Now departing from Platform 4")).toBeTruthy();   // no hold: no promise
     expect(within(form).queryByText(/will wait/)).toBeNull();
 
-    await user.click(within(form).getByLabelText(/Hold the train at the new platform/));
-    expect(within(form).getByText("Information screens: The train will wait for passengers at Platform 4")).toBeTruthy();   // only with a hold
+    await user.click(within(form).getByLabelText(/Set a hold at the new platform/));
+    expect(within(form).getByText("The train will wait for passengers at Platform 4")).toBeTruthy();   // only with a hold
 
-    await user.click(within(form).getByRole("button", { name: "Confirm platform change" }));
+    await user.click(within(form).getByRole("button", { name: "Confirm change and hold" }));
     await screen.findByText("Done. The change is on its way to everyone.");
     expect(await backend.calls(PLATFORM)[0]!.json()).toEqual({ platform: "4", setHold: true, holdMinutes: 5, conflictsAcknowledged: false, expectedVersion: 3 });
   });
@@ -184,7 +184,7 @@ describe("the platform change dialog (US-O5, the star screen)", () => {
     renderApp(backend.services, `/journeys/${ID}`);
     const user = userEvent.setup();
     const form = await openPlatformDialog(user);
-    await within(form).findByText(/Late notice/);
+    await within(form).findByText(/under 5 min/);
 
     await user.click(within(form).getByRole("button", { name: "Confirm platform change" }));
 
@@ -221,7 +221,9 @@ describe("the platform change dialog (US-O5, the star screen)", () => {
 
     const form = await openPlatformDialog(user);
 
-    const options = within(form.querySelector("#platform-new") as HTMLElement).getAllByRole("option").map((o) => o.textContent);
-    expect(options).toEqual(["Choose a platform", "Platform 1", "Platform 4"]);   // not 2 (current) and not 5 (out of service)
+    const buttons = within(within(form).getByRole("group", { name: "New platform" })).getAllByRole("button") as HTMLButtonElement[];
+    const usable = buttons.filter((b) => !b.disabled).map((b) => b.textContent);
+    expect(usable).toEqual(["1", "4"]);                                  // not 2 (the current one) and not 5 (out of service)
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toContain("Platform 5, out of service");
   });
 });
