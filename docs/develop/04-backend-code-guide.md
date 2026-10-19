@@ -423,6 +423,9 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 
 **Tests:** `StationBoardTests` (unit), `StationBoardEndpointTests`, `AuditReadTests`, terminate test extended for `terminatesAt`; permission-matrix rows for the board (public) and the audit (controller only).
 
+### 4.19 Ops stream snapshot sources (19 Oct)
+`/ops/stream` snapshots now carry `delaySource` and, per stop, `actualArrivalSource` / `actualDepartureSource`, so the ops web can show where a value came from even for values set before it connected (US-O3 star criterion). `JourneySnapshot.DelaySource` and `SnapshotStop.*Source` are marked `JsonIgnore`, so the public stream cannot send them; `StreamHandler` adds them by hand for the staff stream. Test: `OpsStreamTests.The_staff_snapshot_says_who_supplied...`.
+
 ## 5. The Identity module (`SmartRail.Identity`)
 
 Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
