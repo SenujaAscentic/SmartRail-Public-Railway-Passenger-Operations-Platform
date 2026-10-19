@@ -127,7 +127,8 @@
         "previousPlatform": null
       }
     ],
-    "trainSet": null
+    "trainSet": null,
+    "terminatesAt": null
   },
   "sequence": 1051
 }

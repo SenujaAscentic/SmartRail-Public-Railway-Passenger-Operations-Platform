@@ -10,8 +10,6 @@ using SmartRail.Network;
 
 namespace SmartRail.LiveOperations.Features.StationBoard;
 
-public sealed record BoardStationResponse(Guid StationId, string Name);
-
 // One line of a station board (US-D1). `Time` is the scheduled time at THIS station (departure on a departures board, arrival on an
 // arrivals board) and `ExpectedTime` what the system expects now (the actual time once it has happened). `CallType` is Stop or Pass at
 // this station, so a display can say "does not stop here". `Hold` is true while the train is held at this station.
@@ -19,8 +17,8 @@ public sealed record BoardRowResponse(
     Guid JourneyId,
     string ServiceNumber,
     string TrainType,
-    BoardStationResponse Origin,
-    BoardStationResponse Destination,
+    JourneyStationResponse Origin,
+    JourneyStationResponse Destination,
     DateTime Time,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedTime,
     string Platform,
@@ -175,8 +173,8 @@ internal static class StationBoardBuilder
             var hold = c.Journey.Hold is { } h && h.StationId == c.Stop.StationId;
             return new BoardRowResponse(
                 c.Journey.Id, services[c.Journey.ServiceId].Number, services[c.Journey.ServiceId].TrainType,
-                new BoardStationResponse(origin, names[origin]),
-                new BoardStationResponse(destination, names[destination]),
+                new JourneyStationResponse(origin, names[origin]),
+                new JourneyStationResponse(destination, names[destination]),
                 c.Time, c.ExpectedTime, c.Stop.Platform, c.Stop.PreviousPlatform, c.Stop.CallType.ToString(), c.Stop.Status.ToString(),
                 JourneyViewBuilder.Status(c.Journey), hold,
                 c.Journey.Reason is { } r ? new JourneyReasonResponse(r.Code, r.Note) : null);

@@ -35,6 +35,9 @@ public sealed record JourneyHoldResponse(Guid StationId, [property: JsonIgnore(C
 // The reason the controller gave, for passengers ("signal fault near Ragama"): a code and an optional plain-text note.
 public sealed record JourneyReasonResponse(string Code, [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Note);
 
+// A station by id and name (where a journey ends, an end of a board line).
+public sealed record JourneyStationResponse(Guid StationId, string Name);
+
 // Search results, boards and saved trips.
 public sealed record JourneySummaryResponse(
     Guid JourneyId,
@@ -86,4 +89,6 @@ public sealed record JourneyDetailResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyReasonResponse? Reason,
     int Version,
     IReadOnlyList<JourneyStopResponse> Stops,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] TrainSetResponse? TrainSet);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] TrainSetResponse? TrainSet,
+    // Where the journey now ends after an early termination (R-14); null for every other journey (19 Oct).
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] JourneyStationResponse? TerminatesAt = null);

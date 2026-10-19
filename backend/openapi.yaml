@@ -1117,9 +1117,9 @@ components:
         trainType:
           type: string
         origin:
-          $ref: '#/components/schemas/BoardStationResponse'
+          $ref: '#/components/schemas/JourneyStationResponse'
         destination:
-          $ref: '#/components/schemas/BoardStationResponse'
+          $ref: '#/components/schemas/JourneyStationResponse'
         time:
           type: string
           format: date-time
@@ -1146,17 +1146,6 @@ components:
           oneOf:
             - type: 'null'
             - $ref: '#/components/schemas/JourneyReasonResponse'
-    BoardStationResponse:
-      required:
-        - stationId
-        - name
-      type: object
-      properties:
-        stationId:
-          type: string
-          format: uuid
-        name:
-          type: string
     CabSignInRequest:
       required:
         - staffNumber
@@ -1641,6 +1630,10 @@ components:
           oneOf:
             - type: 'null'
             - $ref: '#/components/schemas/TrainSetResponse'
+        terminatesAt:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyStationResponse'
     JourneyEndedEvent:
       required:
         - eventId
@@ -2300,6 +2293,17 @@ components:
                         type: string
                       seating:
                         type: string
+            terminatesAt:
+              required:
+                - stationId
+                - name
+              type: object
+              properties:
+                stationId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
         sequence:
           type: integer
           format: int64
@@ -2349,6 +2353,17 @@ components:
           format: uuid
         payload:
           type: object
+    JourneyStationResponse:
+      required:
+        - stationId
+        - name
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        name:
+          type: string
     JourneyStatusResponse:
       required:
         - kind

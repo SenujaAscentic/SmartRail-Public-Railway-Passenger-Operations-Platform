@@ -453,8 +453,8 @@ export interface components {
             journeyId: string;
             serviceNumber: string;
             trainType: string;
-            origin: components["schemas"]["BoardStationResponse"];
-            destination: components["schemas"]["BoardStationResponse"];
+            origin: components["schemas"]["JourneyStationResponse"];
+            destination: components["schemas"]["JourneyStationResponse"];
             /** Format: date-time */
             time: string;
             /** Format: date-time */
@@ -466,11 +466,6 @@ export interface components {
             status: components["schemas"]["JourneyStatusResponse"];
             hold: boolean;
             reason: null | components["schemas"]["JourneyReasonResponse"];
-        };
-        BoardStationResponse: {
-            /** Format: uuid */
-            stationId: string;
-            name: string;
         };
         CabSignInRequest: {
             staffNumber: null | string;
@@ -661,6 +656,7 @@ export interface components {
             version: number;
             stops: components["schemas"]["JourneyStopResponse"][];
             trainSet: null | components["schemas"]["TrainSetResponse"];
+            terminatesAt?: null | components["schemas"]["JourneyStationResponse"];
         };
         JourneyEndedEvent: {
             /** Format: uuid */
@@ -920,6 +916,11 @@ export interface components {
                         seating: string;
                     }[];
                 };
+                terminatesAt?: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                };
             };
             /** Format: int64 */
             sequence: number;
@@ -946,6 +947,11 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             payload: Record<string, never>;
+        };
+        JourneyStationResponse: {
+            /** Format: uuid */
+            stationId: string;
+            name: string;
         };
         JourneyStatusResponse: {
             kind: string;

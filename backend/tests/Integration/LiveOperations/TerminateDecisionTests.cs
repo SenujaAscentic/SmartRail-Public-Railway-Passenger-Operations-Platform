@@ -59,6 +59,17 @@ public class TerminateDecisionTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal("Scheduled", stops[1].GetProperty("status").GetString());   // Peradeniya: the last stop now
         Assert.All(stops.Skip(2), s => Assert.Equal("Skipped", s.GetProperty("status").GetString()));
         Assert.Equal(body.GetRawText(), (await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct)).GetRawText());
+
+        // The public detail (and so the stream snapshot) says where the journey now ends.
+        Assert.Equal(peradeniya, body.GetProperty("terminatesAt").GetProperty("stationId").GetGuid());
+        Assert.Equal("Peradeniya", body.GetProperty("terminatesAt").GetProperty("name").GetString());
+        using var stream = await SseClient.ConnectAsync(api.Factory.CreateClient(), $"/api/v1/stream?journeyIds={id}", null, Ct);
+        var snapshot = (await stream.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!.Json;
+        Assert.Equal(peradeniya, snapshot.GetProperty("journey").GetProperty("terminatesAt").GetProperty("stationId").GetGuid());
+
+        // Any other journey has none.
+        var other = await RealJourneys.CreateAsync(api.Factory.Services, "1004", Day.AddDays(2));
+        Assert.Equal(JsonValueKind.Null, (await _client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{other}", Ct)).GetProperty("terminatesAt").ValueKind);
     }
 
     [Fact]
