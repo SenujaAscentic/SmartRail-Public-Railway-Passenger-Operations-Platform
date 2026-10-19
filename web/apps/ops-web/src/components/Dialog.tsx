@@ -6,14 +6,19 @@ export function Dialog({ title, subtitle, onClose, children }: { title: string; 
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
 
+  // `onClose` is read through a ref: its identity changes whenever the page re-renders (every stream event), and an effect that
+  // depended on it would move focus back to the dialog each time, which closes an open native <select> (rehearsal bug #6).
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
-    ref.current?.focus();
+    ref.current?.focus();   // once, when the dialog opens
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="scrim">

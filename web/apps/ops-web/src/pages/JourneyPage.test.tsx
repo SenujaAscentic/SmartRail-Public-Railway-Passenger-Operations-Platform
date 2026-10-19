@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { ME, REFRESH, fakeBackend, json, renderApp } from "../test/fake-server.tsx";
 import { RAMBUKKANA, journey, snapshot } from "../test/fixtures.ts";
-import { frame, sse } from "../test/sse.ts";
+import { frame, openSse, sse } from "../test/sse.ts";
 
 const ID = "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01";
 const BASE = `/api/v1/ops/journeys/${ID}`;
@@ -64,11 +64,38 @@ describe("the journey page", () => {
     await user.selectOptions(screen.getByLabelText("Reason code"), "Weather");
     await user.click(screen.getByRole("button", { name: "Set delay" }));
 
-    expect(await screen.findByText(/Changed by R\. Perera 4 s ago – reload/)).toBeTruthy();
+    expect(await screen.findByText(/This train changed – review and try again\./)).toBeTruthy();
+    expect(screen.getByText(/Changed by R\. Perera 4 s ago/)).toBeTruthy();
     expect(screen.getByText("Version 3")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Reload" }));
     expect(screen.getByText("Version 4")).toBeTruthy();
     expect(screen.getAllByText("12 min late").length).toBeGreaterThan(0);
+  });
+
+  it("keeps a decision dialog as it is when a stream event arrives while it is open (rehearsal bug #6)", async () => {
+    const detail = journey({ status: { kind: "Late", delayMinutes: 6 } });
+    const backend = backendFor(detail);
+    const stream = openSse(frame("snapshot", snapshot(detail, "Crew"), 10));
+    backend.stream.responder = stream.responder;
+    renderApp(backend.services, `/journeys/${ID}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Terminate early" }, { timeout: 3000 }));
+    const reason = screen.getByLabelText("Reason code");
+    const station = screen.getByLabelText("The journey ends at");
+    await user.selectOptions(reason, "Weather");
+    reason.focus();
+
+    // The train changes: a newer snapshot, with another version and the first stop already left.
+    const newer = journey({ version: 4, status: { kind: "Late", delayMinutes: 9 }, stops: detail.stops.map((s, i) => (i === 0 ? { ...s, status: "Departed" } : s)) });
+    stream.push(frame("snapshot", snapshot(newer, "Crew", 11), 11));
+    await waitFor(() => expect(screen.getByText("Version 4")).toBeTruthy());
+
+    expect(screen.getByRole("dialog")).toBeTruthy();                          // still open
+    expect(screen.getByLabelText("Reason code")).toBe(reason);                 // the same element: not remounted
+    expect(screen.getByLabelText("The journey ends at")).toBe(station);
+    expect((reason as HTMLSelectElement).value).toBe("Weather");               // what was chosen is kept
+    expect(document.activeElement).toBe(reason);                               // focus stays: an open <select> would close otherwise
   });
 
   it("sends the delay with its reason and the journey's version, and shows the answer", async () => {

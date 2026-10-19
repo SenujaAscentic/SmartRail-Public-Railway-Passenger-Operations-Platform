@@ -85,9 +85,13 @@ function JourneyView({ entry, nowMs, canDecide, connection, applyDetail }: {
   const status = statusView(detail.status, { terminatesAt: detail.terminatesAt?.name ?? null, hold: detail.hold !== null });
   const state = runState(detail);
   const isOpen = state !== "Closed";
-  const ctx = { api, detail, action, close: closeForm };
+  // The journey as it was when the form opened. The forms work on this copy, so a stream event cannot rebuild their options or
+  // reset what the controller has typed; if the train changed meanwhile, the decision is answered 409 (expectedVersion).
+  const [snapshot, setSnapshot] = useState<Detail | null>(null);
+  const ctx = { api, detail: snapshot ?? detail, action, close: closeForm };
   const choose = (next: Open) => {
     action.clear();
+    setSnapshot(detail);
     setOpen(next);
   };
   const nextStop = aheadStops(detail)[0];
@@ -253,7 +257,7 @@ function ConflictBanner({ conflict, onReload }: { conflict: Conflict; onReload: 
   return (
     <div className="banner banner-warning conflict" role="alert">
       <Icon name="warning" />
-      <span>{conflict.text} – reload</span>
+      <span>This train changed – review and try again. <span className="source">{conflict.text}</span></span>
       <button type="button" onClick={onReload}>Reload</button>
     </div>
   );
