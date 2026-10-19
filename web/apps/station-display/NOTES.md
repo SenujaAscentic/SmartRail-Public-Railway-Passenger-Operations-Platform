@@ -56,3 +56,5 @@ The station in the address is its **code** (FOT, GPH, KDT, any case) or its **id
 5. **Direction needs `GET /lines` at start.** If it cannot be loaded the page says so and tries again every 5 s.
 6. **Seen with a mock API and headless Chrome at 1920 x 1080** (board, platform display, S-18, S-19); not yet against the real backend and simulator (not running at the time). The screenshots are not in the repository.
 7. **The fixture file was brought over from the passenger branch** (commit "fixtures: S-05 hours wording ..."): develop still had the old one.
+
+- **Displays use the public, read-only API for now (20 Oct).** No display credential or token exists yet (deferred in re-plan 2; threat model T-13 says so): the app only calls the public `GET` endpoints and the public stream, and a test checks that no token is sent.
