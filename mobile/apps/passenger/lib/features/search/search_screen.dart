@@ -129,7 +129,7 @@ class _Results extends StatelessWidget {
             return JourneyCard(
               serviceNumber: j.serviceNumber,
               name: j.name,
-              status: j.status,
+              status: j.shownStatus,
               scheduledDeparture: j.from.scheduledDeparture,
               scheduledArrival: j.to.scheduledArrival,
               expectedDeparture: j.from.expectedDeparture,

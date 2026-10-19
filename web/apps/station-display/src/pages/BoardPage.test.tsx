@@ -405,3 +405,38 @@ describe("a train that has not started (rehearsal #3)", () => {
     expect(screen.queryByText("Expected")).toBeNull();
   });
 });
+
+describe("a hold (rehearsal #8)", () => {
+  // The backend sends a hold as the flag `hold` and keeps the status kind (D-4): the board must still say Held.
+  it("a train held here says Held (S-21), not 'On time', whatever status kind the API sent", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "OnTime", delayMinutes: 0 } })]));
+
+    expect(await screen.findByText("Held")).toBeTruthy();
+    expect(screen.queryByText("On time")).toBeNull();
+  });
+
+  it("a held late train says 'Held · 8 min late' (S-08): the delay the API sent, nothing added", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "Late", delayMinutes: 8 } })]));
+
+    expect(await screen.findByText("Held · 8 min late")).toBeTruthy();
+  });
+
+  it("released (hold false): the Held badge is gone and the status is the API's", async () => {
+    const fake = await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true })]));
+    expect(await screen.findByText("Held")).toBeTruthy();
+
+    fake.backend.board = [toKandy(1, { hold: false })];
+    fake.stream.event("JourneyHeld", { released: true }, 1);
+    await settle(1000);
+
+    expect(screen.queryByText("Held")).toBeNull();
+    expect(screen.getByText("On time")).toBeTruthy();
+  });
+
+  it("a cancelled train keeps 'Cancelled' even with a hold flag", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "Cancelled", delayMinutes: null } })]));
+
+    expect(await screen.findByText("Cancelled")).toBeTruthy();
+    expect(screen.queryByText("Held")).toBeNull();
+  });
+});

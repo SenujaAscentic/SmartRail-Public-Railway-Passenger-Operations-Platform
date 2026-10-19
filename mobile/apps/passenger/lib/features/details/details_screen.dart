@@ -211,7 +211,7 @@ class _Body extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: spaceSm),
-        Center(child: StatusBadge.journey(journey.status, terminatesAt: journey.terminatesAt?.name)),
+        Center(child: StatusBadge.journey(journey.shownStatus, terminatesAt: journey.terminatesAt?.name)),
         if (boardingPlatformChange != null) ...[
           const SizedBox(height: spaceSm),
           Center(child: boardingPlatformChange),
