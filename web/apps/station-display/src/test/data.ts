@@ -53,6 +53,7 @@ export function row(overrides: Partial<BoardRow> = {}): BoardRow {
     trainType: "Express",
     origin: ref(FORT),
     destination: ref(KANDY),
+    serviceDate: "2026-10-20",
     time: "2026-10-20T01:42:00Z",
     expectedTime: "2026-10-20T01:42:00Z",
     platform: "1",
