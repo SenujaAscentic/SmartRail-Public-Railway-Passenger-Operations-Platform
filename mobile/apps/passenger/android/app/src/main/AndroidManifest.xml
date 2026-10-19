@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The app reads train information from the SmartRail API. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- "Call to order" opens the phone dialler: Android 11+ needs to be told the app asks about tel: addresses. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
+    </queries>
     <application
         android:label="SmartRail"
         android:name="${applicationName}"

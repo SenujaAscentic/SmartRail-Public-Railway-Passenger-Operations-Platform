@@ -9,6 +9,8 @@ export 'src/models/journey_reason.dart';
 export 'src/models/journey_stop.dart';
 export 'src/models/journey_summary.dart';
 export 'src/models/station.dart';
+export 'src/models/station_catering.dart';
+export 'src/models/station_detail.dart';
 export 'src/models/train_set.dart';
 export 'src/status/status_texts.dart';
 export 'src/stream/live_message.dart';

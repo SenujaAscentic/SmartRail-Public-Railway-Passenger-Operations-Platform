@@ -121,6 +121,9 @@ class DetailController extends ChangeNotifier {
   ];
 
   final SmartRailApi _api;
+
+  /// The same api, for the catering parts of the screen (stations and menu).
+  SmartRailApi get api => _api;
   final String journeyId;
 
   /// The passenger's stations from the search: they mark "Your station" and

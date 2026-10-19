@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:smartrail_core/smartrail_core.dart';
 
+import '../catering/catering_controller.dart';
+import '../catering/catering_screen.dart';
+import '../catering/food_stops_controller.dart';
+import '../catering/phone_launcher.dart';
 import '../tracking/tracking_screen.dart';
 import 'details_controller.dart';
 import 'journey_parts.dart';
@@ -14,10 +18,20 @@ import 'train_set_chips.dart';
 /// station" and "destination". When the train is cancelled or ends early, other
 /// trains are offered; [onOpenJourney] opens one of them.
 class DetailsScreen extends StatefulWidget {
-  const DetailsScreen({super.key, required this.controller, required this.onOpenJourney});
+  const DetailsScreen({
+    super.key,
+    required this.controller,
+    required this.onOpenJourney,
+    this.launchPhone = openDialler,
+    this.nowUtc,
+  });
 
   final DetailController controller;
   final ValueChanged<JourneySummary> onOpenJourney;
+
+  /// For "Call to order" on the menu screen, and the clock it falls back on (US-P8).
+  final PhoneLauncher launchPhone;
+  final DateTime Function()? nowUtc;
 
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
@@ -27,9 +41,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
   DetailController get _c => widget.controller;
   Timer? _tick;
 
+  // Which stops between the passenger's stations have catering (US-P8). Separate from the journey: if the stations cannot be
+  // read, the train information is unaffected.
+  late final FoodStopsController _food = FoodStopsController(_c.api);
+
   @override
   void initState() {
     super.initState();
+    _c.addListener(_checkFoodStops);
     _c.load();
     // Redraw every second so "Updated 30 s ago" keeps counting.
     _tick = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
@@ -38,8 +57,32 @@ class _DetailsScreenState extends State<DetailsScreen> {
   @override
   void dispose() {
     _tick?.cancel();
+    _c.removeListener(_checkFoodStops);
+    _food.dispose();
     _c.dispose();
     super.dispose();
+  }
+
+  // After every load of the journey: ask about the stations between boarding and destination that are not known yet.
+  void _checkFoodStops() {
+    final state = _c.state;
+    if (state is! DetailLoaded) return;
+    final between = FoodStopsController.between(state.journey, _c.boardingStationId, _c.destinationStationId);
+    _food.update([for (final s in between) s.stationId]);
+  }
+
+  void _openFood(JourneyDetail journey, JourneyStop stop) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CateringScreen(
+          controller: CateringController(_c.api, stop.stationId, widget.nowUtc ?? DateTime.timestamp),
+          stationName: stop.name,
+          serviceNumber: journey.serviceNumber,
+          arrival: stop.actualArrival ?? stop.expectedArrival ?? stop.scheduledArrival,
+          launchPhone: widget.launchPhone,
+        ),
+      ),
+    );
   }
 
   void _openTracking() {
@@ -80,7 +123,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
         },
       ),
       body: ListenableBuilder(
-        listenable: _c,
+        listenable: Listenable.merge([_c, _food]),
         builder: (context, _) => switch (_c.state) {
           DetailLoading() => const Center(child: CircularProgressIndicator()),
           DetailFailed() => ErrorState(message: Strings.loadError, retryLabel: Strings.tryAgain, onRetry: _c.load),
@@ -95,6 +138,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 alternatives: _c.alternatives,
                 onRetryAlternatives: _c.retryAlternatives,
                 onOpenJourney: widget.onOpenJourney,
+                hasFood: _food.hasFood,
+                onOpenFood: (stop) => _openFood(journey, stop),
               ),
             ),
         },
@@ -113,8 +158,12 @@ class _Body extends StatelessWidget {
     required this.alternatives,
     required this.onRetryAlternatives,
     required this.onOpenJourney,
+    required this.hasFood,
+    required this.onOpenFood,
   });
 
+  final bool Function(String stationId) hasFood;
+  final ValueChanged<JourneyStop> onOpenFood;
   final JourneyDetail journey;
   final Duration? age;
   final bool refreshFailed;
@@ -242,6 +291,9 @@ class _Body extends StatelessWidget {
           isAdded: stop.isAdded,
           isYourStation: boarding,
           isDestination: stop.stationId == destinationStationId,
+          // "Food available at ...", only between boarding and destination (the controller only asks about those).
+          foodAvailable: hasFood(stop.stationId),
+          onFoodTap: () => onOpenFood(stop),
           journeyStatus: journey.status,
         ),
       ),

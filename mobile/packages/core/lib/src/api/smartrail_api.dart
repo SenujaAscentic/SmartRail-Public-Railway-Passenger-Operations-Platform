@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import '../models/journey_detail.dart';
 import '../models/journey_summary.dart';
 import '../models/station.dart';
+import '../models/station_catering.dart';
+import '../models/station_detail.dart';
 import '../stream/sse_parser.dart';
 
 /// A failed call: the server answered with an error, answered with something
@@ -47,6 +49,16 @@ class JourneyResponse {
   final DateTime? serverTime;
 }
 
+/// The catering of a station and the server's time when it answered.
+class CateringResponse {
+  const CateringResponse(this.catering, this.serverTime);
+
+  final StationCatering catering;
+
+  /// Null when the answer had no usable `Date` header.
+  final DateTime? serverTime;
+}
+
 /// Public (no sign-in) endpoints of API contract §3.1 that the passenger app uses.
 /// The [http.Client] is passed in, so tests can use a fake (ADR-12).
 class SmartRailApi {
@@ -79,6 +91,20 @@ class SmartRailApi {
       if (limit != null) 'limit': '$limit',
     });
     return _list(answer.body, JourneySummary.fromJson);
+  }
+
+  /// One station with its catering flag (`GET /stations/{id}`).
+  Future<StationDetail> getStation(String stationId) async {
+    final answer = await _get('/api/v1/stations/${Uri.encodeComponent(stationId)}', const {});
+    return _object(answer.body, StationDetail.fromJson);
+  }
+
+  /// The catering of a station: the provider's cached menu, hotline and opening
+  /// hours (`GET /stations/{id}/catering`, US-P8). [serverTime] (the `Date`
+  /// header) is the reference for "is the hotline open now".
+  Future<CateringResponse> getCatering(String stationId) async {
+    final answer = await _get('/api/v1/stations/${Uri.encodeComponent(stationId)}/catering', const {});
+    return CateringResponse(_object(answer.body, StationCatering.fromJson), answer.serverTime);
   }
 
   /// One journey with its stops, train set and last position.
@@ -244,6 +270,17 @@ class SmartRailApi {
       // Not a problem document: the status code is all we know.
     }
     return ApiException(message, statusCode: response.statusCode, code: code);
+  }
+
+  T _object<T>(Object? body, T Function(Map<String, dynamic>) parse) {
+    if (body is! Map<String, dynamic>) throw const ApiException('Expected a JSON object');
+    try {
+      return parse(body);
+    } on FormatException catch (e) {
+      throw ApiException('Unexpected data: ${e.message}');
+    } on TypeError catch (e) {
+      throw ApiException('Unexpected data: $e');
+    }
   }
 
   List<T> _list<T>(Object? body, T Function(Map<String, dynamic>) parse) {
