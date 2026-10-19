@@ -37,7 +37,7 @@ export function Layout() {
         </aside>
         <div className="content">
           <header className="topbar">
-            <span className="topbar-line">Main Line</span>
+            <span />
             <Clock />
           </header>
           <main id="main" tabIndex={-1}>

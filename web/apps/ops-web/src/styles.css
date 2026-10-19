@@ -625,6 +625,13 @@ button.danger {
 /* ---- LineView and TrainMarker ---- */
 .line-view {
   padding: var(--space-md) var(--space-lg);
+  overflow-x: auto;
+}
+
+/* Room at both ends, so a marker at the first or last station is not cut off. */
+.line-inner {
+  min-width: 56rem;
+  padding: 0 5rem;
 }
 
 .direction {
@@ -807,6 +814,7 @@ button.danger {
 }
 
 .dialog {
+  border: 1px solid var(--color-border);
   background: var(--color-background);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);

@@ -21,7 +21,7 @@ const LEVELS: Record<string, { title: string; text: string; warning: boolean }> 
 // that the train will wait (A-113). The dialog frame (title, scrim) is the page's Dialog; this is its content.
 export function PlatformDialog({ api, detail, action, close, station: initialStation }: FormContext & { station?: string }) {
   const stops = aheadStops(detail);
-  const [station, setStation] = useState(initialStation || stops[0]?.stationId || "");
+  const [station, setStation] = useState(initialStation || (stops.find((s) => s.status === "Scheduled") ?? stops[0])?.stationId || "");
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [platform, setPlatform] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);

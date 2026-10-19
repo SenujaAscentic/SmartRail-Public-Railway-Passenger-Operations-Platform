@@ -204,12 +204,14 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
       const from = index(position.lastStationId);
       const to = index(position.nextStationId);
       const where = to < 0 ? from : from + (to - from) * position.fractionToNext;
-      return { entry, percent: (where / (track.length - 1)) * 100, towardsEnd: entry.detail.from.stationId === first.stationId };
+      // Each station sits in the middle of its own column of the track, so a place between stations i and j is measured from there.
+      return { entry, percent: ((where + 0.5) / track.length) * 100, towardsEnd: entry.detail.from.stationId === first.stationId };
     });
 
   return (
     <Panel icon="chart" title="Line view" note="select a train to open its journey">
       <div className="line-view">
+        <div className="line-inner">
         <p className="direction">→ Towards {last.name}</p>
         <div className="markers markers-above">
           {placed.filter((p) => p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
@@ -226,6 +228,7 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
           {placed.filter((p) => !p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
         </div>
         <p className="direction">← Towards {first.name}</p>
+        </div>
       </div>
     </Panel>
   );
