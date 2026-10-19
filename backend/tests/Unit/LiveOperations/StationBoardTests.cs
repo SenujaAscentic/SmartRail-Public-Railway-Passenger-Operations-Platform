@@ -81,12 +81,24 @@ public class StationBoardTests
     }
 
     [Fact]
-    public void A_train_nobody_has_started_is_not_shown_once_its_time_has_passed()
+    public void A_train_nobody_has_started_stays_for_10_minutes_past_its_expected_time_and_then_goes()
     {
-        var planned = NewJourney();
+        var planned = NewJourney();   // expected 06:42
 
-        Assert.Single(Board(BoardKind.Departures, At(6, 42, 30), 10, planned));
-        Assert.Empty(Board(BoardKind.Departures, At(6, 44), 10, planned));
+        Assert.Single(Board(BoardKind.Departures, At(6, 44), 10, planned));       // 2 minutes past: a late, unreported train is still there
+        Assert.Single(Board(BoardKind.Departures, At(6, 51, 59), 10, planned));
+        Assert.Empty(Board(BoardKind.Departures, At(6, 52, 1), 10, planned));
+        Assert.Equal("NotStarted", SmartRail.LiveOperations.Features.JourneyViews.JourneyViewBuilder.Status(planned).Kind);   // and it says so (S-09)
+    }
+
+    [Fact]
+    public void The_10_minutes_count_from_the_expected_time_not_the_scheduled_time()
+    {
+        var delayed = NewJourney();
+        delayed.SetDelayByController(0, new Delay(20), new JourneyReason("Weather", null), Ruwan, At(6, 0));   // expected 07:02
+
+        Assert.Single(Board(BoardKind.Departures, At(7, 10), 10, delayed));
+        Assert.Empty(Board(BoardKind.Departures, At(7, 13), 10, delayed));
     }
 
     [Fact]
