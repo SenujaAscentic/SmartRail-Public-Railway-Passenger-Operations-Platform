@@ -1069,6 +1069,50 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  /api/v1/ops/audit:
+    get:
+      tags:
+        - Identity
+      summary: 'The audit trail, newest first. Filters: journeyId, staff (staff number), from, to (UTC). Controller only.'
+      operationId: ListAudit
+      parameters:
+        - name: journeyId
+          in: query
+          schema:
+            type: string
+        - name: staff
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntryResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+        - Bearer: [ ]
 components:
   schemas:
     AccessTokenResponse:
@@ -1091,6 +1135,61 @@ components:
             - 'null'
             - string
           format: date-time
+    AuditActorResponse:
+      required:
+        - id
+        - staffNumber
+        - name
+        - role
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        staffNumber:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+    AuditEntryResponse:
+      required:
+        - id
+        - at
+        - actor
+        - action
+        - targetType
+        - targetId
+        - reason
+        - summary
+        - requestId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        actor:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/AuditActorResponse'
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+        reason:
+          type:
+            - 'null'
+            - string
+        summary:
+          type: string
+        requestId:
+          type: string
     BoardRowResponse:
       required:
         - journeyId
