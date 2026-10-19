@@ -414,6 +414,15 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 **Tests:** unit `TerminateTests`, `SkipStopTests` (written before the code), event shapes, `PublicProjectionTests`; integration `TerminateDecisionTests`, `SkipDecisionTests`, `OpsStreamTests` (source on the staff stream and not on the public one; a station manager sees only their station; the stream closes when the token expires, in an application with its own database and clock); permission-matrix rows for terminate, skip and `/ops/stream`.
 **Watch out:** `OpsStreamTests` must not move the shared test clock: a fake clock cannot go back, and an earlier draft left the clock 16 minutes ahead, which made two platform tests fail (see open point 46).
 
+### 4.18 Station board, terminatesAt, audit read (19 Oct)
+| Piece | What and why |
+|---|---|
+| `Features/StationBoard` (`GET /stations/{id}/board`) | The contract already named this endpoint (not `/departures`), so it is the one built. `StationBoardBuilder` is pure and unit-tested: which trains are on a board, in which order (expected time), and what each line says. Rules from US-D1 AC3: a train that has left or arrived goes 1 minute later; a cancelled or terminated train and a skipped stop stay until their scheduled time has passed. **My addition, please confirm (open point 49):** a train nobody has started is hidden once its expected time is more than 1 minute past (otherwise every unstarted train of the day stays on the board forever). Passing trains are listed with `callType` `Pass`. `destination` after an early termination is the termination station. No display token: the endpoint is public (tokens deferred) |
+| `terminatesAt` | `JourneyDetailResponse.TerminatesAt` (`{stationId, name}`, null unless `TerminatedEarly`); the snapshot carries it because it carries the whole detail |
+| `GET /ops/audit` (`Identity/Features/ListAudit`) | Controller only, read-only (the interface still only appends). Filters `journeyId`, `staff` (a staff number, so no account id in the URL), `from`, `to`, `limit`. The actor's name is joined in here for the controller only; the entries themselves hold ids |
+
+**Tests:** `StationBoardTests` (unit), `StationBoardEndpointTests`, `AuditReadTests`, terminate test extended for `terminatesAt`; permission-matrix rows for the board (public) and the audit (controller only).
+
 ## 5. The Identity module (`SmartRail.Identity`)
 
 Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
@@ -619,6 +628,8 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 46 | Two platform tests answered 422 on two full runs, then passed. Hypothesis checked (18 Oct): R-12 conflicts could not be shown; the tests now acknowledge conflicts so a journey left by another class cannot turn them red. A DIFFERENT cause was found while building `OpsStreamTests`: a test that advances the shared fake clock leaves every later test with a shifted time (the platform tests then see a different lead time). No current test does that | Watch |
 | 47 | A hold on a train nobody has reported on does not move the times (R-22 follows the clock only while tracking runs) | Accepted 18 Oct |
 | 48 | `freshness.updatedAt` is the time of the last accepted GPS position and nothing else; `freshness.lastStationName` (new) is the station that position was just past | Answer to the passenger app, 18 Oct |
+| 49 | The station board hides a train nobody has started once its expected time is more than 1 minute past. The user stories do not say this; without it every unstarted train of the day stays on the board all day | Confirm |
+| 50 | **Deferred (re-plan, 19 Oct):** unskip a stop (`StopRestored`), add a stop, crew messages, announcements, display tokens and the display endpoints that need them, `GET /ops/journeys/{id}` with source per value, impact preview | Not built |
 ---
 
 ## 9. Change log
@@ -642,3 +653,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 18 Oct 2026 | **Phase 3a:** control version and `409 VERSION_CONFLICT`; delay set / clear with reason; hold / release (R-22); cancel / reinstate (R-14); platform change with lead time, hold option, conflicts and preview (R-11 to R-13); audit log (`IAuditLog`, migration `AuditEntries`); `INetworkCatalog.GetPlatformsAsync`; events `JourneyHeld`, `JourneyCancelled`, `JourneyReinstated`, `PlatformChanged`, `reason` on `DelayChanged`; snapshot `lastPosition` complete (open point 42); `backend/demo.http`; R-11 text changed (warning, not requirement) |
 | 18 Oct 2026 | **After Phase 3a review:** random backoff between retries; snapshot with the journey detail; hold response with reason; `freshness.lastStationName`; demo runbook matches section 7 (port 5045, weekday clock, EF logging at Warning) |
 | 18 Oct 2026 | **Phase 3b-lite (part 1):** terminate early (`TerminatedEarly`, `JourneyTerminatedEarly`), skip a stop (`StopSkipped`, R-21), `GET /ops/stream` with `source`, station-manager scope and end at token expiry. Unskip and add-stop follow |
+| 19 Oct 2026 | **Station board** (`GET /stations/{id}/board`), `terminatesAt` in the journey detail and snapshot, `GET /ops/audit`; deferred items logged (open point 50) |

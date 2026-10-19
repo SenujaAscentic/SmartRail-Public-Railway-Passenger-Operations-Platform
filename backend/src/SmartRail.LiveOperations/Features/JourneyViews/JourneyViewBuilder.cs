@@ -69,7 +69,20 @@ internal static class JourneyViewBuilder
                 s.ScheduledDeparture, s.ExpectedDeparture(delay), s.ActualDeparture,
                 s.PlannedPlatform, s.Platform, s.PreviousPlatform)).ToList(),
             trainSet is null ? null : new TrainSetResponse(
-                trainSet.Code, trainSet.Traction, trainSet.Coaches.Select(c => new CoachResponse(c.Position, c.Class, c.Seating)).ToList()));
+                trainSet.Code, trainSet.Traction, trainSet.Coaches.Select(c => new CoachResponse(c.Position, c.Class, c.Seating)).ToList()),
+            TerminatesAt(journey, stops, names));
+    }
+
+    // The last stop the train will still call at, only after an early termination.
+    private static JourneyStationResponse? TerminatesAt(OperationalJourney journey, List<JourneyStop> stops, IReadOnlyDictionary<Guid, string> names)
+    {
+        if (journey.Status != JourneyStatus.TerminatedEarly)
+        {
+            return null;
+        }
+
+        var last = stops.LastOrDefault(s => s.Status != StopStatus.Skipped);
+        return last is null ? null : new JourneyStationResponse(last.StationId, names[last.StationId]);
     }
 
     private static JourneyHoldResponse? Hold(OperationalJourney journey) =>
