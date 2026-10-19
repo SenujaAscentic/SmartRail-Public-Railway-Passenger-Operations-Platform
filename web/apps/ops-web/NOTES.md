@@ -133,3 +133,32 @@ Dashboard, journey page with the controller's decisions, platform change dialog,
 - **Not tried in a browser against the running backend yet.** The typed client, the stream parsing of the shared snapshot example and the backend's own tests are the safety net.
 - **Source and age of a delay set before the page opened:** the age is taken from the latest actual stop time (the backend does not send when a controller delay was set). A controller delay shows no age until an event arrives.
 - **The raw `/live` events page is a technical view and stays in the menu until the demo.**
+
+## Accepted gaps, design alignment and the live check (20 Oct 2026)
+
+### Gaps accepted by Senuja (20 Oct)
+- **"GPS contradicts override" warning (handoff 4c): not built.** The backend sends no such flag, and it is not a MoSCoW Must.
+- **Catering is not named in the confirmation dialog (cancel, terminate, skip).** The journey detail does not say which stations have catering. Revisit with the catering work.
+- **The confirmation lists the journey's own remaining stops.** There is no `impact-preview` endpoint.
+- **Fixed instead of accepted: the age of a controller delay.** The staff snapshot now carries `delaySetAt` and every `DelayChanged` has its own time, so the ops screens show "Controller override · 4 min ago" (US-O3 star criterion: every value has a source AND an age). The public payloads do not carry it.
+
+### Aligned to docs/design/ops (component names as in the component sheet)
+StatusBadge, SourceAgeLabel (`SourceAgeLabel.tsx`, with the "Controller override" wording), LiveIndicator and FreshnessBanner (`LiveIndicator.tsx`), AlertRow and DisruptedTrainRow (in `DashboardPage.tsx`), LineView with TrainMarker (one horizontal track, trains of the first route's direction above and the other direction below), StopRow (the Next stop is marked; per-row Source · age), ActionBar (`ActionButton`), ConfirmImpact in a Dialog (ConfirmImpactDialog), PlatformDialog with the platform buttons (PlatformChangeDialog with the LeadTimeNotice blocks), ConflictBanner (the version conflict) and the conflict block of the platform dialog, the audit table, the sign-in card, the sidebar with the user block and the top bar with the clock.
+- **Colours come from the tokens.** The tokens `warning` / `onWarning` are not in `shared/tokens.json` yet: the stylesheet uses `--color-warning` / `--color-on-warning` when they exist and falls back to the late status colours with the normal text colour. Warning blocks keep dark text, an icon and words, never white text. Check again after the token commit.
+
+### Designed, deferred (re-plan 2): NOT built
+Messages to crew (sidebar item, message status, "Message driver", "Not acknowledged" alert, the crew line of the confirmation), station announcements (sidebar item and form), station reports (alert row and acknowledge), Add stop (button and screen), the driver and cab-tablet line of the journey header ("Driver Demo Driver 1 · Cab tablet signed in · online", last action, train set: the staff journey detail endpoint is deferred), the "Driver · cab" card of the platform preview (the crew instruction is a crew-messages feature), the Refused entries of the audit log (refused actions are not audited yet).
+
+### Where the design and a rule or fixture differ (the rule wins; not guessed)
+- **Information-screen text after a platform change:** the design shows "Train 1001 to Kandy now departs from Platform 5" and, with a hold, "The train will wait for passengers at Platform 5". The fixture S-20 says "Now departing from Platform 5" (no promise without a hold, A-113) and S-19 the wait text; the dialog uses the fixtures. The design's wording is the platform display's (US-D2 AC3).
+- **A train whose position is lost (alert row):** the design says "No live data · GPS 14 min ago"; fixture S-16 says "Live location unavailable – scheduled times shown", which the alert shows.
+- **"Inferred" as the source of a passed stop (design StopRow):** the backend records the source of the event that caused the inference, so the row shows that source. A separate "Inferred" label would need a backend flag.
+- **Lead time shown as a sum (design: "17:55 − 17:52 = 3 min"):** the preview gives minutes only, so the dialog shows "expected arrival − now = 3 min". The page does not work out times.
+- **Audit table (design):** the Journey column shows the number and name and the filters are dropdowns; ours shows a short id (the entry holds only the id) and text filters. The columns are otherwise the design's (Time, Staff, Role, Action, Journey, Reason) with a date added, because the log spans days.
+- **Dialog focus:** focus moves into the dialog and Escape closes it, but Tab can still leave it (no full focus trap yet).
+
+### Found in the live browser check (headless Chrome, real API, simulator on 1001) and fixed
+- **Ages were all "0 s ago" on the demo clock:** the page counted ages from the device's clock, and the demo server is a day ahead. Ages and the clock in the top bar now count on the server's time, taken from the `Date` header of every answer (`server-clock.ts`); a test covers it.
+- **A train at the end of the line was cut off, and markers sat at the wrong place** (the positions did not allow for the station columns). Fixed with room at both ends and positions measured from the middle of each station's column.
+- **The platform dialog opened on the stop the train was standing at.** It now opens on the next scheduled stop.
+- Console: only the expected 401 of the first silent refresh before sign-in, and a favicon 404 (fixed).
