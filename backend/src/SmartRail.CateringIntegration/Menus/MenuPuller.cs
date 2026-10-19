@@ -14,7 +14,11 @@ internal sealed class MenuPuller(IHttpClientFactory httpClients, IOptions<Cateri
 {
     public static readonly TimeSpan Every = TimeSpan.FromMinutes(5);
 
-    public async Task PullAsync(CateringDbContext db, INetworkCatalog network, CancellationToken ct)
+    // After a failed pull the next try comes sooner, so a provider that starts a little after SmartRail (the demo) has menus within seconds.
+    public static readonly TimeSpan RetryAfterFailure = TimeSpan.FromSeconds(30);
+
+    // Returns true when the cache was refreshed.
+    public async Task<bool> PullAsync(CateringDbContext db, INetworkCatalog network, CancellationToken ct)
     {
         try
         {
@@ -53,12 +57,14 @@ internal sealed class MenuPuller(IHttpClientFactory httpClients, IOptions<Cateri
             }
 
             await db.SaveChangesAsync(ct);
+            return true;
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
             // Only the kind of failure is logged: no response text, no key.
             logger.LogWarning("Catering menu pull failed: {ErrorType}", e.GetType().Name);
             db.ChangeTracker.Clear();
+            return false;
         }
     }
 

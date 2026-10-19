@@ -1,5 +1,6 @@
 # Demo start: one command instead of six windows. It opens separate PowerShell windows for
 #   1. the API (Development, with the demo clock Clock__Start)
+#   1b. RailBites, the catering provider's own service (its own database and port), on the same demo clock
 #   2. the simulator (a cab tablet driving one journey)
 #   3. the ops web dev server   4. the station display dev server
 # and prints the addresses to open. Run it from anywhere:
@@ -8,12 +9,17 @@
 #
 # Secrets: SMARTRAIL_CAB_SECRET (the tablet's secret) and SMARTRAIL_DEMO_PASSWORD are read from the environment, or asked for
 # (hidden input). They are never written to a file or printed; the simulator window gets them through its environment only.
+# The catering secrets (the webhook signature secret and the provider API key) are made up fresh on every start and handed to the API
+# and RailBites through their environment only, so both always agree and nothing has to be set up. The RailBites database connection comes from
+# RAILBITES_CONNECTION, or is the API's own connection (from its user-secrets, not printed) with the database name railbites.
 param(
     # The time the application believes it is when it starts: WITH an offset, on a weekday (1001 does not run on a Sunday).
     # Default 06:25 (1001 leaves at 06:30), or 05:55 with -WithSlowTrain (2001 leaves at 06:00).
     [string]$ClockStart = '',
     # The apps expect 5045. Another port is for rehearsals next to a running demo (the dev servers are pointed at it).
     [int]$ApiPort = 5045,
+    # RailBites, the catering provider. Its event log page is http://localhost:<port>/events.
+    [int]$RailBitesPort = 5100,
     # The journey the simulator drives, and the tablet / driver it uses (the code guide, section 4.15).
     [string]$Service = '1001',
     [string]$Device = 'CAB-01',
@@ -54,7 +60,7 @@ if ($WithSlowTrain -and $parsed.TimeOfDay -ge [TimeSpan]::FromHours(6)) {
 
 $opsPort = 5173
 $displayPort = 5174
-foreach ($port in @($ApiPort, $opsPort, $displayPort)) {
+foreach ($port in @($ApiPort, $RailBitesPort, $opsPort, $displayPort)) {
     if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) {
         throw "Port $port is already in use. Close the old demo windows first."
     }
@@ -96,6 +102,23 @@ if ($WithSlowTrain) {
     $slowSecret = Read-Secret 'SMARTRAIL_CAB_SECRET_SLOW' "Secret of $SlowDevice (the Seed:CabDevice:${SlowDevice}:Token value)"
 }
 
+# ---- the catering secrets and the RailBites database (never printed) ----
+$railBitesConnection = [Environment]::GetEnvironmentVariable('RAILBITES_CONNECTION')
+if (-not $railBitesConnection) {
+    $secrets = dotnet user-secrets list --project backend/src/SmartRail.Api 2>$null
+    $line = $secrets | Where-Object { $_ -like 'ConnectionStrings:SmartRail =*' } | Select-Object -First 1
+    if (-not $line) {
+        throw 'No database connection for RailBites. Set RAILBITES_CONNECTION, or set ConnectionStrings:SmartRail in the API user-secrets (the code guide, section 7).'
+    }
+    $smartRailConnection = $line.Substring($line.IndexOf('=') + 1).Trim()
+    if ($smartRailConnection -notmatch 'Database=[^;]*') { throw 'The API connection string has no Database= part to change.' }
+    $railBitesConnection = $smartRailConnection -replace 'Database=[^;]*', 'Database=railbites'
+}
+function New-DemoSecret { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }
+$cateringSecret = New-DemoSecret
+$cateringApiKey = New-DemoSecret
+$railBitesUrl = "http://localhost:$RailBitesPort"
+
 # One new window. The command uses single quotes only, so it can sit inside the double quotes of -Command.
 function Open-Window([string]$Title, [string]$WorkingDirectory, [string]$Command) {
     $inner = "`$Host.UI.RawUI.WindowTitle = '$Title'; $Command"
@@ -107,8 +130,17 @@ $apiUrl = "http://localhost:$ApiPort"
 # ---- 1. the API with the demo clock ----
 # --no-launch-profile: the launch profile would open a browser; Development is set here instead (the demo clock needs it).
 Write-Host "Starting the API on $apiUrl with the clock at $ClockStart ..."
-Open-Window 'SmartRail API' $root ("`$env:ASPNETCORE_ENVIRONMENT = 'Development'; `$env:Clock__Start = '$ClockStart'; " +
-    "dotnet run --project backend/src/SmartRail.Api --no-launch-profile --urls $apiUrl")
+$apiStarted = Get-Date
+$env:Catering__ProviderUrl = $railBitesUrl
+$env:Catering__SharedSecret = $cateringSecret
+$env:Catering__ProviderApiKey = $cateringApiKey
+try {
+    Open-Window 'SmartRail API' $root ("`$env:ASPNETCORE_ENVIRONMENT = 'Development'; `$env:Clock__Start = '$ClockStart'; " +
+        "dotnet run --project backend/src/SmartRail.Api --no-launch-profile --urls $apiUrl")
+}
+finally {
+    Remove-Item Env:Catering__ProviderUrl, Env:Catering__SharedSecret, Env:Catering__ProviderApiKey -ErrorAction SilentlyContinue
+}
 
 # ---- wait for it ----
 $deadline = (Get-Date).AddSeconds($ApiTimeoutSeconds)
@@ -121,6 +153,32 @@ while (-not $up) {
     }
 }
 Write-Host 'The API answers.'
+
+# ---- 1b. RailBites on the same demo clock ----
+# Its clock must agree with the API's within a few seconds (RailBites refuses a webhook whose timestamp is more than 5 minutes off).
+# The API started a while ago (migrating and seeding takes time), so RailBites starts that much later on the demo clock.
+$railBitesClock = $parsed.AddSeconds([Math]::Round(((Get-Date) - $apiStarted).TotalSeconds)).ToString('o')
+Write-Host "Starting RailBites on $railBitesUrl ..."
+$env:ConnectionStrings__RailBites = $railBitesConnection
+$env:RailBites__SharedSecret = $cateringSecret
+$env:RailBites__ApiKey = $cateringApiKey
+try {
+    Open-Window 'RailBites' $root ("`$env:ASPNETCORE_ENVIRONMENT = 'Development'; `$env:Clock__Start = '$railBitesClock'; " +
+        "dotnet run --project provider/RailBites --no-launch-profile --urls $railBitesUrl")
+}
+finally {
+    Remove-Item Env:ConnectionStrings__RailBites, Env:RailBites__SharedSecret, Env:RailBites__ApiKey -ErrorAction SilentlyContinue
+}
+$deadline = (Get-Date).AddSeconds($ApiTimeoutSeconds)
+$railBitesUp = $false
+while (-not $railBitesUp) {
+    try { $railBitesUp = (Invoke-WebRequest -Uri "$railBitesUrl/events" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200 }
+    catch { Start-Sleep -Seconds 2 }
+    if (-not $railBitesUp -and (Get-Date) -gt $deadline) {
+        throw "RailBites did not answer $railBitesUrl/events within $ApiTimeoutSeconds s. Read the 'RailBites' window."
+    }
+}
+Write-Host 'RailBites answers.'
 
 # ---- the simulator is built ONCE here: two windows that both run `dotnet run` would build the same project at the same time and one fails ----
 Write-Host 'Building the simulator ...'
@@ -165,6 +223,7 @@ Write-Host 'Open (the dev servers need a few seconds):'
 Write-Host "  Ops web              http://localhost:$opsPort"
 Write-Host "  Departures board     http://localhost:$displayPort/board/FOT"
 Write-Host "  Platform display     http://localhost:$displayPort/platform/GPH/1"
+Write-Host "  RailBites event log  $railBitesUrl/events   (the catering provider: ETA and cancellation webhooks arrive here)"
 Write-Host ''
 Write-Host 'Passenger app (new terminal; search the date of the demo clock, not today):'
 if ($ApiPort -eq 5045) {
@@ -175,4 +234,4 @@ else {
 }
 Write-Host ''
 Write-Host "The demo clock started at $ClockStart and keeps running; the simulator needs the journey to be about to leave."
-Write-Host 'Stop everything by closing the windows that were opened (four, or five with -WithSlowTrain).'
+Write-Host 'Stop everything by closing the windows that were opened (five, or six with -WithSlowTrain).'

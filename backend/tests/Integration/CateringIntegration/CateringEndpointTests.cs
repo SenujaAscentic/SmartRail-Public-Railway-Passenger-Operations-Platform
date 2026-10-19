@@ -68,7 +68,7 @@ public sealed class CateringEndpointTests(ApiFixture api) : CateringTestBase(api
     }
 
     [Fact]
-    public async Task When_the_provider_comes_back_the_next_pull_makes_the_menu_available_again()
+    public async Task After_a_failed_pull_the_next_try_is_within_30_seconds_so_a_provider_that_comes_back_shows_its_menu_at_once()
     {
         _providerDown = true;
         _clock.Advance(TimeSpan.FromMinutes(20));
@@ -76,7 +76,11 @@ public sealed class CateringEndpointTests(ApiFixture api) : CateringTestBase(api
         Assert.False((await Catering("PLG")).GetProperty("available").GetBoolean());
 
         _providerDown = false;
-        _clock.Advance(TimeSpan.FromMinutes(6));
+        _clock.Advance(TimeSpan.FromSeconds(10));
+        await RunRoundAsync();
+        Assert.False((await Catering("PLG")).GetProperty("available").GetBoolean());   // too early to try again
+
+        _clock.Advance(TimeSpan.FromSeconds(21));
         await RunRoundAsync();
 
         Assert.True((await Catering("PLG")).GetProperty("available").GetBoolean());

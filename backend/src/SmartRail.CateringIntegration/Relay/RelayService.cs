@@ -77,8 +77,8 @@ internal sealed class RelayService(
             return;
         }
 
-        _nextMenuPull = time.GetUtcNow() + MenuPuller.Every;
-        await menus.PullAsync(services.GetRequiredService<CateringDbContext>(), services.GetRequiredService<INetworkCatalog>(), ct);
+        var refreshed = await menus.PullAsync(services.GetRequiredService<CateringDbContext>(), services.GetRequiredService<INetworkCatalog>(), ct);
+        _nextMenuPull = time.GetUtcNow() + (refreshed ? MenuPuller.Every : MenuPuller.RetryAfterFailure);
     }
 
     private async Task ReadNewEventsAsync(IServiceProvider services, CancellationToken ct)

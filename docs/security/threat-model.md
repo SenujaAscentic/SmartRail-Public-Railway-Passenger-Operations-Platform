@@ -93,6 +93,8 @@ Likelihood (L) and impact (I): H / M / L. **Day** = build day the control is imp
 | T-19 | TB3 | T | **Over-posting:** a crew request sets `"source": "Controller"` to win priority | L / H | Source always set by the server from the token, never read from the body; request models contain only allowed fields. Stop times keep source priority (R-05: a lower source cannot overwrite a higher one at the same stop). The journey delay follows the latest stop event (R-05 clarified 15 Oct), so it is protected by the controller override plus the input checks R-07 (registered device, active cab session) and R-08 (plausibility) | 11 | Test: body field ignored |
 | T-20 | TB5 | D | **Provider slow or down** blocks SmartRail | M / M | Outbox delivery is asynchronous; menu fetch has timeouts and a cache; train information never depends on the provider | 15 | Stop provider during E2E flow 5: controller action still succeeds |
 
+> **Status of T-13 (20 Oct 2026, re-plan 2):** the display credential itself is deferred. For now the station displays use the **public, read-only API** (the `GET` endpoints and the public stream) with no token at all, so there is no display credential to steal; every write endpoint needs a staff or crew token (permission matrix). The display-token rows of the matrix are added when that credential exists.
+
 ---
 
 ## 4. Security decisions
