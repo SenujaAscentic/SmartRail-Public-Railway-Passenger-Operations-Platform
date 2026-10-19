@@ -62,6 +62,7 @@ public static class LiveOperationsModule
         services.AddScoped<CrewJourneyHandler>();
         services.AddScoped<JourneyDetailReader>();
         services.AddScoped<DecisionHandler>();
+        services.AddScoped<IJourneyFeed, JourneyFeed>();   // the door CateringIntegration reads journey events through
         services.AddScoped<PlatformConflictFinder>();
         services.AddScoped<CrewPositionsHandler>();
 

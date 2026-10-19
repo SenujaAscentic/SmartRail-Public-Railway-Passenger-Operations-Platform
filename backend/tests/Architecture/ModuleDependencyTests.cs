@@ -27,6 +27,9 @@ public class ModuleDependencyTests
     //    (approved 18 Oct). One-way: Identity does not depend on LiveOperations, so there is no cycle. The reason: R-07 accepts
     //    positions only from the journey's assigned driver, and the token carries the account id (`sub`); no other module may
     //    read Identity's tables, so the id has to come through Identity's public door.
+    //  - CateringIntegration reads LiveOperations' public IJourneyFeed (journey events and a journey's state) and Network's public
+    //    INetworkCatalog (which stations have catering, a service's number), to tell the catering provider about ETAs and cancellations
+    //    (US-F2). RECORDED CHANGE, 20 Oct. One-way: neither LiveOperations nor Network knows CateringIntegration, so there is no cycle.
     // Neither the reverse directions nor any other pair are allowed.
     private static readonly (string From, string To)[] AllowedDependencies =
     [
@@ -34,6 +37,8 @@ public class ModuleDependencyTests
         ("LiveOperations", "Network"),
         ("Identity", "Network"),
         ("LiveOperations", "Identity"),
+        ("CateringIntegration", "LiveOperations"),
+        ("CateringIntegration", "Network"),
     ];
 
     private static IEnumerable<string> ReferencedAssemblies(string assemblyName) =>
@@ -92,6 +97,6 @@ public class ModuleDependencyTests
         }
 
         Assert.True(violations.Count == 0,
-            $"Modules may only depend on other modules as Disruptions -> LiveOperations, LiveOperations -> Network and Identity -> Network. Violations: {string.Join("; ", violations)}");
+            $"Modules may only depend on other modules as Disruptions -> LiveOperations, LiveOperations -> Network, Identity -> Network, LiveOperations -> Identity and CateringIntegration -> LiveOperations / Network. Violations: {string.Join("; ", violations)}");
     }
 }

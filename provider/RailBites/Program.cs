@@ -40,7 +40,10 @@ app.MapGet("/", () => Results.Redirect("/events"));
 app.Run();
 
 // For the tests (WebApplicationFactory).
-public partial class Program;
+// Internal so a test project that also references SmartRail.Api (two classes named Program) does not clash (CS0433); the marker below is what tests start.
+internal partial class Program;
+
+public sealed class RailBitesApp;
 
 // The demo clock for Development: starts at Clock:Start and runs at Clock:Speed. Refused outside Development.
 internal sealed class DemoClock(DateTimeOffset start, double speed, TimeProvider real) : TimeProvider

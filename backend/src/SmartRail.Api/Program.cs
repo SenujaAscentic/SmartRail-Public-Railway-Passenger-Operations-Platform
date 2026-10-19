@@ -1,3 +1,4 @@
+using SmartRail.CateringIntegration;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
@@ -31,6 +32,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddNetworkModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);   // after Network (its seed needs the station IDs) and before LiveOperations
 builder.Services.AddLiveOperationsModule(builder.Configuration);   // its first journey generation needs the driver accounts Identity seeds
+builder.Services.AddCateringIntegrationModule(builder.Configuration);   // reads LiveOperations' feed and Network's catalog, so it comes after them
 builder.Services.AddOpenApi(options =>
 {
     options.AddStreamEventSchemas();   // the live events and the snapshot, for the apps' generated types

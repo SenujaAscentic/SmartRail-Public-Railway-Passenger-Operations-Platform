@@ -23,12 +23,12 @@ public sealed class RailBitesFixture : IAsyncLifetime
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:17").WithDatabase("railbites").Build();
 
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 20, 0, 55, 0, TimeSpan.Zero));
-    public WebApplicationFactory<Program> Factory { get; private set; } = null!;
+    public WebApplicationFactory<RailBitesApp> Factory { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {
         await _database.StartAsync();
-        Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        Factory = new WebApplicationFactory<RailBitesApp>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.UseSetting("ConnectionStrings:RailBites", _database.GetConnectionString());

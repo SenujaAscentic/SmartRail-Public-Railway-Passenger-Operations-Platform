@@ -1,3 +1,23 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Part of the SDK, not a package: the hosting types (background service, endpoints, HttpClient factory). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only LiveOperations' public IJourneyFeed and Network's public INetworkCatalog are used; allowed since 20 Oct (architecture test). -->
+    <ProjectReference Include="..\SmartRail.LiveOperations\SmartRail.LiveOperations.csproj" />
+    <ProjectReference Include="..\SmartRail.Network\SmartRail.Network.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SmartRail.UnitTests" />
+    <InternalsVisibleTo Include="SmartRail.IntegrationTests" />
+  </ItemGroup>
 
 </Project>

@@ -18,6 +18,9 @@ public interface INetworkCatalog
     // The platforms of a station with their number and whether they are in service (R-13). Empty if the station is unknown.
     Task<IReadOnlyList<PlatformDetails>> GetPlatformsAsync(Guid stationId, CancellationToken cancellationToken);
 
+    // The stations that have catering (the seed marks them), by id and code. The code is also the provider's reference of the station in the MVP.
+    Task<IReadOnlyList<CateringStationRef>> GetCateringStationsAsync(CancellationToken cancellationToken);
+
     // A train set with its coaches, or null.
     Task<TrainSetDetails?> GetTrainSetAsync(Guid trainSetId, CancellationToken cancellationToken);
 }
@@ -27,6 +30,8 @@ public sealed record RoutePoint(Guid StationId, double Latitude, double Longitud
 public sealed record ServiceDetails(string Number, string TrainType);
 
 public sealed record PlatformDetails(string Number, bool InService);
+
+public sealed record CateringStationRef(Guid StationId, string Code, string Name);
 
 public sealed record TrainSetDetails(string Code, string Traction, IReadOnlyList<CoachDetails> Coaches);
 

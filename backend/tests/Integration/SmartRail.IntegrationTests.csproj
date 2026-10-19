@@ -3,6 +3,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartRail.Api\SmartRail.Api.csproj" />
     <ProjectReference Include="..\..\src\SmartRail.Simulator\SmartRail.Simulator.csproj" />
+    <!-- The catering provider's own service: the end-to-end catering test starts it in memory, next to SmartRail. -->
+    <ProjectReference Include="..\..\..\provider\RailBites\RailBites.csproj" />
   </ItemGroup>
 
   <ItemGroup>
