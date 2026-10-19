@@ -86,7 +86,8 @@ export function storeReducer(store: Store, action: StoreAction): Store {
         [data.journeyId]: {
           detail: journey as unknown as Detail,
           delaySource: typeof data.delaySource === "string" ? data.delaySource : null,
-          delayAt: latestActual(journey as unknown as Detail),
+          // When the delay was set (staff snapshot). Older data without it falls back to the journey's last actual time.
+          delayAt: typeof data.delaySetAt === "string" ? data.delaySetAt : latestActual(journey as unknown as Detail),
           stopSources,
           needsRefresh: false,
         },

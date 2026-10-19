@@ -181,4 +181,30 @@ public class ControlVersionTests
         // Stale AND completed: the person is told to look again first.
         Assert.Equal(DecisionResult.StaleVersion, journey.SetDelayByController(9, new Delay(10), SignalFault, Ruwan, At(7, 31)));
     }
+
+    // O-3 star criterion: every value has a source AND an age, so the journey remembers when its delay last changed.
+    [Fact]
+    public void The_journey_remembers_when_its_delay_was_set_and_when_it_was_cleared()
+    {
+        var journey = NewJourney();
+        Assert.Null(journey.DelaySetAt);
+
+        journey.SetDelayByController(0, new Delay(10), SignalFault, Ruwan, At(6, 0));
+        Assert.Equal(At(6, 0), journey.DelaySetAt);
+
+        journey.ClearDelayByController(1, Ruwan, At(6, 30));
+        Assert.Equal(At(6, 30), journey.DelaySetAt);
+    }
+
+    [Fact]
+    public void A_crew_tap_that_changes_the_delay_moves_the_time_and_one_that_changes_nothing_does_not()
+    {
+        var journey = NewJourney();
+        journey.RecordCrewTime(S2, StopEventKind.Arrival, At(6, 45));   // 5 minutes late, from the crew
+        var first = journey.DelaySetAt;
+        Assert.Equal(At(6, 45), first);
+
+        journey.RecordCrewTime(S2, StopEventKind.Departure, At(6, 47));   // still 5 minutes late, same source
+        Assert.Equal(first, journey.DelaySetAt);
+    }
 }

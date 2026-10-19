@@ -25,7 +25,8 @@ public sealed record JourneySnapshot(
     JourneyDetailResponse Journey,
     long Sequence,
     // Who supplied the delay (Controller, Crew, Gps, Schedule). Staff only (T-07): never serialised here; /ops/stream writes it by hand.
-    [property: JsonIgnore] string? DelaySource = null);
+    [property: JsonIgnore] string? DelaySource = null,
+    [property: JsonIgnore] DateTime? DelaySetAt = null);
 
 // The same fields as GET /journeys/{id} freshness.lastPosition and the TrainPositionUpdated payload.
 public sealed record SnapshotPosition(double Latitude, double Longitude, double SpeedKmh, Guid LastStationId, Guid NextStationId, double FractionToNext);
@@ -89,6 +90,7 @@ internal sealed class SnapshotReader(LiveOperationsDbContext db, TimeProvider cl
                 s.ExpectedArrival(delay), s.ExpectedDeparture(delay), s.ActualArrivalSource?.ToString(), s.ActualDepartureSource?.ToString())).ToList(),
             detail,
             sequence,
-            journey.DelaySource.ToString());
+            journey.DelaySource.ToString(),
+            journey.DelaySetAt);
     }
 }
