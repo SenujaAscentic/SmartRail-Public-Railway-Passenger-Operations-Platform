@@ -23,8 +23,10 @@ Map<String, dynamic> load() =>
 const readFields = <String, List<String>>{
   'JourneyDetailResponse': [
     'journeyId', 'serviceNumber', 'name', 'trainType', 'serviceDate', 'status', 'from', 'to', 'freshness', 'hold', 'reason', 'version', 'stops', 'trainSet',
+    'terminatesAt',
   ],
   'JourneyDetailFreshnessResponse': ['tracking', 'updatedAt', 'lastStationName', 'lastPosition'],
+  'JourneyStationResponse': ['stationId', 'name'],
   'JourneyHoldResponse': ['stationId', 'minutes', 'reason'],
   'JourneyReasonResponse': ['code', 'note'],
   'PositionResponse': ['lastStationId', 'nextStationId', 'fractionToNext'],
@@ -132,23 +134,35 @@ void main() {
       expect(hold.reason, isNull);
     });
 
-    test('terminatesAt is the last calling point that is not skipped, only for TerminatedEarly', () {
-      final json = load()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
-      for (final name in ['Polgahawela', 'Rambukkana', 'Kadugannawa', 'Peradeniya', 'Kandy']) {
-        stopNamed(json, name)['status'] = 'Skipped';
-      }
-      expect(JourneyDetail.fromJson(json).terminatesAt!.name, 'Gampaha');
-
-      final running = load();
-      expect(JourneyDetail.fromJson(running).terminatesAt, isNull);
+    test('terminatesAt is null for a journey that runs on', () {
+      expect(JourneyDetail.fromJson(load()).terminatesAt, isNull);
     });
 
-    test('terminatesAt is null when every stop is skipped', () {
-      final json = load()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
-      for (final s in json['stops'] as List) {
-        (s as Map<String, dynamic>)['status'] = 'Skipped';
-      }
+    test('terminatesAt is read as sent: station id and name', () {
+      final json = load()
+        ..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null}
+        ..['terminatesAt'] = {'stationId': '01a14eb2-015b-7b5a-a2da-49d81f392430', 'name': 'Gampaha'};
+      final end = JourneyDetail.fromJson(json).terminatesAt!;
+
+      expect(end.stationId, '01a14eb2-015b-7b5a-a2da-49d81f392430');
+      expect(end.name, 'Gampaha');
+    });
+
+    test('a missing terminatesAt key counts as null (the schema does not require it)', () {
+      final json = load()..remove('terminatesAt');
       expect(JourneyDetail.fromJson(json).terminatesAt, isNull);
+    });
+
+    test('a terminatesAt without its name is refused', () {
+      final json = load()..['terminatesAt'] = {'stationId': 'x'};
+      expect(() => JourneyDetail.fromJson(json), throwsA(anything));
+    });
+
+    test('withPosition keeps terminatesAt', () {
+      final json = load()..['terminatesAt'] = {'stationId': 'x', 'name': 'Gampaha'};
+      final j = JourneyDetail.fromJson(json);
+      final moved = j.withPosition(const Position(lastStationId: 'a', nextStationId: 'b', fractionToNext: 0.1), DateTime.utc(2026, 10, 20));
+      expect(moved.terminatesAt!.name, 'Gampaha');
     });
 
     test('no train set yet is null, not an error', () {
@@ -203,8 +217,10 @@ void main() {
           _ => throw ArgumentError(schema),
         };
 
-    for (final entry in readFields.entries) {
-      for (final field in entry.value) {
+    // terminatesAt is not required by the schema: a missing key is null (tested above).
+    const optional = {'terminatesAt'};
+    for (final entry in readFields.entries.where((e) => e.key != 'JourneyStationResponse')) {
+      for (final field in entry.value.where((f) => !optional.contains(f))) {
         test('${entry.key}.$field missing makes parsing fail', () {
           final json = withHoldAndReason();
           objectFor(json, entry.key).remove(field);

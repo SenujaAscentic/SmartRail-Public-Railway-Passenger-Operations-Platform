@@ -23,6 +23,17 @@ class Position {
       );
 }
 
+/// A station by id and name (schema JourneyStationResponse).
+class StationRef {
+  const StationRef({required this.stationId, required this.name});
+
+  final String stationId;
+  final String name;
+
+  factory StationRef.fromJson(Map<String, dynamic> json) =>
+      StationRef(stationId: json['stationId'] as String, name: json['name'] as String);
+}
+
 /// A journey with its stops (`GET /journeys/{id}`, schema JourneyDetailResponse).
 /// Only the fields the passenger screens use are read (hold and reason follow in
 /// the disruption step).
@@ -43,6 +54,7 @@ class JourneyDetail {
     required this.version,
     required this.stops,
     required this.trainSet,
+    required this.terminatesAt,
   });
 
   final String journeyId;
@@ -76,17 +88,10 @@ class JourneyDetail {
   /// The calling points, in order (design handoff rule 13).
   List<JourneyStop> get callingPoints => [for (final s in stops) if (s.isCallingPoint) s];
 
-  /// For an early-terminated journey: the station where it ends, the last
-  /// calling point that is not skipped (the stops after it become Skipped, API
-  /// contract §3.3). Null for every other status, or when every stop is skipped.
-  JourneyStop? get terminatesAt {
-    if (status.kind != StatusKind.terminatedEarly) return null;
-    JourneyStop? last;
-    for (final s in callingPoints) {
-      if (s.state != StopState.skipped) last = s;
-    }
-    return last;
-  }
+  /// For an early-terminated journey: where it ends, as the backend says (20 Oct).
+  /// Null for every other journey. (The schema does not list it as required, so a
+  /// missing key counts as null; the openapi test checks that the field still exists.)
+  final StationRef? terminatesAt;
 
   JourneyStop? stopAt(String stationId) {
     for (final s in stops) {
@@ -118,6 +123,7 @@ class JourneyDetail {
       version: version,
       stops: stops,
       trainSet: trainSet,
+      terminatesAt: terminatesAt,
     );
   }
 
@@ -133,6 +139,7 @@ class JourneyDetail {
     final position = positionJson == null ? null : Position.fromJson(positionJson);
     final updatedAt = optionalTime(freshnessJson, 'updatedAt');
     final trainSetJson = json['trainSet'] as Map<String, dynamic>?;
+    final terminatesJson = json['terminatesAt'] as Map<String, dynamic>?;
 
     return JourneyDetail(
       journeyId: json['journeyId'] as String,
@@ -155,6 +162,7 @@ class JourneyDetail {
       version: json['version'] as int,
       stops: stops,
       trainSet: trainSetJson == null ? null : TrainSet.fromJson(trainSetJson),
+      terminatesAt: terminatesJson == null ? null : StationRef.fromJson(terminatesJson),
     );
   }
 }

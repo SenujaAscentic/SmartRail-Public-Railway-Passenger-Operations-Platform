@@ -26,6 +26,7 @@ Map<String, dynamic> cancelled() {
 Map<String, dynamic> terminatedAtGampaha() {
   final detail = detailJson()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
   skip(detail, ['Polgahawela', 'Peradeniya', 'Kandy']);
+  detail['terminatesAt'] = {'stationId': gampahaId, 'name': 'Gampaha'};
   return detail;
 }
 
@@ -153,6 +154,7 @@ void main() {
     testWidgets('a destination before the end of the line is still served: no alternatives', (tester) async {
       final detail = detailJson()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
       skip(detail, ['Kandy']); // ends at Peradeniya
+      detail['terminatesAt'] = {'stationId': stopNamed(detail, 'Peradeniya')['stationId'], 'name': 'Peradeniya'};
       final backend = withTrains(detail);
       await pumpDetails(tester, backend, boarding: gampahaId, destination: stopNamed(detail, 'Polgahawela')['stationId'] as String);
 
@@ -163,6 +165,7 @@ void main() {
     testWidgets('a passenger whose own station is no longer served gets the next trains from there', (tester) async {
       final detail = detailJson()..['status'] = {'kind': 'TerminatedEarly', 'delayMinutes': null};
       skip(detail, ['Gampaha', 'Polgahawela', 'Peradeniya', 'Kandy']); // ends at Maradana
+      detail['terminatesAt'] = {'stationId': stopNamed(detail, 'Maradana')['stationId'], 'name': 'Maradana'};
       final backend = withTrains(detail);
       await pumpDetails(tester, backend, boarding: gampahaId, destination: kandyId);
 
