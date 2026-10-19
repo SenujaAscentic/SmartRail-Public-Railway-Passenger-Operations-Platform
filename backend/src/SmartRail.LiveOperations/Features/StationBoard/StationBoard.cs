@@ -99,6 +99,10 @@ internal static class StationBoardBuilder
     // How long a train that has left (or arrived) stays on the board (US-D1 AC3).
     public static readonly TimeSpan StaysAfter = TimeSpan.FromMinutes(1);
 
+    // How long a train nobody has started stays past its expected time, shown as "Not started" (S-09). 10 minutes, the same as the Lost
+    // threshold (R-06): a passenger waiting for a late, unreported train must not see it vanish after a minute. Decided by Senuja, 19 Oct.
+    public static readonly TimeSpan NotStartedStaysFor = TimeSpan.FromMinutes(10);
+
     internal sealed record Candidate(OperationalJourney Journey, JourneyStop Stop, DateTime Time, DateTime? ExpectedTime);
 
     public static List<Candidate> Candidates(IEnumerable<OperationalJourney> journeys, Guid station, BoardKind kind, DateTime now, int limit)
@@ -134,8 +138,8 @@ internal static class StationBoardBuilder
     }
 
     // US-D1 AC3: a train that has left (or arrived) disappears one minute later; a cancelled or terminated train, or a skipped stop, stays
-    // until its scheduled time has passed (A-35). A journey nobody has started is not shown once its expected time has passed by a minute:
-    // it is not coming (open point 49).
+    // until its scheduled time has passed (A-35). A journey nobody has started stays for 10 minutes past its expected time, then goes
+    // (open point 49).
     private static bool IsShown(OperationalJourney journey, JourneyStop stop, DateTime scheduled, DateTime? expected, DateTime? actual, DateTime now)
     {
         if (actual is { } happened)
@@ -150,7 +154,7 @@ internal static class StationBoardBuilder
 
         if (journey.Status == JourneyStatus.Planned)
         {
-            return (expected ?? scheduled) + StaysAfter > now;
+            return (expected ?? scheduled) + NotStartedStaysFor > now;
         }
 
         return true;   // running (or completed with this stop never happening): shown with whatever the system knows
