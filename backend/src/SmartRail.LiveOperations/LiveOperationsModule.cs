@@ -7,6 +7,7 @@ using SmartRail.LiveOperations.Features.GenerateJourneys;
 using SmartRail.LiveOperations.Features.CrewJourney;
 using SmartRail.LiveOperations.Features.Decisions;
 using SmartRail.LiveOperations.Features.JourneyViews;
+using SmartRail.LiveOperations.Features.StationBoard;
 using SmartRail.LiveOperations.Features.CrewPositions;
 using SmartRail.LiveOperations.Features.GetJourney;
 using SmartRail.LiveOperations.Features.Idempotency;
@@ -77,6 +78,7 @@ public static class LiveOperationsModule
     {
         StreamEndpoint.Map(routes);
         OpsStreamEndpoint.Map(routes);
+        StationBoardEndpoint.Map(routes);
         SearchJourneysEndpoint.Map(routes);
         CrewJourneyEndpoints.Map(routes);
         CrewPositionsEndpoint.Map(routes);

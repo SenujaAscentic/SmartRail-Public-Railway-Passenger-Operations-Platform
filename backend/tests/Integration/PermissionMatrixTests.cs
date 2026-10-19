@@ -193,6 +193,13 @@ public class PermissionMatrixTests(ApiFixture api)
         { "StationManager", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.OK },
         { "Driver", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
         { "DriverCab", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
+
+        // GET /stations/{id}/board: Public (an unknown station is a 404 for everyone).
+        { "Anonymous", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
+        { "Controller", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
+        { "StationManager", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
+        { "Driver", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
+        { "DriverCab", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
     };
 
     [Theory]

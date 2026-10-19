@@ -129,6 +129,47 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/stations/{stationId}/board':
+    get:
+      tags:
+        - LiveOperations
+      summary: The next departures (or arrivals) at a station for the display pages. No staff fields (T-07).
+      operationId: GetStationBoard
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BoardRowResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/journeys/search:
     get:
       tags:
@@ -1050,6 +1091,72 @@ components:
             - 'null'
             - string
           format: date-time
+    BoardRowResponse:
+      required:
+        - journeyId
+        - serviceNumber
+        - trainType
+        - origin
+        - destination
+        - time
+        - expectedTime
+        - platform
+        - previousPlatform
+        - callType
+        - stopStatus
+        - status
+        - hold
+        - reason
+      type: object
+      properties:
+        journeyId:
+          type: string
+          format: uuid
+        serviceNumber:
+          type: string
+        trainType:
+          type: string
+        origin:
+          $ref: '#/components/schemas/BoardStationResponse'
+        destination:
+          $ref: '#/components/schemas/BoardStationResponse'
+        time:
+          type: string
+          format: date-time
+        expectedTime:
+          type:
+            - 'null'
+            - string
+          format: date-time
+        platform:
+          type: string
+        previousPlatform:
+          type:
+            - 'null'
+            - string
+        callType:
+          type: string
+        stopStatus:
+          type: string
+        status:
+          $ref: '#/components/schemas/JourneyStatusResponse'
+        hold:
+          type: boolean
+        reason:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JourneyReasonResponse'
+    BoardStationResponse:
+      required:
+        - stationId
+        - name
+      type: object
+      properties:
+        stationId:
+          type: string
+          format: uuid
+        name:
+          type: string
     CabSignInRequest:
       required:
         - staffNumber

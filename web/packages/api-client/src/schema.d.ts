@@ -85,6 +85,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stations/{stationId}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The next departures (or arrivals) at a station for the display pages. No staff fields (T-07). */
+        get: operations["GetStationBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/journeys/search": {
         parameters: {
             query?: never;
@@ -430,6 +447,30 @@ export interface components {
             refreshToken?: null | string;
             /** Format: date-time */
             refreshExpiresAt?: null | string;
+        };
+        BoardRowResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            trainType: string;
+            origin: components["schemas"]["BoardStationResponse"];
+            destination: components["schemas"]["BoardStationResponse"];
+            /** Format: date-time */
+            time: string;
+            /** Format: date-time */
+            expectedTime: null | string;
+            platform: string;
+            previousPlatform: null | string;
+            callType: string;
+            stopStatus: string;
+            status: components["schemas"]["JourneyStatusResponse"];
+            hold: boolean;
+            reason: null | components["schemas"]["JourneyReasonResponse"];
+        };
+        BoardStationResponse: {
+            /** Format: uuid */
+            stationId: string;
+            name: string;
         };
         CabSignInRequest: {
             staffNumber: null | string;
@@ -1436,6 +1477,49 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStationBoard: {
+        parameters: {
+            query?: {
+                kind?: string;
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardRowResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
