@@ -94,6 +94,7 @@ internal sealed class StreamHandler(
             {
                 // Staff only (US-O3 star criterion): who supplied the delay and each stop's actual times.
                 json["delaySource"] = snapshot.DelaySource;
+                if (snapshot.DelaySetAt is { } setAt) json["delaySetAt"] = setAt.ToUniversalTime().ToString("O");
                 var stops = json["stops"]!.AsArray();
                 for (var i = 0; i < snapshot.Stops.Count; i++)
                 {

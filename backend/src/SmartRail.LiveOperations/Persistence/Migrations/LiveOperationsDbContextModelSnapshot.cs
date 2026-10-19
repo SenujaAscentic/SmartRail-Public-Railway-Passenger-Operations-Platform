@@ -36,6 +36,9 @@ namespace SmartRail.LiveOperations.Persistence.Migrations
                     b.Property<int>("DelayMinutes")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DelaySetAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("DelaySource")
                         .IsRequired()
                         .HasMaxLength(20)

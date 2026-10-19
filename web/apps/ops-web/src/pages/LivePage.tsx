@@ -1,4 +1,4 @@
-import { ConnectionBadge } from "../components/ConnectionBadge.tsx";
+import { LiveIndicator } from "../components/LiveIndicator.tsx";
 import { Message } from "../components/Message.tsx";
 import { readMainLineId } from "../config.ts";
 import { formatColombo } from "../format.ts";
@@ -29,7 +29,7 @@ function LiveView({ lineId }: { lineId: string }) {
 
   return (
     <>
-      <ConnectionBadge connection={state.connection} />
+      <LiveIndicator connection={state.connection} />
       {state.connection === "failed" && state.detail && <Message kind="error">{state.detail}</Message>}
       {state.resyncs > 0 && (
         <Message kind="notice">Some updates were missed, so the view was reloaded from a fresh snapshot.</Message>

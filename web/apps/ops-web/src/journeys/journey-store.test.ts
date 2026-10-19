@@ -19,6 +19,13 @@ describe("the journey store", () => {
     expect(store.journeys[id]?.needsRefresh).toBe(false);
   });
 
+  it("takes the age of the delay from delaySetAt in the staff snapshot", () => {
+    const store = storeReducer(emptyStore, { type: "frame", frame: frame("snapshot", { ...snapshot(journey(), "Controller"), delaySetAt: T("01:20") }) });
+
+    expect(store.journeys[id]?.delayAt).toBe(T("01:20"));
+    expect(store.journeys[id]?.delaySource).toBe("Controller");
+  });
+
   it("marks a journey for a fresh read when an event changes it, and remembers the source of the new delay", () => {
     const store = storeReducer(loaded(), {
       type: "frame",

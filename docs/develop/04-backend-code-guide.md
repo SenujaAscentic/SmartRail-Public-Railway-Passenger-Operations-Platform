@@ -426,6 +426,9 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 ### 4.19 Ops stream snapshot sources (19 Oct)
 `/ops/stream` snapshots now carry `delaySource` and, per stop, `actualArrivalSource` / `actualDepartureSource`, so the ops web can show where a value came from even for values set before it connected (US-O3 star criterion). `JourneySnapshot.DelaySource` and `SnapshotStop.*Source` are marked `JsonIgnore`, so the public stream cannot send them; `StreamHandler` adds them by hand for the staff stream. Test: `OpsStreamTests.The_staff_snapshot_says_who_supplied...`.
 
+### 4.20 `delaySetAt` (20 Oct)
+`OperationalJourney.DelaySetAt` is the time the delay last changed (its minutes or its source); migration `DelaySetAt`. The staff snapshot (`/ops/stream`) carries it as `delaySetAt`; the public snapshot does not. `DelayChanged` events already carry their own time, so the ops web updates the age from the event. Tests: `ControlVersionTests` (set, clear, crew tap), `OpsStreamTests`.
+
 ## 5. The Identity module (`SmartRail.Identity`)
 
 Identity answers two questions: **who is calling?** (sign-in, tokens, sessions) and **may they do this?** (policies). Today it covers **staff and crew**: Controller and StationManager on the ops web, Driver on the crew app (phone mode and cab mode). Passengers, display devices and the provider come later. The **guard role is deferred** (14 Oct, domain model D-12), so there are three roles.
@@ -633,6 +636,8 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 48 | `freshness.updatedAt` is the time of the last accepted GPS position and nothing else; `freshness.lastStationName` (new) is the station that position was just past | Answer to the passenger app, 18 Oct |
 | 49 | The station board keeps a train nobody has started for 10 minutes past its expected time, then hides it (the user stories do not say; **decided by Senuja 19 Oct**, matches the Lost threshold R-06) | Done |
 | 50 | **Deferred (re-plan, 19 Oct):** unskip a stop (`StopRestored`), add a stop, crew messages, announcements, display tokens and the display endpoints that need them, `GET /ops/journeys/{id}` with source per value, impact preview | Not built |
+| 51 | **Accepted by Senuja (20 Oct):** no "GPS contradicts override" warning (no backend flag); catering is not named in the ops confirmation dialogs (revisit with catering); the confirmation lists the journey's own remaining stops (no impact-preview endpoint) | Accepted |
+| 52 | Ops web: the screens of the design that are deferred in re-plan 2 (crew messages, announcements, station reports, add stop, driver line of the journey header) are listed in `web/apps/ops-web/NOTES.md` as designed, deferred | Deferred |
 ---
 
 ## 9. Change log
@@ -657,3 +662,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 18 Oct 2026 | **After Phase 3a review:** random backoff between retries; snapshot with the journey detail; hold response with reason; `freshness.lastStationName`; demo runbook matches section 7 (port 5045, weekday clock, EF logging at Warning) |
 | 18 Oct 2026 | **Phase 3b-lite (part 1):** terminate early (`TerminatedEarly`, `JourneyTerminatedEarly`), skip a stop (`StopSkipped`, R-21), `GET /ops/stream` with `source`, station-manager scope and end at token expiry. Unskip and add-stop follow |
 | 19 Oct 2026 | **Station board** (`GET /stations/{id}/board`), `terminatesAt` in the journey detail and snapshot, `GET /ops/audit`; deferred items logged (open point 50) |
+| 20 Oct 2026 | **Ops web follow-up:** `delaySetAt` in the staff snapshot (age of a delay); ops web aligned to the design; accepted gaps and design-versus-rule differences logged |

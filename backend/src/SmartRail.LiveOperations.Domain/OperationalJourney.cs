@@ -563,6 +563,10 @@ public sealed class OperationalJourney
     // Current delay and who set it (R-01, R-05): two plain columns, see JourneyStop.
     public int DelayMinutes { get; private set; }
     public Source DelaySource { get; private set; } = Source.Schedule;
+
+    // When the delay last changed (its minutes or its source): the ops screens show "Controller · 4 min ago" (US-O3 star criterion: every
+    // value has a source AND an age). Null for a journey whose delay has never been set.
+    public DateTime? DelaySetAt { get; private set; }
     public SourcedDelay CurrentDelay => new(new Delay(DelayMinutes), DelaySource);
 
     // Data freshness (R-06) and the last accepted position, needed to judge the next one (R-08).
@@ -786,6 +790,11 @@ public sealed class OperationalJourney
         var previous = CurrentDelay;
         DelayMinutes = next.Value.Minutes;
         DelaySource = next.Source;
+        if (announceAlways || next.Value != previous.Value || next.Source != previous.Source)
+        {
+            DelaySetAt = at;
+        }
+
         if (announceAlways || next.Value != previous.Value)
         {
             _events.Add(new DelayChanged(Id, next.Value.Minutes, previous.Value.Minutes, next.Source, at, reason));

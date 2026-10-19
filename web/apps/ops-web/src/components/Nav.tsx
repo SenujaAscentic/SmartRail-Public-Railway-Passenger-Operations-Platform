@@ -1,19 +1,27 @@
 import { NavLink } from "react-router";
 import { useProfile } from "../session/useProfile.ts";
-import { useSessionState } from "../services-context.tsx";
+import { Icon, type IconName } from "./Icon.tsx";
 
-// The main places of the ops web. The audit log is the controller's; the raw live events are a technical view for developers.
+// The places of the ops web, as in the design's sidebar. Messages and Announcements are designed but deferred (re-plan 2), so they
+// are not here. The audit log is the controller's; the raw events view is a technical page for developers.
+const link = (to: string, icon: IconName, label: string, end = false) => (
+  <li key={to}>
+    <NavLink to={to} end={end}>
+      <Icon name={icon} />
+      <span>{label}</span>
+    </NavLink>
+  </li>
+);
+
 export function Nav() {
-  const state = useSessionState();
   const profile = useProfile();
-  if (state.status !== "signedIn") return null;
 
   return (
     <nav aria-label="Main">
       <ul className="nav">
-        <li><NavLink to="/" end>Dashboard</NavLink></li>
-        {profile?.role === "Controller" && <li><NavLink to="/audit">Audit log</NavLink></li>}
-        <li><NavLink to="/live">Live events</NavLink></li>
+        {link("/", "dashboard", "Dashboard", true)}
+        {profile?.role === "Controller" && link("/audit", "history", "Audit log")}
+        {link("/live", "pulse", "Live events")}
       </ul>
     </nav>
   );

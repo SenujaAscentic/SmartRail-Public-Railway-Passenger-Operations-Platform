@@ -80,10 +80,12 @@ public class OpsStreamTests(ApiFixture api) : IAsyncLifetime
         var publicSnapshot = (await open.NextEventAsync(TimeSpan.FromSeconds(5), Ct))!;
 
         Assert.Equal("Crew", staffSnapshot.GetProperty("delaySource").GetString());
+        Assert.True(staffSnapshot.TryGetProperty("delaySetAt", out var setAt) && setAt.GetDateTime() > DateTime.MinValue);   // the age of the delay (O-3)
         var stops = staffSnapshot.GetProperty("stops").EnumerateArray().ToList();
         Assert.Equal("Crew", stops[1].GetProperty("actualArrivalSource").GetString());
         Assert.False(stops[0].TryGetProperty("actualArrivalSource", out _));   // the origin has only an inferred departure
         Assert.DoesNotContain("Source", publicSnapshot.Data!);                 // the public snapshot has no source field at all
+        Assert.DoesNotContain("delaySetAt", publicSnapshot.Data!);             // and no staff-only time either
     }
 
     [Fact]
