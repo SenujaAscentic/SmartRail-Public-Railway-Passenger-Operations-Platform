@@ -14,6 +14,8 @@ class BaseColors {
     required this.border,
     required this.accent,
     required this.focus,
+    required this.warning,
+    required this.onWarning,
   });
 
   final Color background;
@@ -23,6 +25,11 @@ class BaseColors {
   final Color border;
   final Color accent;
   final Color focus;
+
+  /// A warning block uses [onWarning] (dark) text on [warning], never white, and always
+  /// carries a warning icon and a text label (tokens.json rule, 19 Oct).
+  final Color warning;
+  final Color onWarning;
 }
 
 const lightColors = BaseColors(
@@ -33,6 +40,8 @@ const lightColors = BaseColors(
   border: Color(0xFFC9D1D9),
   accent: Color(0xFF1D5FA8),
   focus: Color(0xFF1D5FA8),
+  warning: Color(0xFFD46B5D),
+  onWarning: Color(0xFF14202B),
 );
 
 const darkColors = BaseColors(
@@ -43,6 +52,24 @@ const darkColors = BaseColors(
   border: Color(0xFF2C4258),
   accent: Color(0xFF7DB7FF),
   focus: Color(0xFFFFD24D),
+  warning: Color(0xFFD46B5D),
+  onWarning: Color(0xFF14202B),
+);
+
+/// Colours of the station displays only (tokens.json -> display), dark theme. The
+/// passenger app does not use them; they are kept here so the Dart copy matches the file.
+class DisplayColors {
+  const DisplayColors({required this.surface, required this.onSurface, required this.onSurfaceMuted});
+
+  final Color surface;
+  final Color onSurface;
+  final Color onSurfaceMuted;
+}
+
+const displayColors = DisplayColors(
+  surface: Color(0xFF1A4F8C),
+  onSurface: Color(0xFFFFFFFF),
+  onSurfaceMuted: Color(0xFFB8C4D0),
 );
 
 /// Foreground and background of one status in one theme.

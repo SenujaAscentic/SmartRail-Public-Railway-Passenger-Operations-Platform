@@ -23,6 +23,8 @@ void main() {
     expect(actual.border, _hex(json['border'] as String));
     expect(actual.accent, _hex(json['accent'] as String));
     expect(actual.focus, _hex(json['focus'] as String));
+    expect(actual.warning, _hex(json['warning'] as String));
+    expect(actual.onWarning, _hex(json['onWarning'] as String));
   }
 
   test('light base colours match tokens.json', () {
@@ -31,6 +33,31 @@ void main() {
 
   test('dark base colours match tokens.json', () {
     expectBase(darkColors, tokens['color']['dark'] as Map<String, dynamic>);
+  });
+
+  test('every colour key of tokens.json is mirrored in Dart (a new key fails here until tokens.dart has it)', () {
+    const mirrored = {'background', 'surface', 'text', 'textMuted', 'border', 'accent', 'focus', 'warning', 'onWarning'};
+    for (final theme in ['light', 'dark']) {
+      expect((tokens['color'][theme] as Map<String, dynamic>).keys.toSet(), mirrored, reason: theme);
+    }
+    expect(tokens.keys.toSet(), {
+      r'$schema', 'color', 'status', 'typography', 'space', 'radius', 'touchTarget', 'motion', 'rules', 'display',
+    }, reason: 'a new top-level group of tokens.json needs a look: is it mirrored in Dart?');
+  });
+
+  test('the display colours match tokens.json (display)', () {
+    final display = tokens['display'] as Map<String, dynamic>;
+    expect(displayColors.surface, _hex(display['surface'] as String));
+    expect(displayColors.onSurface, _hex(display['onSurface'] as String));
+    expect(displayColors.onSurfaceMuted, _hex(display['onSurfaceMuted'] as String));
+    expect(display.keys.toSet(), {'surface', 'onSurface', 'onSurfaceMuted', 'note'});
+  });
+
+  test('the display type sizes in tokens.json are known (the passenger app uses none of them)', () {
+    final display = tokens['typography']['surfaces']['display'] as Map<String, dynamic>;
+    expect(display.keys.toSet(), {'body', 'small', 'title', 'time', 'platform', 'platformBoard', 'note'});
+    expect(display['platformBoard'], 72);
+    expect(display['platform'], 88);
   });
 
   test('every status token (icon, light and dark colours) matches tokens.json', () {
