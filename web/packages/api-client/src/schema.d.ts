@@ -85,6 +85,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stations/{stationId}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The next departures (or arrivals) at a station for the display pages. No staff fields (T-07). */
+        get: operations["GetStationBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/journeys/search": {
         parameters: {
             query?: never;
@@ -419,6 +436,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The audit trail, newest first. Filters: journeyId, staff (staff number), from, to (UTC). Controller only. */
+        get: operations["ListAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -430,6 +464,46 @@ export interface components {
             refreshToken?: null | string;
             /** Format: date-time */
             refreshExpiresAt?: null | string;
+        };
+        AuditActorResponse: {
+            /** Format: uuid */
+            id: string;
+            staffNumber: string;
+            name: string;
+            role: string;
+        };
+        AuditEntryResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            at: string;
+            actor: null | components["schemas"]["AuditActorResponse"];
+            action: string;
+            targetType: string;
+            /** Format: uuid */
+            targetId: string;
+            reason: null | string;
+            summary: string;
+            requestId: string;
+        };
+        BoardRowResponse: {
+            /** Format: uuid */
+            journeyId: string;
+            serviceNumber: string;
+            trainType: string;
+            origin: components["schemas"]["JourneyStationResponse"];
+            destination: components["schemas"]["JourneyStationResponse"];
+            /** Format: date-time */
+            time: string;
+            /** Format: date-time */
+            expectedTime: null | string;
+            platform: string;
+            previousPlatform: null | string;
+            callType: string;
+            stopStatus: string;
+            status: components["schemas"]["JourneyStatusResponse"];
+            hold: boolean;
+            reason: null | components["schemas"]["JourneyReasonResponse"];
         };
         CabSignInRequest: {
             staffNumber: null | string;
@@ -620,6 +694,7 @@ export interface components {
             version: number;
             stops: components["schemas"]["JourneyStopResponse"][];
             trainSet: null | components["schemas"]["TrainSetResponse"];
+            terminatesAt?: null | components["schemas"]["JourneyStationResponse"];
         };
         JourneyEndedEvent: {
             /** Format: uuid */
@@ -879,6 +954,11 @@ export interface components {
                         seating: string;
                     }[];
                 };
+                terminatesAt?: {
+                    /** Format: uuid */
+                    stationId: string;
+                    name: string;
+                };
             };
             /** Format: int64 */
             sequence: number;
@@ -905,6 +985,11 @@ export interface components {
             /** Format: uuid */
             lineId: string;
             payload: Record<string, never>;
+        };
+        JourneyStationResponse: {
+            /** Format: uuid */
+            stationId: string;
+            name: string;
         };
         JourneyStatusResponse: {
             kind: string;
@@ -1436,6 +1521,49 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStationBoard: {
+        parameters: {
+            query?: {
+                kind?: string;
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                stationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardRowResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2506,6 +2634,41 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAudit: {
+        parameters: {
+            query?: {
+                journeyId?: string;
+                staff?: string;
+                from?: string;
+                to?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

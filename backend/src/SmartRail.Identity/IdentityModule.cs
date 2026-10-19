@@ -11,6 +11,7 @@ using SmartRail.Identity.Authorization;
 using SmartRail.Identity.Features.CabSignIn;
 using SmartRail.Identity.Features.CrewSignIn;
 using SmartRail.Identity.Features.GetStaffMe;
+using SmartRail.Identity.Features.ListAudit;
 using SmartRail.Identity.Features.RefreshSession;
 using SmartRail.Identity.Features.SignOut;
 using SmartRail.Identity.Features.StaffSignIn;
@@ -98,6 +99,7 @@ public static class IdentityModule
         RefreshSessionEndpoint.Map(routes);
         SignOutEndpoint.Map(routes);
         GetStaffMeEndpoint.Map(routes);
+        ListAuditEndpoint.Map(routes);
         return routes;
     }
 }
