@@ -8,8 +8,13 @@ import { fakeStream } from "./sse.ts";
 
 // A fake backend for the page tests: the requests the pages make are answered from the fields below. The real typed client, the
 // real feed and the real pages run; only the network is replaced.
+// Every answer carries a `Date` header like a real server's: the fake's clock is the device clock plus `serverShiftMs`.
+let serverShiftMs = 0;
 export const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", date: new Date(Date.now() + serverShiftMs).toUTCString() },
+  });
 
 export function fakeBackend() {
   const backend = {
@@ -23,7 +28,12 @@ export function fakeBackend() {
     // While true, the board never answers (a slow network): the page is still waiting for its first data.
     hangBoard: false,
     requests: [] as Request[],
+    // The server's clock is this far ahead of the device clock (negative: behind), in milliseconds.
+    set serverShiftMs(ms: number) {
+      serverShiftMs = ms;
+    },
   };
+  serverShiftMs = 0;
   const stream = fakeStream();
 
   const fetch = async (request: Request): Promise<Response> => {

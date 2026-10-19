@@ -76,6 +76,19 @@ describe("groupByDirection", () => {
   });
 });
 
+describe("one line for each journey", () => {
+  it("the board shows a journey once, even if the list holds it twice", () => {
+    const rows = [toKandy(1), toKandy(2), toKandy(1)];
+    expect(boardRows(rows, NOW, false).map((r) => r.serviceNumber)).toEqual(["1001", "1002"]);
+  });
+
+  it("the platform's 'Then' never repeats the next train", () => {
+    const view = platformView([toKandy(1), toKandy(1), toKandy(2), toKandy(1), toKandy(3)], "1", NOW, false);
+    expect(view.next!.serviceNumber).toBe("1001");
+    expect(view.then.map((r) => r.serviceNumber)).toEqual(["1002", "1003"]);
+  });
+});
+
 describe("platformView", () => {
   it("next is the first train on the platform, then the following two", () => {
     const rows = [toKandy(1), toFort(1), toKandy(2), toKandy(3), toKandy(4)];

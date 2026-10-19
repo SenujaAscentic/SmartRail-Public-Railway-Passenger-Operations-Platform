@@ -63,6 +63,16 @@ describe("the board", () => {
     expect(await screen.findByText("07:05")).toBeTruthy();
   });
 
+  it("the clock shows the SERVER's time (Date header), not the device's, and keeps ticking from it", async () => {
+    // The device says 07:05, the server 3 hours later.
+    await openBoard(({ backend }) => (backend.serverShiftMs = 3 * 3600 * 1000));
+    expect(await screen.findByText("10:05")).toBeTruthy();
+    expect(screen.queryByText("07:05")).toBeNull();
+
+    await settle(62_000); // a minute on (the Date header counts whole seconds): it ticks on from the server time
+    expect(screen.getByText("10:06")).toBeTruthy();
+  });
+
   it("asks for the departures of this station, with a limit, without any token, and reads the stream of this station", async () => {
     const fake = await openBoard(({ backend }) => (backend.board = [toKandy(1)]));
     await screen.findByText("Live"); // the board is loaded and the stream is open
@@ -304,6 +314,23 @@ describe("offline (US-D4)", () => {
     expect(screen.getByText("Offline")).toBeTruthy();
     expect(screen.queryByText("07:06")).toBeNull();
     expect(screen.getByText("08:00")).toBeTruthy();
+  });
+
+  it("offline, trains are removed by the SERVER's time, not the device's", async () => {
+    // The server is an hour behind the device: 06:05 when the device says 07:05.
+    const fake = await openBoard(({ backend }) => {
+      backend.serverShiftMs = -3600 * 1000;
+      backend.board = [toKandy(1, { time: "2026-10-20T01:36:00Z" })]; // 07:06 by the device
+    });
+    await screen.findByText("07:06");
+
+    fake.backend.down = true;
+    fake.stream.state.refuse = true;
+    fake.stream.close();
+    await settle(125_000); // device 07:07, server 06:07: the train is still to come
+
+    expect(screen.getByText("Offline")).toBeTruthy();
+    expect(screen.getByText("07:06")).toBeTruthy();
   });
 
   it("a cancelled train that is offline is shown as scheduled, not as cancelled (nothing live is known)", async () => {

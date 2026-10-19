@@ -13,10 +13,17 @@ export const BOARD_REQUEST_LIMIT = 30;
 // ones until their time. Offline (no contact for 2 minutes) nothing live is known, so trains are removed by the clock as their
 // scheduled time passes (US-D4 AC3).
 export function boardRows(rows: BoardRow[], nowMillis: number, offline: boolean): BoardRow[] {
-  return rows
+  return onePerJourney(rows)
     .filter((row) => row.callType === "Stop")
     .filter((row) => !offline || toMillis(row.time) >= nowMillis)
     .slice(0, BOARD_SIZE);
+}
+
+// A journey is shown once, whatever the list holds (the first line wins). This is a guard for the same journeyId twice; it
+// does not hide two different journeys of the same service on different days (the backend must not send those).
+function onePerJourney(rows: BoardRow[]): BoardRow[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => !seen.has(row.journeyId) && seen.add(row.journeyId));
 }
 
 // One column of the departures board: the trains going one way along the line.
@@ -66,7 +73,8 @@ export interface PlatformView {
 
 export function platformView(rows: BoardRow[], platform: string, nowMillis: number, offline: boolean): PlatformView {
   // Offline, trains are removed by the clock, like on the board.
-  const live = offline ? rows.filter((row) => toMillis(row.time) >= nowMillis) : rows;
+  const unique = onePerJourney(rows);
+  const live = offline ? unique.filter((row) => toMillis(row.time) >= nowMillis) : unique;
   const here = live.filter((row) => row.platform === platform);
   return {
     next: here[0] ?? null,

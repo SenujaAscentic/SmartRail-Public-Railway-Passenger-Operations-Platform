@@ -79,14 +79,14 @@ export function useLiveFeed<T>(stationId: string, load: () => Promise<T>): FeedS
   return useSyncExternalStore(feed.subscribe, feed.getSnapshot);
 }
 
-// The time now, in milliseconds, renewed every second: for the clock in the header and for removing trains by the clock when
-// the display is offline.
+// The SERVER's time now, in milliseconds, renewed every second: for the clock in the header and for removing trains by the
+// clock when the display is offline. Not the device's own clock, which can be wrong.
 export function useNow(): number {
-  const { now } = useServices();
-  const [value, setValue] = useState(() => now());
+  const { serverNow } = useServices();
+  const [value, setValue] = useState(() => serverNow());
   useEffect(() => {
-    const timer = setInterval(() => setValue(now()), 1000);
+    const timer = setInterval(() => setValue(serverNow()), 1000);
     return () => clearInterval(timer);
-  }, [now]);
+  }, [serverNow]);
   return value;
 }
