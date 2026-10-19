@@ -23,6 +23,47 @@ namespace SmartRail.CateringIntegration.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SmartRail.CateringIntegration.Persistence.CachedStation", b =>
+                {
+                    b.Property<string>("StationRef")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Closes")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Hotline")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("MenuJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Opens")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<bool>("ProviderAvailable")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("StationRef");
+
+                    b.ToTable("CachedStations", "catering");
+                });
+
             modelBuilder.Entity("SmartRail.CateringIntegration.Persistence.Delivery", b =>
                 {
                     b.Property<Guid>("Id")

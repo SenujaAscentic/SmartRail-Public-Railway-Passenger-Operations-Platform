@@ -884,6 +884,30 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
         - Bearer: [ ]
+  '/api/v1/stations/{stationId}/catering':
+    get:
+      tags:
+        - CateringIntegration
+      operationId: GetStationCatering
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationCateringResponse'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/staff/sign-in:
     post:
       tags:
@@ -2705,6 +2729,30 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RouteResponse'
+    MenuItemResponse:
+      required:
+        - name
+        - price
+        - available
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: integer
+          format: int32
+        available:
+          type: boolean
+    OpeningHoursResponse:
+      required:
+        - opens
+        - closes
+      type: object
+      properties:
+        opens:
+          type: string
+        closes:
+          type: string
     PasswordSignInRequest:
       required:
         - staffNumber
@@ -3095,6 +3143,29 @@ components:
             - 'null'
             - string
           format: uuid
+    StationCateringResponse:
+      required:
+        - available
+        - openNow
+        - hotline
+        - openingHours
+        - menu
+      type: object
+      properties:
+        available:
+          type: boolean
+        openNow:
+          type: boolean
+        hotline:
+          type: string
+        openingHours:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OpeningHoursResponse'
+        menu:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItemResponse'
     StationResponse:
       required:
         - stationId
@@ -3446,4 +3517,5 @@ components:
 tags:
   - name: Network
   - name: LiveOperations
+  - name: CateringIntegration
   - name: Identity

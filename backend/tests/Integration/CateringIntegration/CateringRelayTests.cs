@@ -17,79 +17,17 @@ using Xunit;
 
 namespace SmartRail.IntegrationTests.CateringIntegration;
 
-// Flow 5 end to end: the controller delays or cancels a train in SmartRail, and the provider (RailBites, its own service and its
-// own database) receives a signed webhook about the catering station. Both applications run in memory, on one clock, each with its
-// own scratch database; SmartRail's HTTP calls to the provider go straight to RailBites' test server.
+// Flow 5 end to end: delays and cancellations in SmartRail reach the provider as signed webhooks (see CateringTestBase).
 [Collection("Api")]
-public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
+public sealed class CateringRelayTests(ApiFixture api) : CateringTestBase(api)
 {
-    private static CancellationToken Ct => TestContext.Current.CancellationToken;
-
-    private const string Secret = "test-shared-secret-value";
-    private static readonly DateOnly Future = new(2027, 3, 5);
-
-    private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 10, 14, 4, 30, 0, TimeSpan.Zero));
-    private readonly PostgreSqlContainer _providerDatabase = new PostgreSqlBuilder("postgres:17").WithDatabase("railbites").Build();
-    private WebApplicationFactory<RailBitesApp> _provider = null!;
-    private WebApplicationFactory<Program> _smartRail = null!;
-    private HttpClient _client = null!;
-    private RelayService _relay = null!;
-    private bool _providerDown;
-
-    public async ValueTask InitializeAsync()
-    {
-        await _providerDatabase.StartAsync();
-        _provider = new WebApplicationFactory<RailBitesApp>().WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Development");
-            builder.UseSetting("ConnectionStrings:RailBites", _providerDatabase.GetConnectionString());
-            builder.UseSetting("RailBites:SharedSecret", Secret);
-            builder.UseSetting("RailBites:ApiKey", "test-api-key-value");
-            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(_clock));
-        });
-        _ = _provider.Server;
-
-        var database = await api.CreateDatabaseAsync("catering_relay_" + Guid.NewGuid().ToString("N")[..8]);
-        _smartRail = api.CreateFactory(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Catering:ProviderUrl"] = "http://railbites.test",
-                ["Catering:SharedSecret"] = Secret,
-                ["Catering:RelayEnabled"] = "false",   // the tests run the rounds themselves
-            }));
-            builder.ConfigureTestServices(services =>
-            {
-                services.AddSingleton<TimeProvider>(_clock);
-                services.AddHttpClient("railbites").ConfigurePrimaryHttpMessageHandler(() => new ProviderSwitch(_provider.Server.CreateHandler(), () => _providerDown));
-            });
-        }, connectionString: database);
-        _ = _smartRail.Server;
-
-        _client = _smartRail.NewClient();
-        _relay = _smartRail.Services.GetRequiredService<RelayService>();
-        await _relay.RunOnceAsync(Ct);   // the first round only sets the cursor to "now"
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _smartRail.DisposeAsync();
-        await _provider.DisposeAsync();
-        await _providerDatabase.DisposeAsync();
-    }
-
-    // Makes the provider unreachable the way a real outage does.
-    private sealed class ProviderSwitch(HttpMessageHandler inner, Func<bool> down) : DelegatingHandler(inner)
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            down() ? throw new HttpRequestException("provider down") : base.SendAsync(request, cancellationToken);
-    }
+    private readonly ApiFixture _api = api;
 
     private async Task<Guid> NewJourney() => await RealJourneys.CreateAsync(_smartRail.Services, "1004", Future);
 
     private async Task Decide(Guid id, string action, object body)
     {
-        var token = await (await _client.SignInAsync("CTRL-01", api.DemoPassword, Ct)).AccessTokenAsync(Ct);
+        var token = await (await _client.SignInAsync("CTRL-01", _api.DemoPassword, Ct)).AccessTokenAsync(Ct);
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ops/journeys/{id}/{action}") { Content = JsonContent.Create(body) };
         request.Headers.Add("Authorization", "Bearer " + token);
         Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(request, Ct)).StatusCode);
@@ -100,7 +38,7 @@ public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
     {
         for (var i = 0; i < 100; i++)
         {
-            await _relay.RunOnceAsync(Ct);
+            await RunRoundAsync();
             var events = await _provider.CreateClient().GetFromJsonAsync<JsonElement>("/events.json", Ct);
             if (done(events))
             {
@@ -141,7 +79,7 @@ public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
         await Decide(id, "delay", new { minutes = 25, reasonCode = "TrainFault", note = "worse", expectedVersion = 2 });
         var events = await ProviderEventsAfter(e => ForService(e, "provider.eta-updated").Count >= 4);
 
-        await _relay.RunOnceAsync(Ct);
+        await RunRoundAsync();
         Assert.Equal(4, ForService(events, "provider.eta-updated").Count);
     }
 
@@ -170,7 +108,7 @@ public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
         List<Delivery> pending = [];
         for (var i = 0; i < 100 && pending.Count == 0; i++)
         {
-            await _relay.RunOnceAsync(Ct);
+            await RunRoundAsync();
             pending = await WithDeliveries(d => d.Where(x => x.Type == "provider.eta-updated").ToListAsync(Ct));
             await Task.Delay(100, Ct);
         }
@@ -186,12 +124,12 @@ public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
 
         // Too early: still waiting (10 s). Later, with the provider back: delivered, and the provider has it once.
         _clock.Advance(TimeSpan.FromSeconds(5));
-        await _relay.RunOnceAsync(Ct);
+        await RunRoundAsync();
         Assert.All(await Etas(), x => Assert.Equal(1, x.Attempts));
 
         _providerDown = false;
         _clock.Advance(TimeSpan.FromSeconds(10));
-        await _relay.RunOnceAsync(Ct);
+        await RunRoundAsync();
 
         Assert.All(await Etas(), x =>
         {
@@ -209,14 +147,14 @@ public sealed class CateringRelayTests(ApiFixture api) : IAsyncLifetime
         await Decide(id, "delay", new { minutes = 15, reasonCode = "TrainFault", note = "x", expectedVersion = 0 });
         for (var i = 0; i < 100 && await WithDeliveries(d => d.CountAsync(Ct)) == 0; i++)
         {
-            await _relay.RunOnceAsync(Ct);
+            await RunRoundAsync();
             await Task.Delay(100, Ct);
         }
 
         foreach (var wait in RelayService.RetryDelays)
         {
             _clock.Advance(wait);
-            await _relay.RunOnceAsync(Ct);
+            await RunRoundAsync();
         }
 
         Assert.All(await Etas(), x =>

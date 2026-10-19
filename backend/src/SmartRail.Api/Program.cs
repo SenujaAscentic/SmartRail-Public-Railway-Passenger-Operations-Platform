@@ -130,6 +130,7 @@ app.UseAuthorization();
 var api = app.MapGroup("/api/v1");
 api.MapNetworkEndpoints();
 api.MapLiveOperationsEndpoints();
+api.MapCateringIntegrationEndpoints();
 api.MapIdentityEndpoints();
 
 app.Run();

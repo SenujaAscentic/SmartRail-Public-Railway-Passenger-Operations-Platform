@@ -175,6 +175,26 @@ Every write endpoint refuses a display token (`403`), tested in the permission m
 | SmartRail → provider | `POST {provider}/provider-api/v1/webhooks/smartrail` | HMAC signature (domain model 8.3) | `provider.eta-updated`, `provider.journey-changed` | US-F2 |
 | Provider (own UI) | `GET {provider}/events` | – (demo page) | Event log page | US-F1 |
 
+**`GET /stations/{stationId}/catering` response (20 Oct 2026, agreed with the passenger app):**
+
+```json
+{
+  "available": true,
+  "openNow": true,
+  "hotline": "+94 11 555 0100",
+  "openingHours": { "opens": "06:00", "closes": "20:00" },
+  "menu": [
+    { "name": "Vegetable roti", "price": 150, "available": true },
+    { "name": "Milk tea", "price": 80, "available": false }
+  ]
+}
+```
+
+- `price` is whole rupees (LKR). `openNow` is worked out by the server (injected clock) from `openingHours`.
+- **`openingHours` is a Colombo time of day, not an instant. This is a deliberate exception to "UTC everywhere"**: a daily opening time has no date, and Colombo has no daylight saving.
+- The answer always comes from the cache that the 5-minute pull fills; the provider being down never fails this or any train endpoint. A pull that fails keeps the last good data.
+- **"Menu unavailable" is `200` with `available: false`** (not an error code): nothing cached yet, the cache is older than 15 minutes (three missed pulls), the provider says it is not taking orders, or the station has no catering. Then `menu` is `[]`; `hotline` and `openingHours` are given if known, otherwise `""` and `null`. An unknown or malformed station id is `404 NOT_FOUND`.
+
 **Retry schedule** for webhooks (from the outbox): 10 s, 30 s, 1 min, 5 min, then every 15 min for 24 h. The provider must answer `2xx` within 5 s; a duplicate `eventId` is answered `200`. Undelivered > 5 min → `ProviderHealthChanged` and an ops alert (US-F4).
 
 ### 3.7 Operations and development

@@ -194,6 +194,16 @@ public class PermissionMatrixTests(ApiFixture api)
         { "Driver", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
         { "DriverCab", "GET", "/api/v1/ops/stream?journeyIds=00000000-0000-0000-0000-000000000001", HttpStatusCode.Forbidden },
 
+        // GET /stations/{id}/catering: Public (an unknown station is a 404 for everyone). A display token has no credential type yet; it reads
+        // the public endpoints like Anonymous, and the catering route has no write method (a POST is 401 without a token, 405 with one).
+        { "Anonymous", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.NotFound },
+        { "Controller", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.NotFound },
+        { "StationManager", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.NotFound },
+        { "Driver", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.NotFound },
+        { "DriverCab", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.NotFound },
+        { "Anonymous", "POST", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.Unauthorized },
+        { "Controller", "POST", "/api/v1/stations/00000000-0000-0000-0000-000000000001/catering", HttpStatusCode.MethodNotAllowed },
+
         // GET /stations/{id}/board: Public (an unknown station is a 404 for everyone).
         { "Anonymous", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
         { "Controller", "GET", "/api/v1/stations/00000000-0000-0000-0000-000000000001/board", HttpStatusCode.NotFound },
