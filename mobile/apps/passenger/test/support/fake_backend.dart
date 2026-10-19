@@ -230,21 +230,24 @@ const kandyId = '01a14eb2-015b-7254-ae7a-ded485b163b9';
 const polgahawelaId = '01a14eb2-015b-7a7e-bd97-4eb8ac4d62df';
 const peradeniyaId = '01a14eb2-015b-7829-b54b-ed67a63fae30';
 
-/// `GET /stations/{id}/catering` as the backend sends it (the shape agreed for US-P8, see mobile/NOTES.md).
+/// `GET /stations/{id}/catering` as the backend sends it (schema StationCateringResponse: all five fields, always). When it is not
+/// available the backend sends menu [], hotline "" and openingHours null.
 Map<String, dynamic> cateringJson({
   bool available = true,
-  String? hotline = '+94112345678',
+  bool openNow = true,
+  String hotline = '+94112345678',
   Map<String, String>? openingHours = const {'opens': '06:00', 'closes': '20:00'},
   List<Map<String, dynamic>>? menu,
 }) =>
     {
       'stationId': polgahawelaId,
       'available': available,
+      'openNow': openNow,
       'hotline': hotline,
       'openingHours': openingHours,
       'menu': menu ??
           [
             {'name': 'Chicken rice', 'price': 450, 'available': true},
-            {'name': 'Egg roti', 'price': 120.5, 'available': false},
+            {'name': 'Egg roti', 'price': 120, 'available': false},
           ],
     };

@@ -65,9 +65,8 @@ class _CateringScreenState extends State<CateringScreen> {
         builder: (context, _) => switch (_c.state) {
           CateringLoading() => const Center(child: CircularProgressIndicator()),
           CateringUnavailable() => ErrorState(message: Strings.menuUnavailable, retryLabel: Strings.tryAgain, onRetry: _c.load),
-          CateringLoaded(:final catering, :final now) => _Loaded(
+          CateringLoaded(:final catering) => _Loaded(
               catering: catering,
-              now: now,
               stationName: widget.stationName,
               serviceNumber: widget.serviceNumber,
               arrival: widget.arrival,
@@ -82,7 +81,6 @@ class _CateringScreenState extends State<CateringScreen> {
 class _Loaded extends StatelessWidget {
   const _Loaded({
     required this.catering,
-    required this.now,
     required this.stationName,
     required this.serviceNumber,
     required this.arrival,
@@ -90,7 +88,6 @@ class _Loaded extends StatelessWidget {
   });
 
   final StationCatering catering;
-  final DateTime now;
   final String stationName;
   final String serviceNumber;
   final DateTime? arrival;
@@ -101,13 +98,15 @@ class _Loaded extends StatelessWidget {
     final theme = Theme.of(context);
     final hours = catering.openingHours;
     final hotline = catering.hotline;
-    final closed = hours != null && !hours.isOpenAt(now);
+    // Whether it is open now is the server's `openNow`; no clock in the app. The message needs the hours to say when it opens.
+    final closed = !catering.openNow && hours != null;
 
     return ListView(
       padding: const EdgeInsets.all(spaceMd),
       children: [
-        if (hotline != null) ...[
-          // Enabled even when the hotline is closed: a wrong clock must never block a call.
+        // No hotline (an empty string): no call button.
+        if (catering.hasHotline) ...[
+          // Always enabled, also when the hotline is closed: the passenger decides.
           FilledButton.icon(
             onPressed: () => onCall(hotline),
             icon: const Icon(Icons.call),
@@ -137,7 +136,7 @@ class _Loaded extends StatelessWidget {
             ],
           ),
         ],
-        if (hotline != null) ...[
+        if (catering.hasHotline) ...[
           const SizedBox(height: spaceMd),
           // What to say on the phone (US-P8 AC4).
           Text(

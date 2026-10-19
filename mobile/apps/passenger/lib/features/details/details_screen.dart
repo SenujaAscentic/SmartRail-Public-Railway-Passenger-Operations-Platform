@@ -23,15 +23,13 @@ class DetailsScreen extends StatefulWidget {
     required this.controller,
     required this.onOpenJourney,
     this.launchPhone = openDialler,
-    this.nowUtc,
   });
 
   final DetailController controller;
   final ValueChanged<JourneySummary> onOpenJourney;
 
-  /// For "Call to order" on the menu screen, and the clock it falls back on (US-P8).
+  /// For "Call to order" on the menu screen (US-P8).
   final PhoneLauncher launchPhone;
-  final DateTime Function()? nowUtc;
 
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
@@ -75,7 +73,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CateringScreen(
-          controller: CateringController(_c.api, stop.stationId, widget.nowUtc ?? DateTime.timestamp),
+          controller: CateringController(_c.api, stop.stationId),
           stationName: stop.name,
           serviceNumber: journey.serviceNumber,
           arrival: stop.actualArrival ?? stop.expectedArrival ?? stop.scheduledArrival,

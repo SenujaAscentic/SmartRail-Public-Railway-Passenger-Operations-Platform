@@ -109,7 +109,7 @@ abstract final class Strings {
   static const menuHeading = 'Menu';
   static const available = 'Available';
   static const soldOut = 'Sold out';
-  static String price(num rupees) => 'Rs ${rupees == rupees.roundToDouble() ? rupees.round() : rupees.toStringAsFixed(2)}';
+  static String price(num rupees) => 'Rs ${rupees.round()}';
   static const callToOrder = 'Call to order';
   static String openingHours(String opens, String closes) => 'Opening hours $opens–$closes';
   static String hotlineClosed(String opens) => 'Hotline closed – opens $opens';

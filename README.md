@@ -15,7 +15,7 @@ SmartRail is a **modular monolith**: one ASP.NET Core application (.NET 10) on P
 | Identity | `SmartRail.Identity` | Built: staff, crew and cab-device sign-in |
 | Disruptions | `SmartRail.Disruptions` (+ `.Domain`) | Project only, no code yet |
 | Notifications | `SmartRail.Notifications` | Project only, no code yet |
-| CateringIntegration | `SmartRail.CateringIntegration` | Project only, no code yet (the RailBites provider service is not in the repository yet) |
+| CateringIntegration | `SmartRail.CateringIntegration` | Built: pulls the provider's stations and menus every 5 minutes into a cache and serves them at `GET /api/v1/stations/{id}/catering` ("Menu unavailable" when the provider is down); sends signed, retried ETA and cancel / terminate events to the provider ([code guide 4.21 and 4.22](docs/develop/04-backend-code-guide.md)). The provider is **RailBites**, a separate service with its own database in `provider/RailBites` |
 
 The host is `SmartRail.Api`; `SmartRail.Simulator` is the cab tablet simulator.
 
@@ -40,7 +40,7 @@ Tests: `dotnet test --solution backend/SmartRail.sln` (needs Docker: the integra
 | Ops web | `web/apps/ops-web` | http://localhost:5173 | the controller |
 | Departures board | `web/apps/station-display` | http://localhost:5174/board/FOT | passengers at a station (any station code, for example `/board/GPH`) |
 | Platform display | `web/apps/station-display` | http://localhost:5174/platform/GPH/1 | passengers on a platform (`/platform/<station code>/<platform>`) |
-| Passenger app | `mobile/apps/passenger` (Flutter) | `cd mobile/apps/passenger; flutter run` | passengers: search, journey details, live tracking |
+| Passenger app | `mobile/apps/passenger` (Flutter) | `cd mobile/apps/passenger; flutter run` | passengers: search, journey details, live tracking, food and menu at stations |
 | Simulator | `backend/src/SmartRail.Simulator` | console window | stands in for the driver's cab tablet |
 
 Controller sign-in: staff number `CTRL-01` with the demo password you set in the user-secrets (station managers `SM-FOT`, `SM-PLG`, `SM-KDT` use the same password).
@@ -55,11 +55,11 @@ Defined in [docs/qa/strategy.md, section 5](docs/qa/strategy.md). They are shown
 | 2 | The driver starts, the train moves | The simulator signs in as the cab, starts the journey and sends GPS. Watch the passenger app tracking screen, `/board/GPH` and `/platform/GPH/1` change as the train approaches | Can be shown |
 | 3 | The controller cancels | In the ops web open the journey and use **Cancel journey**. `/board/FOT` shows "Cancelled"; the **Audit log** page lists the action | Cancel, board and audit can be shown; the push notification is deferred |
 | 4 | Platform change with a hold | In the ops web use **Change platform** and **Hold** on a journey. The platform display of the old platform shows where the train departs from and "The train will wait for passengers at Platform N" | Displays and ops web can be shown; the crew instruction and its acknowledgement are deferred (driver app) |
-| 5 | A delay reaches the catering provider | The delay produces an ETA event for the provider | Cannot be shown yet: the provider service and the catering integration are not built |
+| 5 | A delay reaches the catering provider | Run RailBites next to the API (it needs its own database and the shared secrets, see [code guide 4.21](docs/develop/04-backend-code-guide.md); `demo-start.ps1` does not start it). Delay a train that calls at a catering station (for example Polgahawela) in the ops web. The signed ETA event appears on RailBites' event log page (`/events`); stop RailBites, delay again, start it: the event arrives after a retry, once | Can be shown with RailBites started by hand; the Playwright check of this flow is not built |
 
 ## What is deferred
 
-The scope change of 19 Oct is the "Re-plan 2" row in the change log of [docs/define/moscow.md](docs/define/moscow.md). In short: the driver app, push notifications, crew messages, station announcements and add-stop / unskip are deferred, and the display pages use the public read-only board endpoint instead of display tokens. The catering integration was kept in scope but is not built yet (see the table above). The Notifications and Disruptions modules are projects without code. There is one controller role; no regions, interchanges, in-app food ordering or ticketing (MVP scope in [CLAUDE.md](CLAUDE.md)).
+The scope change of 19 Oct is the "Re-plan 2" row in the change log of [docs/define/moscow.md](docs/define/moscow.md). In short: the driver app, push notifications, crew messages, station announcements and add-stop / unskip are deferred, and the display pages use the public read-only board endpoint instead of display tokens. Catering was kept in scope and is built: the menu pull, the catering endpoint and the passenger screen (menu, hotline, opening hours), and the events to RailBites. Not built: the provider's view of its journeys (US-F1 `GET /provider/journeys`) and provider health on the ops dashboard (US-F4). The Notifications and Disruptions modules are projects without code. There is one controller role; no regions, interchanges, in-app food ordering or ticketing (MVP scope in [CLAUDE.md](CLAUDE.md)).
 
 ## Where the documents are
 
