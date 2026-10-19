@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { App } from "../App.tsx";
 import { ServicesProvider } from "../services-context.tsx";
 import { createServices, type Services } from "../services.ts";
+import { LINE } from "./fixtures.ts";
 import { sse, type Responder } from "./sse.ts";
 
 // A fake backend for the screen tests: the requests the app makes are answered from `routes`, keyed "METHOD /path".
@@ -13,6 +14,7 @@ export const SIGN_IN = "POST /api/v1/auth/staff/sign-in";
 export const REFRESH = "POST /api/v1/auth/refresh";
 export const SIGN_OUT = "POST /api/v1/auth/sign-out";
 export const ME = "GET /api/v1/staff/me";
+export const LINES = "GET /api/v1/lines";
 export const MINUTE = 60_000;
 
 export const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -30,6 +32,7 @@ export function fakeBackend(overrides: Routes = {}) {
     [SIGN_IN]: () => tokenResponse("token-1"),
     [SIGN_OUT]: () => new Response(null, { status: 204 }),
     [ME]: () => json(200, { name: "Demo Controller", role: "Controller", stationId: null }),
+    [LINES]: () => json(200, [LINE]),
     ...overrides,
   };
 

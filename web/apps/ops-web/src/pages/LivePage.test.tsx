@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { frame, sse } from "../test/sse.ts";
 import { REFRESH, fakeBackend, renderApp } from "../test/fake-server.tsx";
 
-// The bare live page: a connection to GET /api/v1/stream for the Main Line, and a list of what arrives.
+// The bare live page: a connection to GET /api/v1/ops/stream for the Main Line, and a list of what arrives.
 const LINE = "5d1c8e0a-2b47-4f6a-9c33-71a0e4d8b2f6";
 
 const snapshot = { journeyId: "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01", serviceDate: "2026-10-14", lineId: LINE, delayMinutes: 4, tracking: "Live", stops: [], sequence: 1051 };
@@ -26,7 +26,7 @@ describe("the stream request", () => {
     await waitFor(() => expect(stream.requests).toHaveLength(1));
 
     const url = new URL(stream.requests[0]!.url, "http://localhost");
-    expect(url.pathname).toBe("/api/v1/stream");
+    expect(url.pathname).toBe("/api/v1/ops/stream");
     expect(url.searchParams.get("lineIds")).toBe(LINE);
     expect(stream.requests[0]!.headers.authorization).toBe("Bearer token-1");
     expect(stream.requests[0]!.url).not.toContain("token-1");
