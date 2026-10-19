@@ -26,6 +26,7 @@ class StopRow extends StatelessWidget {
     this.isYourStation = false,
     this.isDestination = false,
     this.foodAvailable = false,
+    this.onFoodTap,
     this.journeyStatus,
   });
 
@@ -43,6 +44,9 @@ class StopRow extends StatelessWidget {
 
   /// Shows "Food available at" plus the station name (US-P8).
   final bool foodAvailable;
+
+  /// Tapping "Food available at ..." opens the menu preview; without it the line is plain text.
+  final VoidCallback? onFoodTap;
 
   /// The journey's status, only used to colour the expected time like a delay.
   final JourneyStatus? journeyStatus;
@@ -93,18 +97,27 @@ class StopRow extends StatelessWidget {
       if (foodAvailable)
         Padding(
           padding: const EdgeInsets.only(top: spaceXs),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ExcludeSemantics(child: Icon(Icons.restaurant, size: 16, color: scheme.primary)),
-              const SizedBox(width: spaceXs),
-              Flexible(
-                child: Text(
-                  Strings.foodAvailableAt(name),
-                  style: textTheme.labelLarge!.copyWith(color: scheme.primary, fontSize: textSmall),
-                ),
+          // With [onFoodTap] the line opens the menu (US-P8): a button with the full touch target.
+          child: InkWell(
+            onTap: onFoodTap,
+            borderRadius: BorderRadius.circular(radiusMd),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: onFoodTap == null ? 0 : touchTarget),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ExcludeSemantics(child: Icon(Icons.restaurant, size: 16, color: scheme.primary)),
+                  const SizedBox(width: spaceXs),
+                  Flexible(
+                    child: Text(
+                      Strings.foodAvailableAt(name),
+                      style: textTheme.labelLarge!.copyWith(color: scheme.primary, fontSize: textSmall),
+                    ),
+                  ),
+                  if (onFoodTap != null) ExcludeSemantics(child: Icon(Icons.chevron_right, size: 20, color: scheme.primary)),
+                ],
               ),
-            ],
+            ),
           ),
         ),
     ];

@@ -4,6 +4,7 @@ import 'package:smartrail_core/smartrail_core.dart';
 
 import 'config.dart';
 import 'features/search/search_controller.dart' as search;
+import 'features/catering/phone_launcher.dart';
 import 'features/search/search_screen.dart';
 
 void main() {
@@ -13,10 +14,13 @@ void main() {
 /// The api and the clock are passed in (constructor injection, ADR-12), so
 /// tests run the whole app against a fake backend and a fixed "now".
 class PassengerApp extends StatefulWidget {
-  const PassengerApp({super.key, required this.api, required this.nowUtc});
+  const PassengerApp({super.key, required this.api, required this.nowUtc, this.launchPhone = openDialler});
 
   final SmartRailApi api;
   final DateTime Function() nowUtc;
+
+  /// Opens the phone dialler for "Call to order" (US-P8); tests pass a fake.
+  final PhoneLauncher launchPhone;
 
   @override
   State<PassengerApp> createState() => _PassengerAppState();
@@ -39,7 +43,7 @@ class _PassengerAppState extends State<PassengerApp> {
       theme: buildPassengerTheme(Brightness.light),
       darkTheme: buildPassengerTheme(Brightness.dark),
       themeMode: ThemeMode.system,
-      home: SearchScreen(controller: _search, api: widget.api),
+      home: SearchScreen(controller: _search, api: widget.api, launchPhone: widget.launchPhone, nowUtc: widget.nowUtc),
     );
   }
 }

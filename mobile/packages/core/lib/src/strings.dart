@@ -95,10 +95,29 @@ abstract final class Strings {
   static const yesOnBoard = "Yes, I'm on board";
   static const noMissedIt = 'No, I missed it';
   static String expectedAt(String station) => 'Expected at $station';
+  // The same for a train that has not started (nothing live is known, so it is not "expected").
+  static String scheduledAt(String station) => 'Scheduled at $station';
   static String arrivedAt(String station) => 'Arrived at $station';
   static String leftStation(String station) => 'Left $station';
   static String arrivesAt(String station) => 'Arrives at $station';
   static String lastPassed(String station, String time) => 'Last passed $station at $time';
   static String trainLeft(String train, String station, String time) => '$train left $station at $time';
+
+  // Catering (US-P8). Wording for approval, see mobile/NOTES.md.
+  static String foodAt(String station) => 'Food at $station';
+  static const menuUnavailable = 'Menu unavailable';
+  static const menuHeading = 'Menu';
+  static const available = 'Available';
+  static const soldOut = 'Sold out';
+  static String price(num rupees) => 'Rs ${rupees == rupees.roundToDouble() ? rupees.round() : rupees.toStringAsFixed(2)}';
+  static const callToOrder = 'Call to order';
+  static String openingHours(String opens, String closes) => 'Opening hours $opens–$closes';
+  static String hotlineClosed(String opens) => 'Hotline closed – opens $opens';
+  // [time] null: the arrival time is left out.
+  static String mentionOnCall(String train, String station, String? time) =>
+      'Mention: Train $train · arriving $station${time == null ? '' : ' ~$time'} · your coach';
+  static const inAppOrderingSoon = 'In-app ordering coming soon';
+  static const ordersHandledBy = 'Orders are handled by RailBites Catering';
+  static const couldNotCall = "Couldn't open the phone app";
 }
 

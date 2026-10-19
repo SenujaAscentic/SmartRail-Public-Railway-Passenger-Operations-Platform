@@ -307,3 +307,33 @@ describe("addresses", () => {
     expect(VEYANGODA).toBeTruthy();
   });
 });
+
+// Rehearsal #3: a train that has not started has no live expected time, only its schedule.
+describe("a train that has not started", () => {
+  it("says 'Scheduled', not 'Expected', in the next-train panel and in the Then list", async () => {
+    await openPlatform(({ backend }) => {
+      backend.board = [
+        toKandy(1, { status: { kind: "NotStarted", delayMinutes: null } }),
+        toKandy(2, { time: "2026-10-20T02:00:00Z", expectedTime: "2026-10-20T02:00:00Z", status: { kind: "NotStarted", delayMinutes: null } }),
+        third(),
+      ];
+    });
+
+    const nextPanel = within(await screen.findByRole("region", { name: "Next" }));
+    expect(nextPanel.getByText("Scheduled")).toBeTruthy();
+    expect(nextPanel.queryByText("Expected")).toBeNull();
+
+    const then = within(screen.getByRole("region", { name: "Then" }));
+    // the unstarted train says Scheduled; the running (late) one still says Expected
+    expect(then.getAllByText(/Scheduled/)).toHaveLength(1);
+    expect(then.getAllByText(/Expected/)).toHaveLength(1);
+  });
+
+  it("a running train still says 'Expected'", async () => {
+    await openPlatform();
+
+    const nextPanel = within(await screen.findByRole("region", { name: "Next" }));
+    expect(nextPanel.getByText("Expected")).toBeTruthy();
+    expect(nextPanel.queryByText("Scheduled")).toBeNull();
+  });
+});

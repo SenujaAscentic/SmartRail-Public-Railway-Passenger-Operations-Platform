@@ -4,16 +4,21 @@ import 'package:smartrail_core/smartrail_core.dart';
 import '../details/details_controller.dart';
 import '../details/details_screen.dart';
 import 'search_controller.dart' as search;
+import '../catering/phone_launcher.dart';
 import 'station_field.dart';
 
 /// US-P1: find the direct trains between two stations on a date.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.controller, required this.api});
+  const SearchScreen({super.key, required this.controller, required this.api, this.launchPhone = openDialler, this.nowUtc});
 
   final search.SearchController controller;
 
   /// Used to open the train details of a result.
   final SmartRailApi api;
+
+  /// Handed on to the train details (the menu screen: "Call to order", and its clock).
+  final PhoneLauncher launchPhone;
+  final DateTime Function()? nowUtc;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -37,6 +42,8 @@ class _SearchScreenState extends State<SearchScreen> {
             destinationStationId: journey.to.stationId,
           ),
           onOpenJourney: _open,
+          launchPhone: widget.launchPhone,
+          nowUtc: widget.nowUtc,
         ),
       ),
     );

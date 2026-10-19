@@ -63,6 +63,18 @@ class FakeBackend {
   /// The HTTP `Date` header of the journey answer (the server's time); null leaves it out.
   String? dateHeader;
 
+  /// Catering stations for `GET /stations/{id}` (id -> `cateringStation`); any other id answers 404.
+  /// Station ids in [failStations] answer 500.
+  final cateringStations = <String, bool>{};
+  final failStations = <String>{};
+
+  /// Answer of `GET /stations/{id}/catering`; null answers 404, [failCatering] answers 500.
+  Map<String, dynamic>? catering;
+  bool failCatering = false;
+
+  /// The HTTP `Date` header of the catering answer (the server's time); null leaves it out.
+  String? cateringDateHeader;
+
   /// Plain requests (stations, search, journey). Stream connections are in [streams].
   final requests = <Uri>[];
 
@@ -107,6 +119,23 @@ class FakeBackend {
       case '/api/v1/journeys/search':
         if (failJourneySearch) return http.Response('boom', 500);
         return _json(journeys);
+    }
+    final stationPath = RegExp(r'^/api/v1/stations/([^/]+)(/catering)?$').firstMatch(request.url.path);
+    if (stationPath != null) {
+      final id = stationPath.group(1)!;
+      if (stationPath.group(2) != null) {
+        if (failCatering) return http.Response('boom', 500);
+        final body = catering;
+        if (body == null) return http.Response('{"code":"NOT_FOUND","title":"Not found"}', 404);
+        return http.Response(jsonEncode(body), 200, headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'date': ?cateringDateHeader,
+        });
+      }
+      if (failStations.contains(id)) return http.Response('boom', 500);
+      final flag = cateringStations[id];
+      if (flag == null) return http.Response('{"code":"NOT_FOUND","title":"Not found"}', 404);
+      return _json({'stationId': id, 'code': 'XXX', 'name': 'Station', 'cateringStation': flag});
     }
     if (request.url.path.startsWith('/api/v1/journeys/')) {
       if (failJourney) return http.Response('boom', 500);
@@ -196,3 +225,26 @@ Map<String, dynamic> stopNamed(Map<String, dynamic> detail, String name) =>
 /// Station ids used in the detail answer.
 const gampahaId = '01a14eb2-015b-7b5a-a2da-49d81f392430';
 const kandyId = '01a14eb2-015b-7254-ae7a-ded485b163b9';
+
+/// Station ids of the detail answer that have catering in the catering tests (US-P8).
+const polgahawelaId = '01a14eb2-015b-7a7e-bd97-4eb8ac4d62df';
+const peradeniyaId = '01a14eb2-015b-7829-b54b-ed67a63fae30';
+
+/// `GET /stations/{id}/catering` as the backend sends it (the shape agreed for US-P8, see mobile/NOTES.md).
+Map<String, dynamic> cateringJson({
+  bool available = true,
+  String? hotline = '+94112345678',
+  Map<String, String>? openingHours = const {'opens': '06:00', 'closes': '20:00'},
+  List<Map<String, dynamic>>? menu,
+}) =>
+    {
+      'stationId': polgahawelaId,
+      'available': available,
+      'hotline': hotline,
+      'openingHours': openingHours,
+      'menu': menu ??
+          [
+            {'name': 'Chicken rice', 'price': 450, 'available': true},
+            {'name': 'Egg roti', 'price': 120.5, 'available': false},
+          ],
+    };
