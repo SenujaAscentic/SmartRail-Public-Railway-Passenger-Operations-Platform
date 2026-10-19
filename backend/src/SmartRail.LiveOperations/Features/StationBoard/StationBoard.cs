@@ -19,6 +19,7 @@ public sealed record BoardRowResponse(
     string TrainType,
     JourneyStationResponse Origin,
     JourneyStationResponse Destination,
+    DateOnly ServiceDate,
     DateTime Time,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateTime? ExpectedTime,
     string Platform,
@@ -33,6 +34,7 @@ public sealed record BoardRowResponse(
 public enum BoardKind { Departures, Arrivals }
 
 // GET /api/v1/stations/{stationId}/board?kind=departures|arrivals&limit=10   (contract 3.1, policy Public, US-D1)
+// Journeys of today's service day only; each row carries its serviceDate.
 internal static class StationBoardEndpoint
 {
     public const int DefaultLimit = 10;
@@ -77,11 +79,11 @@ internal static class StationBoardEndpoint
 
         var now = clock.GetUtcNow().UtcDateTime;
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(LiveOperationsModule.TimeZoneId)).DateTime);
-        var from = today.AddDays(-1);   // yesterday's journey may still be running past midnight
-        var to = today.AddDays(1);      // late at night, the next departures are tomorrow's
 
+        // Only today's service day (Colombo date from the server clock): a board that also showed tomorrow's trains would repeat the
+        // same times with no date. When none are left the list is empty and the display says "No more departures today".
         var journeys = await db.Journeys.AsNoTracking().Include(j => j.Stops)
-            .Where(j => j.ServiceDate >= from && j.ServiceDate <= to && j.Stops.Any(s => s.StationId == station))
+            .Where(j => j.ServiceDate == today && j.Stops.Any(s => s.StationId == station))
             .ToListAsync(ct);
 
         var candidates = StationBoardBuilder.Candidates(journeys, station, boardKind, now, max);
@@ -98,6 +100,10 @@ internal static class StationBoardBuilder
 {
     // How long a train that has left (or arrived) stays on the board (US-D1 AC3).
     public static readonly TimeSpan StaysAfter = TimeSpan.FromMinutes(1);
+
+    // How long a train nobody has started stays past its expected time, shown as "Not started" (S-09). 10 minutes, the same as the Lost
+    // threshold (R-06): a passenger waiting for a late, unreported train must not see it vanish after a minute. Decided by Senuja, 19 Oct.
+    public static readonly TimeSpan NotStartedStaysFor = TimeSpan.FromMinutes(10);
 
     internal sealed record Candidate(OperationalJourney Journey, JourneyStop Stop, DateTime Time, DateTime? ExpectedTime);
 
@@ -134,8 +140,8 @@ internal static class StationBoardBuilder
     }
 
     // US-D1 AC3: a train that has left (or arrived) disappears one minute later; a cancelled or terminated train, or a skipped stop, stays
-    // until its scheduled time has passed (A-35). A journey nobody has started is not shown once its expected time has passed by a minute:
-    // it is not coming (open point 49).
+    // until its scheduled time has passed (A-35). A journey nobody has started stays for 10 minutes past its expected time, then goes
+    // (open point 49).
     private static bool IsShown(OperationalJourney journey, JourneyStop stop, DateTime scheduled, DateTime? expected, DateTime? actual, DateTime now)
     {
         if (actual is { } happened)
@@ -150,7 +156,7 @@ internal static class StationBoardBuilder
 
         if (journey.Status == JourneyStatus.Planned)
         {
-            return (expected ?? scheduled) + StaysAfter > now;
+            return (expected ?? scheduled) + NotStartedStaysFor > now;
         }
 
         return true;   // running (or completed with this stop never happening): shown with whatever the system knows
@@ -175,7 +181,7 @@ internal static class StationBoardBuilder
                 c.Journey.Id, services[c.Journey.ServiceId].Number, services[c.Journey.ServiceId].TrainType,
                 new JourneyStationResponse(origin, names[origin]),
                 new JourneyStationResponse(destination, names[destination]),
-                c.Time, c.ExpectedTime, c.Stop.Platform, c.Stop.PreviousPlatform, c.Stop.CallType.ToString(), c.Stop.Status.ToString(),
+                c.Journey.ServiceDate, c.Time, c.ExpectedTime, c.Stop.Platform, c.Stop.PreviousPlatform, c.Stop.CallType.ToString(), c.Stop.Status.ToString(),
                 JourneyViewBuilder.Status(c.Journey), hold,
                 c.Journey.Reason is { } r ? new JourneyReasonResponse(r.Code, r.Note) : null);
         }).ToList();

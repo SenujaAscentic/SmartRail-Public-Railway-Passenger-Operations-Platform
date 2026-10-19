@@ -1,40 +1,23 @@
-import { useEffect, useState } from "react";
-import type { components } from "@smartrail/api-client";
 import { useServices, useSessionState } from "../services-context.tsx";
+import { useProfile } from "../session/useProfile.ts";
 
-type Profile = components["schemas"]["StaffMeResponse"];
-
-// In the header, for a signed-in person: who they are (from GET /staff/me) and the sign-out button.
+// At the foot of the sidebar, for a signed-in person: who they are (from GET /staff/me), their scope, and the sign-out button.
 // The name is shown on screen only; it is never logged or put in a URL.
 export function SessionBar() {
-  const { api, session } = useServices();
+  const { session } = useServices();
   const state = useSessionState();
-  const [profile, setProfile] = useState<Profile | null>(null);
-
-  useEffect(() => {
-    if (state.status !== "signedIn") {
-      setProfile(null);
-      return;
-    }
-    let cancelled = false;
-    api
-      .GET("/api/v1/staff/me")
-      .then(({ data }) => {
-        if (!cancelled && data) setProfile(data);
-      })
-      .catch(() => {
-        // The header still works without the name.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [state.status, api]);
+  const profile = useProfile();
 
   if (state.status !== "signedIn") return null;
 
+  const role = profile?.role === "StationManager" ? "Station manager · own station" : profile?.role === "Controller" ? "Controller · whole line" : profile?.role;
+
   return (
     <div className="session-bar">
-      <span>{profile ? `Signed in as ${profile.name} (${profile.role})` : "Signed in"}</span>
+      <p className="session-who">
+        <strong>{profile ? profile.name : "Signed in"}</strong>
+        {role && <span>{role}</span>}
+      </p>
       <button type="button" className="secondary" onClick={() => void session.signOut()}>
         Sign out
       </button>

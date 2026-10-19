@@ -1,0 +1,26 @@
+{
+  "journeyId": "0199f0a2-7c3e-7b10-8a4d-3f6e2c1b9a01",
+  "serviceNumber": "1001",
+  "name": "Kandy Express",
+  "trainType": "Express",
+  "serviceDate": "2026-10-14",
+  "status": { "kind": "Late", "delayMinutes": 7 },
+  "from": {
+    "stationId": "9a4e2d71-5b38-4c06-8e1f-6a0d3b7c9e24",
+    "name": "Gampaha",
+    "scheduledDeparture": "2026-10-14T11:32:00Z",
+    "expectedDeparture": "2026-10-14T11:39:00Z",
+    "platform": "5",
+    "previousPlatform": "2"
+  },
+  "to": {
+    "stationId": "c7d05f38-1e92-4ab6-9d70-4f8a2c1e6b35",
+    "name": "Kandy",
+    "scheduledArrival": "2026-10-14T13:35:00Z",
+    "expectedArrival": "2026-10-14T13:42:00Z"
+  },
+  "freshness": { "tracking": "Live", "updatedAt": "2026-10-14T11:36:30Z" },
+  "hold": null,
+  "reason": null,
+  "version": 12
+}

@@ -41,7 +41,7 @@ export function SignInPage() {
   if (state.status === "checking") {
     return (
       <>
-        <h1>Sign in</h1>
+        <h1>Staff sign-in</h1>
         <p role="status">Checking your session…</p>
       </>
     );
@@ -83,7 +83,8 @@ export function SignInPage() {
 
   return (
     <>
-      <h1>Sign in</h1>
+      <div className="auth-card">
+      <h1>Staff sign-in</h1>
       {state.endedReason && <Message kind="notice">{endedSessionText(state.endedReason)}</Message>}
 
       <form className="form" onSubmit={onSubmit} noValidate>
@@ -126,6 +127,8 @@ export function SignInPage() {
           {submitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
+      <p className="hint">Accounts are provided by the operator. Ask your supervisor if you can't sign in.</p>
+      </div>
     </>
   );
 }

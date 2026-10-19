@@ -1,0 +1,9 @@
+# Dart pub workspace: one dependency resolution for the passenger app and the
+# shared core package (and the driver app later).
+name: smartrail_mobile
+publish_to: none
+environment:
+  sdk: ^3.12.2
+workspace:
+  - packages/core
+  - apps/passenger

@@ -83,3 +83,83 @@ The backend code guide and AI log are not touched here (agent B owns them); this
 - **Secure cookie on `http://localhost`:** Chrome and Firefox accept it; Safari does not. The demo uses Chrome.
 - **`@microsoft/fetch-event-source`, CI pin dates:** the `actions/setup-node` v7.0.0 release date could not be checked (no `gh`); please confirm it meets the one-week rule.
 - **Not built (out of scope here):** the dashboard, station-display, Playwright E2E, `GET /lines` use, role-based screens for station managers.
+
+## Screens (19 Oct 2026, branch `feature/ops-web`)
+
+Dashboard, journey page with the controller's decisions, platform change dialog, audit log. One line of reason per decision.
+
+### Where the data comes from
+- **The Main Line comes from `GET /lines` (the first line); `VITE_MAIN_LINE_ID` is no longer needed for the new screens.** The setting still exists for the bare `/live` events view.
+- **`STREAM_PATH` is now `/api/v1/ops/stream`.** The ops screens need the SOURCE of each value (US-O3 star criterion), and only the staff stream sends it. It also ends when the access token expires; the existing reconnect logic gets a fresh token and carries on.
+- **A snapshot gives a whole journey (`snapshot.journey` = what `GET /journeys/{id}` answers); an event only marks the journey "changed" and the page reads it again from the API.** The screens do not re-implement the backend's rules. Two events are applied at once because they are frequent and complete in themselves: `TrainPositionUpdated` (the position) and the source of a value.
+- **Sources (Driver / GPS / Controller / Schedule) come from the staff stream:** `delaySource` and the source of each actual time in the snapshot, `source` on every event. A value whose source is not known yet says "unknown" instead of guessing.
+- **Ages count from the time the page was told, with a one-second tick.** The server decides what is stale; the page only shows how old a value is.
+
+### Wording and states
+- **All status wording is in `status/status-text.ts` and the test runs every case of `shared/status-fixtures.json` against it** (CLAUDE.md section 5, step 6). The cases that belong to the passenger app and the displays are skipped by the test.
+- **A held train says "Held · 3 min late" (S-08).** The API sends the hold apart from the status kind, so the page combines them; it never invents a delay.
+- **Every state is icon + words + border + colour from the status tokens.**
+
+### Dashboard (handoff 4b)
+- **Alerts:** a running train whose position is Stale or Lost, Lost first, then the newest. Unacknowledged instructions and catering health are not built (crew messages and the provider panel are deferred).
+- **Disrupted trains:** late, cancelled, terminated early or held; cancelled and terminated count as the worst, then the most late. On-time trains are not listed.
+- **Line view:** a list of the stations of each direction, with each running train under the station it last passed, and the backend's "how far to the next station". A list, not a drawing: it reads in order with a screen reader and needs no layout code. The page positions nothing itself.
+- **Filters:** station, and a section (from / to). A section keeps the journeys that go from one chosen station to the other, in that order.
+- **A station manager sees the trains of their own station (the server decides that) and a notice that decisions are the controller's.**
+
+### Journey page (handoff 4c) and decisions
+- **Decisions are offered only to a controller (`GET /staff/me`).** The server checks every request anyway; hiding a button is courtesy.
+- **Every decision sends the journey's version.** On `409 VERSION_CONFLICT` the page shows the server's words ("Changed by R. Perera 4 s ago – reload") and a Reload button that takes the journey from the 409 body.
+- **Cancel, terminate and skip show a confirmation that lists the stations affected and name the passenger apps and information screens.** The `impact-preview` endpoint was never built, so the list is the journey's own remaining stops. Catering is not named: the journey detail does not know which stations have it.
+- **The per-stop buttons have a hidden station name in their label** ("Platform… at Rambukkana"), so a screen reader can tell them apart.
+- **Add stop and unskip are not on the page** (deferred, re-plan 2).
+- **The GPS-contradicts-override warning (handoff 4c) is not built:** the backend sends no such flag yet.
+
+### Platform change dialog (US-O5, handoff 4d)
+- **Choose stop and new platform; the dialog asks the preview endpoint and shows the lead time in minutes and as one of three levels.** The lead time is the backend's number; the page never computes it.
+- **Under 5 minutes: a warning in words and the hold option marked "(recommended)". It is not blocked** (decided by Senuja, 18 Oct).
+- **"What people will see" shows two lines from the fixtures: the platform text (S-10) and the information-screen text (S-19 with a hold, S-20 without).** "The train will wait" appears only after the hold box is ticked (A-113); a test checks both.
+- **A conflict is listed in words ("Platform 4 is expected to be occupied by 1520 at 18:04") and Confirm stays disabled until the person ticks that they have seen it.**
+- **Only platforms in service, other than the current one, are offered** (`GET /stations/{id}`).
+- **The lead time is as at the preview; the server works it out again at confirm.** The audit entry keeps the one the server used.
+
+### Audit log (handoff 4g)
+- **Filters: journey id, staff number, from, to. Times typed are Sri Lanka time and sent as UTC.** Newest first; names are shown only here, to the controller.
+
+### Tests
+- Status wording (20 fixtures), the journey store (9), the dashboard (6), the journey page and platform dialog (13), the audit log (4). The screens run against the fake backend; none has run against the real API in a browser.
+
+### Open points (screens)
+- **Not tried in a browser against the running backend yet.** The typed client, the stream parsing of the shared snapshot example and the backend's own tests are the safety net.
+- **Source and age of a delay set before the page opened:** the age is taken from the latest actual stop time (the backend does not send when a controller delay was set). A controller delay shows no age until an event arrives.
+- **The raw `/live` events page is a technical view and stays in the menu until the demo.**
+
+## Accepted gaps, design alignment and the live check (20 Oct 2026)
+
+### Gaps accepted by Senuja (20 Oct)
+- **"GPS contradicts override" warning (handoff 4c): not built.** The backend sends no such flag, and it is not a MoSCoW Must.
+- **Catering is not named in the confirmation dialog (cancel, terminate, skip).** The journey detail does not say which stations have catering. Revisit with the catering work.
+- **The confirmation lists the journey's own remaining stops.** There is no `impact-preview` endpoint.
+- **Fixed instead of accepted: the age of a controller delay.** The staff snapshot now carries `delaySetAt` and every `DelayChanged` has its own time, so the ops screens show "Controller override · 4 min ago" (US-O3 star criterion: every value has a source AND an age). The public payloads do not carry it.
+
+### Aligned to docs/design/ops (component names as in the component sheet)
+StatusBadge, SourceAgeLabel (`SourceAgeLabel.tsx`, with the "Controller override" wording), LiveIndicator and FreshnessBanner (`LiveIndicator.tsx`), AlertRow and DisruptedTrainRow (in `DashboardPage.tsx`), LineView with TrainMarker (one horizontal track, trains of the first route's direction above and the other direction below), StopRow (the Next stop is marked; per-row Source · age), ActionBar (`ActionButton`), ConfirmImpact in a Dialog (ConfirmImpactDialog), PlatformDialog with the platform buttons (PlatformChangeDialog with the LeadTimeNotice blocks), ConflictBanner (the version conflict) and the conflict block of the platform dialog, the audit table, the sign-in card, the sidebar with the user block and the top bar with the clock.
+- **Colours come from the tokens.** The tokens `warning` / `onWarning` are not in `shared/tokens.json` yet: the stylesheet uses `--color-warning` / `--color-on-warning` when they exist and falls back to the late status colours with the normal text colour. Warning blocks keep dark text, an icon and words, never white text. Check again after the token commit.
+
+### Designed, deferred (re-plan 2): NOT built
+Messages to crew (sidebar item, message status, "Message driver", "Not acknowledged" alert, the crew line of the confirmation), station announcements (sidebar item and form), station reports (alert row and acknowledge), Add stop (button and screen), the driver and cab-tablet line of the journey header ("Driver Demo Driver 1 · Cab tablet signed in · online", last action, train set: the staff journey detail endpoint is deferred), the "Driver · cab" card of the platform preview (the crew instruction is a crew-messages feature), the Refused entries of the audit log (refused actions are not audited yet).
+
+### Where the design and a rule or fixture differ (the rule wins; not guessed)
+- **Information-screen text after a platform change:** the design shows "Train 1001 to Kandy now departs from Platform 5" and, with a hold, "The train will wait for passengers at Platform 5". The fixture S-20 says "Now departing from Platform 5" (no promise without a hold, A-113) and S-19 the wait text; the dialog uses the fixtures. The design's wording is the platform display's (US-D2 AC3).
+- **A train whose position is lost (alert row):** the design says "No live data · GPS 14 min ago"; fixture S-16 says "Live location unavailable – scheduled times shown", which the alert shows.
+- **"Inferred" as the source of a passed stop (design StopRow):** the backend records the source of the event that caused the inference, so the row shows that source. A separate "Inferred" label would need a backend flag.
+- **Lead time shown as a sum (design: "17:55 − 17:52 = 3 min"):** the preview gives minutes only, so the dialog shows "expected arrival − now = 3 min". The page does not work out times.
+- **Audit table (design):** the Journey column shows the number and name and the filters are dropdowns; ours shows a short id (the entry holds only the id) and text filters. The columns are otherwise the design's (Time, Staff, Role, Action, Journey, Reason) with a date added, because the log spans days.
+- **Dialog focus:** focus moves into the dialog and Escape closes it, but Tab can still leave it (no full focus trap yet).
+
+### Found in the live browser check (headless Chrome, real API, simulator on 1001) and fixed
+- **Ages were all "0 s ago" on the demo clock:** the page counted ages from the device's clock, and the demo server is a day ahead. Ages and the clock in the top bar now count on the server's time, taken from the `Date` header of every answer (`server-clock.ts`); a test covers it.
+- **A train at the end of the line was cut off, and markers sat at the wrong place** (the positions did not allow for the station columns). Fixed with room at both ends and positions measured from the middle of each station's column.
+- **The platform dialog opened on the stop the train was standing at.** It now opens on the next scheduled stop.
+- Console: only the expected 401 of the first silent refresh before sign-in, and a favicon 404 (fixed).
+- **Repeat live check, 20 Oct (screenshots kept):** the top-bar clock showed the device's time (15:50) for the first 10 seconds after sign-in, because it only refreshed every 10 s and was first computed before any answer had taught the page the server's time. It now ticks every second (`useNow.test.tsx`); on the demo clock it shows 06:31 within seconds.

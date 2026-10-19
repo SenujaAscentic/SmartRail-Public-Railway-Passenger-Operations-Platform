@@ -1197,6 +1197,7 @@ components:
         - trainType
         - origin
         - destination
+        - serviceDate
         - time
         - expectedTime
         - platform
@@ -1219,6 +1220,9 @@ components:
           $ref: '#/components/schemas/JourneyStationResponse'
         destination:
           $ref: '#/components/schemas/JourneyStationResponse'
+        serviceDate:
+          type: string
+          format: date
         time:
           type: string
           format: date-time

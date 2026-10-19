@@ -22,11 +22,11 @@ describe("signing in and out", () => {
 
     renderApp(services, "/");
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Staff sign-in" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 
-  it("lands on the home page after signing in, shows who is signed in, and sends the Bearer token", async () => {
+  it("lands on the dashboard after signing in, shows who is signed in, and sends the Bearer token", async () => {
     const { services, calls } = fakeBackend();
     renderApp(services, "/sign-in");
     const user = userEvent.setup();
@@ -35,8 +35,8 @@ describe("signing in and out", () => {
 
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByText("Signed in as Demo Controller (Controller)")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("SmartRail Operations");
+    expect(await screen.findByText("Demo Controller")).toBeTruthy();
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toContain("Dashboard");
     expect(calls(SIGN_IN)).toHaveLength(1);
     await waitFor(() => expect(calls(ME)[0]?.headers.get("authorization")).toBe("Bearer token-1"));
   });
@@ -47,8 +47,8 @@ describe("signing in and out", () => {
 
     renderApp(backend.services, "/");
 
-    expect(await screen.findByText("Signed in as Demo Controller (Controller)")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
+    expect(await screen.findByText("Demo Controller")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Staff sign-in" })).toBeNull();
     await waitFor(() => expect(backend.calls(ME)[0]?.headers.get("authorization")).toBe("Bearer token-from-cookie"));
   });
 
@@ -60,7 +60,7 @@ describe("signing in and out", () => {
 
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Staff sign-in" })).toBeTruthy();
     expect(backend.calls(SIGN_OUT)).toHaveLength(1);
     expect(screen.queryByText(/session has ended/)).toBeNull();   // signing out yourself needs no explanation
   });
