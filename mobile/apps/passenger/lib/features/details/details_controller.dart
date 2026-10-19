@@ -135,6 +135,11 @@ class DetailController extends ChangeNotifier {
   int _alternativesId = 0;
   AlternativesState get alternatives => _alternatives;
 
+  /// The passenger said "No, I missed it": the next trains to the same
+  /// destination are offered (US-P3 AC3). Passenger-chosen, not a backend fact.
+  bool _missed = false;
+  bool get missed => _missed;
+
   /// Server time of the stream answer: the reference for the age of a snapshot.
   DateTime? _streamServerTime;
 
@@ -347,10 +352,22 @@ class DetailController extends ChangeNotifier {
         if (destinationLost && end != null && end.stationId != toId) {
           return _AlternativesQuery(AlternativesKind.other, end.stationId, toId, journey.serviceDate, null);
         }
-        return null;
+        return _missed ? _AlternativesQuery(AlternativesKind.next, fromId, toId, journey.serviceDate, departure) : null;
       default:
-        return null;
+        return _missed ? _AlternativesQuery(AlternativesKind.next, fromId, toId, journey.serviceDate, departure) : null;
     }
+  }
+
+  /// "No, I missed it": next trains from the passenger's station to their
+  /// destination, after this train's departure (same search as for a cancelled train).
+  void missedIt() {
+    _missed = true;
+    final current = _state;
+    if (current is DetailLoaded) {
+      _alternativesQuery = null; // run the search even if the situation looks the same
+      _updateAlternatives(current.journey);
+    }
+    notifyListeners();
   }
 
   void _updateAlternatives(JourneyDetail journey) {

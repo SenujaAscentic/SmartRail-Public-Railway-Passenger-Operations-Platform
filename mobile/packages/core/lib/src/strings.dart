@@ -80,5 +80,25 @@ abstract final class Strings {
     if (code == 'Other' && hasNote) return 'Reason: $text';
     return hasNote ? 'Reason: ${reasonLabel(code)} · $text' : 'Reason: ${reasonLabel(code)}';
   }
+
+  // Tracking: waiting and on board (US-P3). Wording for approval, see mobile/NOTES.md.
+  static const trackThisTrain = 'Track this train';
+  static const waiting = 'Waiting';
+  static const onBoard = 'On board';
+  static const imOnThisTrain = "I'm on this train";
+  static const stopTracking = 'Stop tracking';
+  static const platformWord = 'Platform';
+  static const scheduledLabel = 'Scheduled';
+  static const whereTheTrainIs = 'Where the train is';
+  static const nextStop = 'Next stop';
+  static const areYouOnBoard = 'Are you on board?';
+  static const yesOnBoard = "Yes, I'm on board";
+  static const noMissedIt = 'No, I missed it';
+  static String expectedAt(String station) => 'Expected at $station';
+  static String arrivedAt(String station) => 'Arrived at $station';
+  static String leftStation(String station) => 'Left $station';
+  static String arrivesAt(String station) => 'Arrives at $station';
+  static String lastPassed(String station, String time) => 'Last passed $station at $time';
+  static String trainLeft(String train, String station, String time) => '$train left $station at $time';
 }
 

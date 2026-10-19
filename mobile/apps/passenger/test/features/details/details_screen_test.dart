@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartrail_core/smartrail_core.dart';
 import 'package:smartrail_passenger/features/details/details_controller.dart';
 import 'package:smartrail_passenger/features/details/details_screen.dart';
+import 'package:smartrail_passenger/features/tracking/tracking_screen.dart';
 
 import '../../support/fake_backend.dart';
 
@@ -313,6 +314,49 @@ void main() {
     testWidgets('an unknown journey (404) shows the same error', (tester) async {
       await pumpDetails(tester, FakeBackend()); // detail is null: 404
       expect(find.text("Couldn't load train information"), findsOneWidget);
+    });
+  });
+
+  group('"Track this train"', () {
+    testWidgets('is offered when the stations are known', (tester) async {
+      await pumpDetails(tester, backendWith(detailJson()), boarding: gampahaId, destination: kandyId);
+
+      expect(find.text('Track this train'), findsOneWidget);
+      expect(tester.getSize(find.widgetWithText(FilledButton, 'Track this train')).height, greaterThanOrEqualTo(48));
+    });
+
+    testWidgets('is not offered without the stations', (tester) async {
+      await pumpDetails(tester, backendWith(detailJson()));
+
+      expect(find.text('Track this train'), findsNothing);
+    });
+
+    testWidgets('is not offered for a cancelled train', (tester) async {
+      final detail = detailJson()..['status'] = {'kind': 'Cancelled', 'delayMinutes': null};
+      await pumpDetails(tester, backendWith(detail)..journeys = [], boarding: gampahaId, destination: kandyId);
+
+      expect(find.text('Track this train'), findsNothing);
+    });
+
+    testWidgets('is not offered for a finished train', (tester) async {
+      final detail = detailJson()..['status'] = {'kind': 'Completed', 'delayMinutes': null};
+      await pumpDetails(tester, backendWith(detail), boarding: gampahaId, destination: kandyId);
+
+      expect(find.text('Track this train'), findsNothing);
+    });
+
+    testWidgets('opens the tracking screen, and back returns to the details', (tester) async {
+      await pumpDetails(tester, backendWith(detailJson()), boarding: gampahaId, destination: kandyId);
+
+      await tester.tap(find.text('Track this train'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TrackingScreen), findsOneWidget);
+      expect(find.text('Expected at Gampaha'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(TrackingScreen), findsNothing);
+      expect(find.text('Track this train'), findsOneWidget);
     });
   });
 
