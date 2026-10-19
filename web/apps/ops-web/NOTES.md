@@ -162,3 +162,4 @@ Messages to crew (sidebar item, message status, "Message driver", "Not acknowled
 - **A train at the end of the line was cut off, and markers sat at the wrong place** (the positions did not allow for the station columns). Fixed with room at both ends and positions measured from the middle of each station's column.
 - **The platform dialog opened on the stop the train was standing at.** It now opens on the next scheduled stop.
 - Console: only the expected 401 of the first silent refresh before sign-in, and a favicon 404 (fixed).
+- **Repeat live check, 20 Oct (screenshots kept):** the top-bar clock showed the device's time (15:50) for the first 10 seconds after sign-in, because it only refreshed every 10 s and was first computed before any answer had taught the page the server's time. It now ticks every second (`useNow.test.tsx`); on the demo clock it shows 06:31 within seconds.
