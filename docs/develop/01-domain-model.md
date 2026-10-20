@@ -220,7 +220,7 @@ stateDiagram-v2
 ```
 
 - **Stale:** apps show "Last seen at Rambukkana, 2 min ago"; the ETA is kept at the last delay.
-- **Lost:** "Live location unavailable", and the apps fall back to scheduled times plus the last known delay.
+- **Lost:** "Live location unavailable", and the apps fall back to scheduled times plus the last known delay, which keeps growing while the train is overdue (R-23).
 - Crew taps still update stops while Stale or Lost (source priority R-05).
 
 ---
