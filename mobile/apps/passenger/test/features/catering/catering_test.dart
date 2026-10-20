@@ -142,7 +142,61 @@ void main() {
       await openMenu(tester);
 
       expect(find.text('In-app ordering coming soon'), findsOneWidget);
-      expect(find.text('Orders are handled by RailBites Catering'), findsOneWidget);
+      expect(find.text('Orders are handled by RailCantima'), findsOneWidget);
+    });
+  });
+
+  group('the layout', () {
+    testWidgets('the header: a food icon in a circle, the caterer RailCantima, the opening hours under it, then the menu', (tester) async {
+      await pumpDetails(tester, backendWithFood());
+      await openMenu(tester);
+
+      final circle = find.byType(CircleAvatar);
+      expect(circle, findsOneWidget);
+      expect(find.descendant(of: circle, matching: find.byIcon(Icons.restaurant)), findsOneWidget);
+
+      final name = tester.getTopLeft(find.text('RailCantima')).dy;
+      final hours = tester.getTopLeft(find.text('Opening hours 06:00–20:00')).dy;
+      final menu = tester.getTopLeft(find.text(Strings.menuHeading)).dy;
+      expect(tester.getTopLeft(circle).dy, lessThan(name));
+      expect(name, lessThan(hours));
+      expect(hours, lessThan(menu));
+    });
+
+    testWidgets('"Call to order" and the "Mention" line are pinned at the bottom: outside the scrolling list, below the menu, inside the screen', (tester) async {
+      await pumpDetails(tester, backendWithFood());
+      await openMenu(tester);
+
+      final list = find.byType(ListView);
+      expect(find.descendant(of: list, matching: find.text(Strings.callToOrder)), findsNothing);
+      expect(find.descendant(of: list, matching: find.textContaining('Mention:')), findsNothing);
+      final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final button = tester.getRect(find.text(Strings.callToOrder));
+      final mention = tester.getRect(find.textContaining('Mention:'));
+      expect(mention.bottom, lessThan(button.top));
+      expect(button.bottom, lessThanOrEqualTo(screenHeight));
+      expect(button.top, greaterThan(tester.getRect(find.text('Chicken rice')).bottom));
+    });
+
+    testWidgets('the bar stays on screen while a long menu scrolls', (tester) async {
+      final items = [for (var i = 1; i <= 30; i++) {'name': 'Item $i', 'price': 100 + i, 'available': true}];
+      await pumpDetails(tester, backendWithFood()..catering = cateringJson(menu: items));
+      await openMenu(tester);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -1500));
+      await tester.pumpAndSettle();
+
+      expect(find.text(Strings.callToOrder), findsOneWidget);
+      expect(find.textContaining('Mention:'), findsOneWidget);
+    });
+
+    testWidgets('unavailable: no bar at all', (tester) async {
+      await pumpDetails(tester, backendWithFood()..failCatering = true);
+      await openMenu(tester);
+
+      expect(find.text(Strings.callToOrder), findsNothing);
+      expect(find.textContaining('Mention:'), findsNothing);
+      expect(find.byType(CircleAvatar), findsNothing);
     });
   });
 
