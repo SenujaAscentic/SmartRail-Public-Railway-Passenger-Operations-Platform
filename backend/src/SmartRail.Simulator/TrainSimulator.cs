@@ -51,12 +51,21 @@ public sealed class TrainSimulator(HttpClient http, SimulatorOptions options, Fu
 
         int posts = 0, accepted = 0, discarded = 0;
         var tick = TimeSpan.FromSeconds(options.TickSeconds);
+        var gate = new HoldGate();
+        var observed = new Observed();
         while (true)
         {
             var now = _time.Now;
-            if (!timeline.IsSilent(now))
+
+            // The controller's decisions are read from the public journey, like any passenger app would: a hold keeps the train at its
+            // station, and a platform change is announced (the driver would see it on the tablet).
+            var journey = await ObserveAsync(journeyId, stops, observed, cancellationToken);
+            var held = gate.Update(now, timeline, journey?.HoldIndex, tick);
+            var trainTime = gate.TrainTime(now);
+
+            if (!timeline.IsSilent(trainTime))
             {
-                var result = await SendFixAsync(journeyId, timeline.At(now), now, cancellationToken);
+                var result = await SendFixAsync(journeyId, timeline.At(trainTime), now, cancellationToken);
                 posts++;
                 accepted += result.Accepted;
                 discarded += result.Discarded.Count;
@@ -68,7 +77,7 @@ public sealed class TrainSimulator(HttpClient http, SimulatorOptions options, Fu
 
             // The train keeps reporting for a minute at the terminus: a station counts as reached only after the train has been
             // slow inside it for 20 seconds (R-04), and the last station is the one that ends the journey.
-            if (now >= timeline.End + TimeSpan.FromMinutes(1))
+            if (!held && trainTime >= timeline.End + TimeSpan.FromMinutes(1))
             {
                 break;
             }
@@ -137,9 +146,65 @@ public sealed class TrainSimulator(HttpClient http, SimulatorOptions options, Fu
         {
             var station = stations.GetValueOrDefault(s.StationId)
                 ?? throw new SimulatorException($"Station {s.Name} has no coordinates in /lines.");
-            return new SimStop(s.Name, s.CallType == "Stop", s.ScheduledArrival, s.ScheduledDeparture, station.Latitude, station.Longitude);
+            return new SimStop(s.Name, s.CallType == "Stop", s.ScheduledArrival, s.ScheduledDeparture, station.Latitude, station.Longitude, s.StationId);
         }).ToList();
         return (journeyId.Value, stops);
+    }
+
+    // What the simulator has already told the log, so each decision is announced once.
+    private sealed class Observed
+    {
+        public Guid? HeldStation;
+        public Dictionary<Guid, string?> Platforms = [];
+    }
+
+    private sealed record JourneyView(int? HoldIndex);
+
+    // Reads the public journey. A failed read is skipped (the train just keeps going on what it knew): the tablet must not stop
+    // because one request failed.
+    private async Task<JourneyView?> ObserveAsync(Guid journeyId, List<SimStop> stops, Observed seen, CancellationToken ct)
+    {
+        DetailDto detail;
+        try
+        {
+            detail = await GetAsync<DetailDto>($"/api/v1/journeys/{journeyId}", ct);
+        }
+        catch (Exception e) when (e is SimulatorException or HttpRequestException)
+        {
+            return null;
+        }
+
+        int? holdIndex = null;
+        var holdStation = detail.Hold?.StationId;
+        if (holdStation is { } held)
+        {
+            var index = stops.FindIndex(s => s.StationId == held);
+            holdIndex = index < 0 ? null : index;
+            if (seen.HeldStation != held)
+            {
+                var minutes = detail.Hold!.Minutes is { } m ? $" for {m} min" : "";
+                log($"Hold received: waiting at {(index < 0 ? "a station" : stops[index].Name)}{minutes}.");
+            }
+        }
+        else if (seen.HeldStation is { } before)
+        {
+            var name = stops.Find(s => s.StationId == before)?.Name ?? "the station";
+            log($"Hold released: leaving {name}.");
+        }
+
+        seen.HeldStation = holdStation;
+
+        foreach (var stop in detail.Stops)
+        {
+            if (seen.Platforms.TryGetValue(stop.StationId, out var known) && known != stop.Platform)
+            {
+                log($"Platform changed at {stop.Name}: platform {stop.Platform}{(stop.PreviousPlatform is null ? "" : $" (was {stop.PreviousPlatform})")}.");
+            }
+
+            seen.Platforms[stop.StationId] = stop.Platform;
+        }
+
+        return new JourneyView(holdIndex);
     }
 
     private async Task<PositionBatchResultDto> SendFixAsync(Guid journeyId, SimFix fix, DateTimeOffset now, CancellationToken ct)
@@ -198,8 +263,9 @@ public sealed class TrainSimulator(HttpClient http, SimulatorOptions options, Fu
     private sealed record RouteDto(List<StationDto> Stations);
     private sealed record StationDto(Guid StationId, string Code, double Latitude, double Longitude);
     private sealed record SummaryDto(Guid JourneyId, string ServiceNumber);
-    private sealed record DetailDto(List<StopDto> Stops);
-    private sealed record StopDto(int Sequence, Guid StationId, string Name, string CallType, DateTimeOffset? ScheduledArrival, DateTimeOffset? ScheduledDeparture);
+    private sealed record DetailDto(List<StopDto> Stops, HoldDto? Hold = null);
+    private sealed record HoldDto(Guid StationId, int? Minutes);
+    private sealed record StopDto(int Sequence, Guid StationId, string Name, string CallType, DateTimeOffset? ScheduledArrival, DateTimeOffset? ScheduledDeparture, string? Platform = null, string? PreviousPlatform = null);
     private sealed record PositionBatchResultDto(int Accepted, List<DiscardedDto> Discarded);
     private sealed record DiscardedDto(int Index, string Reason);
 }

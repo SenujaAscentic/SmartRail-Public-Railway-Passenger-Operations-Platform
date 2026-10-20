@@ -472,6 +472,9 @@ Delay, hold, cancel / reinstate and platform change, all behind the policy `Cont
 
 **Tests.** `ProviderEventRulesTests` (unit, 8), `CateringRelayTests` (integration, both applications in memory on one clock: delay, repeated delay, cancel, provider down then back, the full retry schedule ending in Failed), the architecture test, and RailBites' own `RailBitesTests` (11).
 
+### 4.23 The simulator obeys holds (20 Oct)
+Every tick the simulator also reads the public `GET /journeys/{id}` (a failed read is skipped; the tablet never stops because of one failed request). A `hold` on a station keeps the train there: `HoldGate` (pure, unit-tested) keeps the train's own clock, which is the real time minus the total time spent held; while the hold lasts the train stands just before its departure time at that station (its fixes stay in the station), and after the release it carries on and is late by exactly the time it was held. A hold on a station the train has not reached takes effect when it gets there; a hold on a station it has already left is ignored. The log prints `Hold received: waiting at X for N min.`, `Hold released: leaving X.` and `Platform changed at X: platform 4 (was 2).` once each. `Timeline` now keeps each stop's arrival and departure; `SimStop` has a `StationId`. The server's rules are unchanged: the simulator only reacts to what the public journey says. Tests: `HoldGateTests` (unit), `SimulatorEndToEndTests` (a held train is still standing at its station 10 minutes after its scheduled departure, leaves after the release, and the log lines appear in order).
+
 ### 4.22 Catering: the menu pull and `GET /stations/{id}/catering` (20 Oct)
 **What it is.** SmartRail fetches the provider's stations and menus every 5 minutes into its own cache, and the passenger app reads the cache through one public endpoint (US-F3, US-P8). Train information never depends on the provider.
 
@@ -728,3 +731,4 @@ Network's public doors used here: `IStationDirectory` (station codes → IDs) an
 | 20 Oct 2026 | **Catering webhooks:** `IJourneyFeed`, `INetworkCatalog.GetCateringStationsAsync`, the `catering` schema (`InitialCatering`), `RelayService`, `ProviderEventRules`; architecture test allows CateringIntegration -> LiveOperations / Network (section 4.21); RailBites in `provider/` |
 | 19 Oct 2026 | **Rehearsal fixes to the demo script:** tokens build, node-process guard, simulator built once, optional second simulator for 2001 (DRV-03 / CAB-02); the runbook step for 2001 named CAB-03 and is corrected; no backend code changed |
 | 20 Oct 2026 | **Catering menu pull and `GET /stations/{id}/catering`:** `CachedStation` (migration `StationCache`), `MenuPuller`, `CateringRules`; `openapi.yaml` and `schema.d.ts` regenerated; contract 3.6 gets the response shape (section 4.22) |
+| 20 Oct 2026 | **Simulator obeys holds (rehearsal 5a):** `HoldGate`, the public journey read each tick, log lines for hold and platform changes (section 4.23) |
