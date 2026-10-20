@@ -166,6 +166,7 @@ public class RailBitesTests(RailBitesFixture fixture) : IClassFixture<RailBitesF
 
         Assert.Contains(id.ToString(), page);
         Assert.Contains("ETA updated", page);
+        Assert.Contains("<title>RailCantima: events from SmartRail</title>", page);   // its display name; RailBites is the code name
         Assert.Contains("&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt; signal fault", page);
         Assert.DoesNotContain("<script>alert", page);
     }
