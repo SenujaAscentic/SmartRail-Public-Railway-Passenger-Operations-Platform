@@ -51,6 +51,7 @@ export function DashboardPage() {
 
       <AlertsPanel entries={entries} nowMs={nowMs} />
       <DisruptedTable entries={entries} nowMs={nowMs} />
+      <TodaysTrains entries={entries} />
       {board.line && <LineView line={board.line} entries={entries} nowMs={nowMs} />}
     </>
   );
@@ -174,12 +175,58 @@ function DisruptedTable({ entries, nowMs }: { entries: Entry[]; nowMs: number })
                   <td className="mono">{!closed && next ? `${next.name} · ${formatClock(next.expectedArrival ?? next.expectedDeparture)}` : "—"}</td>
                   <td>
                     <Link to={`/journeys/${detail.journeyId}`}>
-                      Open<span className="visually-hidden"> {detail.serviceNumber}</span>
+                      Open <span className="visually-hidden">{detail.serviceNumber}</span>
                     </Link>
                   </td>
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      )}
+    </Panel>
+  );
+}
+
+// Today's trains: every journey the stream holds for the service day, both directions, in the order they leave. A train nobody has
+// started is not "disrupted" and not on the line view, so without this list the controller could not open it to cancel it, delay it,
+// change a platform or skip a stop before it starts. (Rehearsal, 20 Oct.) It uses the same snapshot as everything else: no new endpoint.
+function TodaysTrains({ entries }: { entries: Entry[] }) {
+  const rows = [...entries].sort(
+    (a, b) => a.detail.serviceDate.localeCompare(b.detail.serviceDate) || (a.detail.from.scheduledDeparture ?? "").localeCompare(b.detail.from.scheduledDeparture ?? ""),
+  );
+
+  return (
+    <Panel icon="train" title="Today's trains" note={`${rows.length} · in the order they leave`}>
+      {rows.length === 0 ? (
+        <p className="empty">No trains.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Leaves</th>
+              <th scope="col">Train</th>
+              <th scope="col">Route</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span className="visually-hidden">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ detail }) => (
+              <tr key={detail.journeyId}>
+                <td className="mono">{formatClock(detail.from.scheduledDeparture)}</td>
+                <th scope="row">{nameOf(detail)}</th>
+                <td>{detail.from.name} → {detail.to.name}</td>
+                <td>
+                  <StatusBadge view={statusView(detail.status, { terminatesAt: detail.terminatesAt?.name ?? null, hold: detail.hold !== null })} />
+                </td>
+                <td>
+                  <Link to={`/journeys/${detail.journeyId}`}>
+                    Open <span className="visually-hidden">{detail.serviceNumber}</span>
+                  </Link>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

@@ -167,3 +167,5 @@ Messages to crew (sidebar item, message status, "Message driver", "Not acknowled
 - **Dialog focus trap (20 Oct).** Tab and Shift+Tab stay inside the dialog and wrap at both ends (disabled controls are skipped), Escape closes it, and focus returns to the button that opened it. Done in the one `Dialog` component, so every decision dialog has it; it takes focus once, when it opens (see rehearsal bug #6).
 
 - **Live events page: the Main Line comes from `GET /lines` (20 Oct).** The first line is used (there is one); `VITE_MAIN_LINE_ID` stays as an optional override (a value that is not a GUID is still refused). The same rule as the dashboard.
+
+- **"Today's trains" on the dashboard (20 Oct).** Checked first: a train nobody had started was on no list (not disrupted, not on the line view), so the controller could not open it. The new panel lists every journey the stream holds (today's service day, plus any still running from yesterday), both directions, by scheduled departure from its origin, with train, route, status and an Open link. It uses the same snapshot as the rest of the page, so no new endpoint. The station and section filters apply to it too.
