@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { frame, sse } from "../test/sse.ts";
-import { REFRESH, fakeBackend, renderApp } from "../test/fake-server.tsx";
+import { LINES, REFRESH, fakeBackend, json, renderApp } from "../test/fake-server.tsx";
 
 // The bare live page: a connection to GET /api/v1/ops/stream for the Main Line, and a list of what arrives.
 const LINE = "5d1c8e0a-2b47-4f6a-9c33-71a0e4d8b2f6";
@@ -123,14 +123,35 @@ describe("when the connection does not work", () => {
   });
 });
 
-describe("the Main Line setting", () => {
-  it("explains how to set it when it is missing, and does not connect", async () => {
+describe("the Main Line", () => {
+  it("is the first line of GET /lines when VITE_MAIN_LINE_ID is not set", async () => {
     vi.stubEnv("VITE_MAIN_LINE_ID", "");
     const backend = fakeBackend();
     backend.routes[REFRESH] = () => backend.tokenResponse("t");
+    backend.stream.responder = sse("", { hold: true });
     renderApp(backend.services, "/live");
 
-    expect((await screen.findByRole("alert")).textContent).toContain("VITE_MAIN_LINE_ID");
+    await waitFor(() => expect(backend.stream.requests).toHaveLength(1));
+    expect(new URL(backend.stream.requests[0]!.url, "http://localhost").searchParams.get("lineIds")).toBe(LINE);
+    expect(await screen.findByText("Live · connected")).toBeTruthy();
+  });
+
+  it("is the value of VITE_MAIN_LINE_ID when it is set, whatever GET /lines says", async () => {
+    const other = "11111111-2222-4333-8444-555555555555";
+    const { stream } = openLive("", { line: other });
+
+    await waitFor(() => expect(stream.requests).toHaveLength(1));
+    expect(new URL(stream.requests[0]!.url, "http://localhost").searchParams.get("lineIds")).toBe(other);
+  });
+
+  it("says so, and does not connect, when the server reports no line", async () => {
+    vi.stubEnv("VITE_MAIN_LINE_ID", "");
+    const backend = fakeBackend();
+    backend.routes[REFRESH] = () => backend.tokenResponse("t");
+    backend.routes[LINES] = () => json(200, []);
+    renderApp(backend.services, "/live");
+
+    expect((await screen.findByRole("alert")).textContent).toContain("could not be loaded");
     expect(backend.stream.requests).toHaveLength(0);
   });
 
