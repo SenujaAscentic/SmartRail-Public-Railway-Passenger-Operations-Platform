@@ -24,15 +24,17 @@
 
 | Level | Tool | Covers | Written | Share of effort |
 |---|---|---|---|---|
-| **Unit: domain rules** | xUnit + `FakeTimeProvider` | R-01–R-22 (delay, ETA, detection, freshness, lead time, conflicts, priority, scope) | **Test-first** (44 approved names, domain model §10) | High |
+| **Unit: domain rules** | xUnit + `FakeTimeProvider` | R-01–R-22 (delay, ETA, detection, freshness, lead time, conflicts, priority, scope) | **Test-first** (78 approved names, domain model §10; the list grew from 44 as rules were added on 15 to 18 Oct) | High |
 | **Integration: API + database** | xUnit + Testcontainers (real PostgreSQL) | Endpoints, transactions, concurrency (409), outbox, permission matrix, idempotency | With each endpoint | High |
 | **Architecture** | NetArchTest | No module references another module's internals (architecture Q5) | Day 10 | Low |
-| **Contract** | xUnit (backend) · Vitest · Flutter test | `openapi.yaml` diff in CI; `shared/events/*.json` and `status-fixtures.json` parsed and formatted identically in all apps; webhook signature contract | Day 11 onward | Medium |
+| **Contract** (no separate project: the tests live in each app, see the note below the table) | xUnit (backend) · Vitest · Flutter test | `openapi.yaml` diff in CI; `shared/events/*.json` and `status-fixtures.json` parsed and formatted identically in all apps; webhook signature contract | Day 11 onward | Medium |
 | **Component / widget** | Vitest + React Testing Library · Flutter widget tests | Status rendering, freshness labels, offline banner, pending crew taps, confirmation dialogs | After each screen | Medium |
 | **End-to-end** | Playwright (+ Flutter integration tests, see §4) | The 5 critical flows | 17 Oct | Medium |
 | **Accessibility** | axe (Playwright) · manual TalkBack check | WCAG 2.2 AA basics; status never by colour alone | 16–17 Oct | Low |
 | **Security** | Integration tests + scans | threat-model.md §6 | 16–17 Oct | Medium |
 | **Resilience** | Simulator scenarios + manual | GPS loss, tunnel, provider down, display offline, crew offline queue | 16–18 Oct | Medium |
+
+> **Where the contract tests are (20 Oct):** there is no `backend/tests/Contract` project; the empty one was removed from the solution. Each app tests the contract itself: backend `OpenApiDocumentTests` (the served `openapi.yaml` equals the committed file, fields and `$ref`s checked) and `EventExamplesTests` / `PublicProjectionTests` (every `shared/events` example parses as a public event and shows no staff field); web `shared-events.test.ts`, `status-text.test.ts` and `wording.test.ts` (the same examples and `status-fixtures.json`) plus CI `api:check` (`schema.d.ts` equals `openapi.yaml`); Flutter fixture tests under `mobile/packages/core/test`. The provider webhook is covered by `RailBitesTests` and `CateringRelayTests`.
 
 ---
 
