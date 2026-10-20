@@ -15,9 +15,10 @@ SmartRail is a **modular monolith**: one ASP.NET Core application (.NET 10) on P
 | Identity | `SmartRail.Identity` | Built: staff, crew and cab-device sign-in |
 | Disruptions | `SmartRail.Disruptions` (+ `.Domain`) | Project only, no code yet |
 | Notifications | `SmartRail.Notifications` | Project only, no code yet |
+| CateringIntegration | `SmartRail.CateringIntegration` | Built: signed ETA and cancellation webhooks to the caterer, the menu pull, `GET /stations/{id}/catering` |
 | CateringIntegration | `SmartRail.CateringIntegration` | Built: pulls the provider's stations and menus every 5 minutes into a cache and serves them at `GET /api/v1/stations/{id}/catering` ("Menu unavailable" when the provider is down); sends signed, retried ETA and cancel / terminate events to the provider ([code guide 4.21 and 4.22](docs/develop/04-backend-code-guide.md)). The provider is **RailBites**, a separate service with its own database in `provider/RailBites` |
 
-The host is `SmartRail.Api`; `SmartRail.Simulator` is the cab tablet simulator.
+The host is `SmartRail.Api`; `SmartRail.Simulator` is the cab tablet simulator. The catering provider is a separate service with its own database in `provider/`: **RailCantima (code name RailBites)**.
 
 ## How to run it
 

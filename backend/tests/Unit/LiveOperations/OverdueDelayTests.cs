@@ -103,6 +103,26 @@ public class OverdueDelayTests
             journey.DomainEvents.OfType<DelayChanged>());
     }
 
+    // SM-2 (rehearsal): a train whose GPS went quiet (Stale, then Lost) is still a Running journey, and R-23 still applies to it. The
+    // app showed "On time" for a train 22 minutes overdue because its tracking was Lost.
+    [Fact]
+    public void A_stale_or_lost_train_that_is_overdue_still_shows_how_late_it_is()
+    {
+        var journey = TrackedJourney();   // last position 06:30, next stop S2 scheduled 06:40, delay 0
+
+        journey.RefreshTracking(At(6, 33));   // 3 minutes silent: Stale
+        Assert.Equal(TrackingStatus.Stale, journey.Tracking);
+
+        journey.RefreshTracking(At(6, 43));   // 13 minutes silent: Lost, and 3 minutes overdue at S2
+        Assert.Equal(TrackingStatus.Lost, journey.Tracking);
+        Assert.Equal(3, journey.DelayMinutes);
+
+        journey.RefreshTracking(At(7, 2));    // 22 minutes overdue
+        Assert.Equal(TrackingStatus.Lost, journey.Tracking);
+        Assert.Equal(22, journey.DelayMinutes);
+        Assert.Contains(journey.DomainEvents, e => e is DelayChanged { DelayMinutes: 22 });
+    }
+
     [Fact]
     public void Known_delay_of_10_stays_10_one_minute_after_the_next_stops_scheduled_time()
     {

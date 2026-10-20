@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,5 +73,50 @@ public class TrackingRefreshTests(ApiFixture api) : IAsyncLifetime
 
         // A journey nobody reported on is left alone: there is nothing to age.
         Assert.Equal(TrackingStatus.NotStarted, await TrackingOf(services, quiet));
+    }
+
+    // SM-2 (rehearsal 20 Oct): a Running train whose GPS is Lost and which is 22 minutes past its next stop's scheduled time must be
+    // shown 22 minutes late (R-23), by the 15-second timer, in the stored journey and in what the public API answers.
+    [Fact]
+    public async Task A_lost_train_that_is_22_minutes_overdue_at_its_next_stop_is_shown_22_minutes_late()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2027, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var database = await api.CreateDatabaseAsync("sm2_" + Guid.NewGuid().ToString("N")[..8]);
+        using var factory = api.CreateFactory(builder => builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(clock)), useFixtureClock: false, connectionString: database);
+        var services = factory.Services;
+
+        // 2001, already Running, last heard of at midnight UTC and 0 minutes late.
+        var id = await RealJourneys.CreateAsync(services, "2001", new DateOnly(2027, 6, 20), j =>
+        {
+            j.Start(j.Stops[0].ScheduledDeparture!.Value, Guid.NewGuid(), Guid.NewGuid());
+            var now = clock.GetUtcNow().UtcDateTime;
+            j.RecordPosition(new PositionSample(new GeoPoint(7.0, 80.0), 60, now, now, TimeSpan.Zero, 0, new Dictionary<Guid, double>()), now);
+        });
+
+        DateTime nextScheduled;
+        using (var scope = services.CreateScope())
+        {
+            var journey = await scope.ServiceProvider.GetRequiredService<LiveOperationsDbContext>().Journeys.AsNoTracking().Include(j => j.Stops).SingleAsync(j => j.Id == id, Ct);
+            nextScheduled = journey.Stops.OrderBy(x => x.Sequence).First(x => x.Status == StopStatus.Scheduled && x.ScheduledArrival is not null).ScheduledArrival!.Value;
+        }
+
+        clock.SetUtcNow(new DateTimeOffset(nextScheduled.AddMinutes(22), TimeSpan.Zero));   // hours of silence: Lost, and 22 minutes overdue
+
+        var client = factory.CreateClient();
+        JsonElement detail = default;
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            clock.Advance(TimeSpan.FromSeconds(15) - TimeSpan.FromSeconds(15));   // no more time passes: the timer already has its tick
+            await Task.Delay(50, Ct);
+            detail = await client.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{id}", Ct);
+            if (detail.GetProperty("status").GetProperty("kind").GetString() == "Late")
+            {
+                break;
+            }
+        }
+
+        Assert.Equal("Lost", detail.GetProperty("freshness").GetProperty("tracking").GetString());
+        Assert.Equal("Late", detail.GetProperty("status").GetProperty("kind").GetString());
+        Assert.Equal(22, detail.GetProperty("status").GetProperty("delayMinutes").GetInt32());
     }
 }

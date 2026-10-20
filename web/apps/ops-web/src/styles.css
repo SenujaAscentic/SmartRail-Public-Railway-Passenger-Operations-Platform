@@ -680,6 +680,31 @@ button.danger {
 .marker-terminated-early { border-left-color: var(--status-cancelled-fg); }
 .marker-not-started { border-left-color: var(--status-not-started-fg); }
 
+.track-wrap {
+  position: relative;
+}
+
+/* The pins sit on the line itself (the line is 0.55rem below the top of the track). */
+.on-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0.55rem;
+  height: 0;
+  pointer-events: none;
+}
+
+.track-pin {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  padding: 0 var(--space-xs);
+  font-weight: 700;
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
 .track {
   list-style: none;
   margin: 0;

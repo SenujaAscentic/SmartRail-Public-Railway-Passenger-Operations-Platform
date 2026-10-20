@@ -51,6 +51,7 @@ export function DashboardPage() {
 
       <AlertsPanel entries={entries} nowMs={nowMs} />
       <DisruptedTable entries={entries} nowMs={nowMs} />
+      <TodaysTrains entries={entries} />
       {board.line && <LineView line={board.line} entries={entries} nowMs={nowMs} />}
     </>
   );
@@ -174,12 +175,58 @@ function DisruptedTable({ entries, nowMs }: { entries: Entry[]; nowMs: number })
                   <td className="mono">{!closed && next ? `${next.name} · ${formatClock(next.expectedArrival ?? next.expectedDeparture)}` : "—"}</td>
                   <td>
                     <Link to={`/journeys/${detail.journeyId}`}>
-                      Open<span className="visually-hidden"> {detail.serviceNumber}</span>
+                      Open <span className="visually-hidden">{detail.serviceNumber}</span>
                     </Link>
                   </td>
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      )}
+    </Panel>
+  );
+}
+
+// Today's trains: every journey the stream holds for the service day, both directions, in the order they leave. A train nobody has
+// started is not "disrupted" and not on the line view, so without this list the controller could not open it to cancel it, delay it,
+// change a platform or skip a stop before it starts. (Rehearsal, 20 Oct.) It uses the same snapshot as everything else: no new endpoint.
+function TodaysTrains({ entries }: { entries: Entry[] }) {
+  const rows = [...entries].sort(
+    (a, b) => a.detail.serviceDate.localeCompare(b.detail.serviceDate) || (a.detail.from.scheduledDeparture ?? "").localeCompare(b.detail.from.scheduledDeparture ?? ""),
+  );
+
+  return (
+    <Panel icon="train" title="Today's trains" note={`${rows.length} · in the order they leave`}>
+      {rows.length === 0 ? (
+        <p className="empty">No trains.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Leaves</th>
+              <th scope="col">Train</th>
+              <th scope="col">Route</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span className="visually-hidden">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ detail }) => (
+              <tr key={detail.journeyId}>
+                <td className="mono">{formatClock(detail.from.scheduledDeparture)}</td>
+                <th scope="row">{nameOf(detail)}</th>
+                <td>{detail.from.name} → {detail.to.name}</td>
+                <td>
+                  <StatusBadge view={statusView(detail.status, { terminatesAt: detail.terminatesAt?.name ?? null, hold: detail.hold !== null })} />
+                </td>
+                <td>
+                  <Link to={`/journeys/${detail.journeyId}`}>
+                    Open <span className="visually-hidden">{detail.serviceNumber}</span>
+                  </Link>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
@@ -216,14 +263,21 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
         <div className="markers markers-above">
           {placed.filter((p) => p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
         </div>
-        <ol className="track" style={{ gridTemplateColumns: `repeat(${track.length}, 1fr)`, "--cols": track.length } as CSSProperties}>
-          {track.map((s) => (
-            <li key={s.stationId}>
-              <span className="node" aria-hidden="true" />
-              <span className="station">{s.name}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="track-wrap">
+          <ol className="track" style={{ gridTemplateColumns: `repeat(${track.length}, 1fr)`, "--cols": track.length } as CSSProperties}>
+            {track.map((s) => (
+              <li key={s.stationId}>
+                <span className="node" aria-hidden="true" />
+                <span className="station">{s.name}</span>
+              </li>
+            ))}
+          </ol>
+          {/* The trains ON the line: icon, service number and the status colour, at the place the backend announced. The cards above and
+              below carry the details and the link, so these pins are hidden from screen readers (they would only repeat the card). */}
+          <div className="on-track" aria-hidden="true">
+            {placed.map((p) => <TrackPin key={p.entry.detail.journeyId} entry={p.entry} percent={p.percent} />)}
+          </div>
+        </div>
         <div className="markers markers-below">
           {placed.filter((p) => !p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
         </div>
@@ -231,6 +285,17 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
         </div>
       </div>
     </Panel>
+  );
+}
+
+function TrackPin({ entry, percent }: { entry: Entry; percent: number }) {
+  const { detail } = entry;
+  const view = statusView(detail.status, { terminatesAt: detail.terminatesAt?.name ?? null, hold: detail.hold !== null });
+  return (
+    <span className={`track-pin status status-${view.tone}`} style={{ left: `${percent}%` }}>
+      <Icon name="train" />
+      <span className="mono">{detail.serviceNumber}</span>
+    </span>
   );
 }
 

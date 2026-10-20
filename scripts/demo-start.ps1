@@ -163,7 +163,7 @@ $env:ConnectionStrings__RailBites = $railBitesConnection
 $env:RailBites__SharedSecret = $cateringSecret
 $env:RailBites__ApiKey = $cateringApiKey
 try {
-    Open-Window 'RailBites' $root ("`$env:ASPNETCORE_ENVIRONMENT = 'Development'; `$env:Clock__Start = '$railBitesClock'; " +
+    Open-Window 'RailCantima (RailBites)' $root ("`$env:ASPNETCORE_ENVIRONMENT = 'Development'; `$env:Clock__Start = '$railBitesClock'; " +
         "dotnet run --project provider/RailBites --no-launch-profile --urls $railBitesUrl")
 }
 finally {
@@ -175,10 +175,10 @@ while (-not $railBitesUp) {
     try { $railBitesUp = (Invoke-WebRequest -Uri "$railBitesUrl/events" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200 }
     catch { Start-Sleep -Seconds 2 }
     if (-not $railBitesUp -and (Get-Date) -gt $deadline) {
-        throw "RailBites did not answer $railBitesUrl/events within $ApiTimeoutSeconds s. Read the 'RailBites' window."
+        throw "RailBites did not answer $railBitesUrl/events within $ApiTimeoutSeconds s. Read the 'RailCantima (RailBites)' window."
     }
 }
-Write-Host 'RailBites answers.'
+Write-Host 'RailCantima (RailBites) answers.'
 
 # ---- the simulator is built ONCE here: two windows that both run `dotnet run` would build the same project at the same time and one fails ----
 Write-Host 'Building the simulator ...'
@@ -223,7 +223,7 @@ Write-Host 'Open (the dev servers need a few seconds):'
 Write-Host "  Ops web              http://localhost:$opsPort"
 Write-Host "  Departures board     http://localhost:$displayPort/board/FOT"
 Write-Host "  Platform display     http://localhost:$displayPort/platform/GPH/1"
-Write-Host "  RailBites event log  $railBitesUrl/events   (the catering provider: ETA and cancellation webhooks arrive here)"
+Write-Host "  RailCantima events   $railBitesUrl/events   (the catering provider: ETA and cancellation webhooks arrive here)"
 Write-Host ''
 Write-Host 'Passenger app (new terminal; search the date of the demo clock, not today):'
 if ($ApiPort -eq 5045) {

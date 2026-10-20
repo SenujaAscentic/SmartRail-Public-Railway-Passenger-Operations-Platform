@@ -62,10 +62,10 @@ internal static class EventsPage
 
             var page = new StringBuilder("""
                 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>RailBites: events from SmartRail</title>
+                <title>RailCantima: events from SmartRail</title>
                 <style>body{font-family:system-ui,sans-serif;margin:2rem;color:#14202B}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid #C9D1D9}
                 th{color:#4A5560}.eta{font-weight:700}.change{color:#A8201A;font-weight:700}code{font-family:ui-monospace,monospace}</style></head><body>
-                <h1>RailBites &middot; events from SmartRail</h1>
+                <h1>RailCantima &middot; events from SmartRail</h1>
                 """);
             page.Append($"<p>{events.Count} event(s), newest first. Times are Sri Lanka time. Received events are never changed.</p>");
             if (events.Count == 0)
