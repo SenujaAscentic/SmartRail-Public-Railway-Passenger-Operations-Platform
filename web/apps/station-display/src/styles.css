@@ -26,7 +26,7 @@ body {
   overflow: hidden; /* a display has no scrollbars */
 }
 
-/* The fixed 1920 x 1080 picture (components/Stage.tsx scales it to the window). */
+/* The picture, scaled to fill the window (components/Stage.tsx). */
 .stage-frame {
   position: fixed;
   inset: 0;
@@ -34,10 +34,11 @@ body {
   background: var(--color-background);
 }
 
+/* Its size and scale are set by the component: it fills the whole window. */
 .stage {
   position: absolute;
-  width: 1920px;
-  height: 1080px;
+  left: 0;
+  top: 0;
   transform-origin: 0 0;
 }
 
