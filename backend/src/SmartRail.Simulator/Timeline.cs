@@ -4,7 +4,7 @@ namespace SmartRail.Simulator;
 public enum Scenario { Normal, Stop, Gap }
 
 // One stop of the journey as the public API describes it, with the station's coordinates from GET /lines.
-public sealed record SimStop(string Name, bool Stops, DateTimeOffset? Arrival, DateTimeOffset? Departure, double Latitude, double Longitude);
+public sealed record SimStop(string Name, bool Stops, DateTimeOffset? Arrival, DateTimeOffset? Departure, double Latitude, double Longitude, Guid StationId = default);
 
 // One GPS reading: where the train is and how fast it goes.
 public readonly record struct SimFix(double Latitude, double Longitude, double SpeedKmh);
@@ -22,6 +22,13 @@ public sealed class Timeline
     private const double EarthRadiusMetres = 6_371_000;
 
     private readonly List<(DateTimeOffset Time, double Latitude, double Longitude)> _keys = [];
+
+    // When the train reaches and leaves each stop (index = position in the journey), for holds: the train waits until released.
+    private readonly List<(DateTimeOffset Arrival, DateTimeOffset Departure)> _stopTimes = [];
+
+    public DateTimeOffset ArrivalAt(int stopIndex) => _stopTimes[stopIndex].Arrival;
+
+    public DateTimeOffset DepartureAt(int stopIndex) => _stopTimes[stopIndex].Departure;
 
     public DateTimeOffset Start => _keys[0].Time;
 
@@ -78,6 +85,7 @@ public sealed class Timeline
             }
 
             timeline.Add(departure, stop.Latitude, stop.Longitude);   // a train that stops waits here; one that passes does not
+            timeline._stopTimes.Add((arrival, departure));
         }
 
         return timeline;

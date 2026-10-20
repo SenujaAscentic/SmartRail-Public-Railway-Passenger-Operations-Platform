@@ -163,3 +163,5 @@ Messages to crew (sidebar item, message status, "Message driver", "Not acknowled
 - **The platform dialog opened on the stop the train was standing at.** It now opens on the next scheduled stop.
 - Console: only the expected 401 of the first silent refresh before sign-in, and a favicon 404 (fixed).
 - **Repeat live check, 20 Oct (screenshots kept):** the top-bar clock showed the device's time (15:50) for the first 10 seconds after sign-in, because it only refreshed every 10 s and was first computed before any answer had taught the page the server's time. It now ticks every second (`useNow.test.tsx`); on the demo clock it shows 06:31 within seconds.
+
+- **Dialog focus trap (20 Oct).** Tab and Shift+Tab stay inside the dialog and wrap at both ends (disabled controls are skipped), Escape closes it, and focus returns to the button that opened it. Done in the one `Dialog` component, so every decision dialog has it; it takes focus once, when it opens (see rehearsal bug #6).

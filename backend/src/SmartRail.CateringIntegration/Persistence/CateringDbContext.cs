@@ -22,6 +22,7 @@ internal sealed class Delivery
     public int Attempts { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime NextAttemptAt { get; set; }
+    public DateTime? FirstAttemptAt { get; set; }        // the 24 hours of retrying count from here
     public DateTime? DeliveredAt { get; set; }
     public string? LastError { get; set; }               // a code ("HTTP 500", "Timeout"), never the body or a message that could quote it
 }

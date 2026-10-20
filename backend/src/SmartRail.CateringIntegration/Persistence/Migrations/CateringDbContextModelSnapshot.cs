@@ -83,6 +83,9 @@ namespace SmartRail.CateringIntegration.Persistence.Migrations
                     b.Property<DateTime?>("DeliveredAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FirstAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");

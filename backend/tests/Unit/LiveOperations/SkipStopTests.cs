@@ -13,7 +13,7 @@ public class SkipStopTests
     private static readonly Guid S5 = Guid.NewGuid();   // terminus, arrives 08:00
     private static readonly Guid Ruwan = Guid.NewGuid();
 
-    private static DateTime At(int hour, int minute) => new(2026, 10, 14, hour, minute, 0, DateTimeKind.Utc);
+    private static DateTime At(int hour, int minute, int second = 0) => new(2026, 10, 14, hour, minute, second, DateTimeKind.Utc);
 
     private static OperationalJourney NewJourney(bool withPass = false) =>
         OperationalJourney.Plan(
@@ -120,15 +120,40 @@ public class SkipStopTests
         Assert.Equal(DecisionResult.InvalidState, journey.SkipStopByController(1, S3, Ruwan, At(5, 1)));
     }
 
+    // Agreed 19 Oct (rehearsal #10): a stop the controller skipped is still on the train's route, so GPS still sees the train go
+    // through it. The time is recorded (source GPS) for the apps ("last passed ..."), the stop stays Skipped, and nothing else moves.
     [Fact]
-    public void A_skipped_stop_is_not_detected_by_gps_and_ignores_a_crew_tap()
+    public void Running_through_a_skipped_stop_records_its_GPS_pass_time_but_the_stop_stays_Skipped_and_delay_and_version_do_not_change()
     {
         var journey = NewJourney();
         journey.Start(At(5, 55), Guid.NewGuid(), Guid.NewGuid());
         journey.SkipStopByController(0, S3, Ruwan, At(6, 0));
         journey.ClearDomainEvents();
 
-        // The train stands in S3's zone anyway.
+        PositionSample Near(DateTime time, double metres) =>
+            new(new GeoPoint(7.0, 80.0), 80, time, time, TimeSpan.Zero, 0, new Dictionary<Guid, double> { [S3] = metres });
+        journey.RecordPosition(Near(At(7, 2, 0), 100), At(7, 2, 0));
+        journey.RecordPosition(Near(At(7, 2, 20), 500), At(7, 2, 20));   // out of the zone again at 07:02:20, scheduled 07:00
+
+        var stop = Stop(journey, S3);
+        var passedAt = new TimeWithSource(At(7, 2, 20), Source.Gps);
+        Assert.Equal(StopStatus.Skipped, stop.Status);
+        Assert.Equal(passedAt, stop.ActualArrivalTime);      // a pass has one time; it is stored as both
+        Assert.Equal(passedAt, stop.ActualDepartureTime);
+        Assert.Equal(0, journey.DelayMinutes);               // R-01 / R-21: a skipped stop sets no delay
+        Assert.Equal(1, journey.ControlVersion);             // R-18: GPS never bumps the control version
+        Assert.DoesNotContain(journey.DomainEvents, e => e is StopStatusChanged { StationId: var id } && id == S3);
+        Assert.DoesNotContain(journey.DomainEvents, e => e is DelayChanged);
+    }
+
+    [Fact]
+    public void A_crew_tap_on_a_skipped_stop_changes_nothing_and_a_later_GPS_time_is_not_replaced_by_it()
+    {
+        var journey = NewJourney();
+        journey.Start(At(5, 55), Guid.NewGuid(), Guid.NewGuid());
+        journey.SkipStopByController(0, S3, Ruwan, At(6, 0));
+
+        // The train stands in S3's zone anyway: GPS records when it arrived.
         var at = At(7, 0);
         foreach (var (seconds, speed, metres) in new[] { (0, 40.0, 400.0), (10, 3.0, 100.0), (30, 0.0, 50.0) })
         {
@@ -136,12 +161,13 @@ public class SkipStopTests
             journey.RecordPosition(new PositionSample(new GeoPoint(7.0, 80.0), speed, time, time, TimeSpan.Zero, 0, new Dictionary<Guid, double> { [S3] = metres }), time);
         }
 
-        journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 0));
+        var recorded = Stop(journey, S3).ActualArrivalTime;
+        journey.RecordCrewTime(S3, StopEventKind.Arrival, At(7, 5));
 
         Assert.Equal(StopStatus.Skipped, Stop(journey, S3).Status);
-        Assert.Null(Stop(journey, S3).ActualArrival);
-        Assert.DoesNotContain(journey.DomainEvents, e => e is StopStatusChanged { StationId: var id } && id == S3);
-        Assert.Equal(0, journey.DelayMinutes);   // and it set no delay
+        Assert.Equal(Source.Gps, recorded?.Source);
+        Assert.Equal(recorded, Stop(journey, S3).ActualArrivalTime);   // the tap changed nothing
+        Assert.Equal(0, journey.DelayMinutes);
     }
 
     [Fact]

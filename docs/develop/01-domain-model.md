@@ -202,6 +202,8 @@ stateDiagram-v2
   Skipped --> [*]
 ```
 
+A Skipped stop the train runs through gets its pass time recorded (source GPS) but stays Skipped (agreed 19 Oct, rehearsal).
+
 ### 4.4 Tracking status (data freshness)
 
 ```mermaid

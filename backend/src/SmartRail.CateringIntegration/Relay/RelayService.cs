@@ -30,9 +30,6 @@ internal sealed class RelayService(
     IServiceScopeFactory scopes, IHttpClientFactory httpClients, MenuPuller menus, IOptions<CateringOptions> options, TimeProvider time, ILogger<RelayService> logger)
     : BackgroundService
 {
-    // The wait between attempts: 10 s, 30 s, 1 min, 5 min, 15 min, then the delivery is marked Failed (US-F2 AC3).
-    public static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15)];
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.RelayEnabled || string.IsNullOrWhiteSpace(options.Value.ProviderUrl) || string.IsNullOrWhiteSpace(options.Value.SharedSecret))
@@ -165,6 +162,7 @@ internal sealed class RelayService(
         {
             var error = await SendAsync(delivery, now, ct);
             delivery.Attempts++;
+            delivery.FirstAttemptAt ??= now;
             if (error is null)
             {
                 delivery.Status = DeliveryStatus.Delivered;
@@ -174,14 +172,15 @@ internal sealed class RelayService(
             else
             {
                 delivery.LastError = error;
-                if (delivery.Attempts > RetryDelays.Length)
+                // Contract 3.6: 10 s, 30 s, 1 min, 5 min, then every 15 min until 24 h after the first attempt; then Failed.
+                if (RetrySchedule.NextAttempt(delivery.Attempts, delivery.FirstAttemptAt.Value, now) is { } next)
                 {
-                    delivery.Status = DeliveryStatus.Failed;
-                    logger.LogWarning("Catering webhook {EventId} failed for good after {Attempts} attempts ({Error})", delivery.Id, delivery.Attempts, error);
+                    delivery.NextAttemptAt = next;
                 }
                 else
                 {
-                    delivery.NextAttemptAt = now + RetryDelays[delivery.Attempts - 1];
+                    delivery.Status = DeliveryStatus.Failed;
+                    logger.LogWarning("Catering webhook {EventId} failed for good after {Attempts} attempts ({Error})", delivery.Id, delivery.Attempts, error);
                 }
             }
 
