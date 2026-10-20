@@ -15,6 +15,15 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build
         run: dotnet build backend/SmartRail.sln --configuration Release
+      # Threat model T-16. `dotnet list package --vulnerable` always exits 0, so the report is searched for a High or Critical advisory
+      # (direct and transitive packages) and the step fails when there is one.
+      - name: Vulnerable packages (fail on High or Critical)
+        run: |
+          dotnet list backend/SmartRail.sln package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -E '^\s+>.*\s(High|Critical)\s' vulnerable.txt; then
+            echo "A package with a High or Critical advisory is in use."
+            exit 1
+          fi
       # Integration tests start PostgreSQL themselves (Testcontainers); Docker is preinstalled on ubuntu-latest.
       - name: Test
         run: dotnet test --solution backend/SmartRail.sln --configuration Release --no-build
@@ -37,6 +46,9 @@ jobs:
       # Fails when src/schema.d.ts no longer matches backend/openapi.yaml (ADR-09, C-8).
       - name: API types match openapi.yaml
         run: npm run api:check -w @smartrail/api-client
+      # Threat model T-16: fails on a High or Critical advisory in any web dependency (the lock file is audited, dev tools included).
+      - name: Dependency audit (fail on high)
+        run: npm audit --audit-level=high
       - name: Typecheck
         run: npm run typecheck
       - name: Test
