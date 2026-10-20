@@ -609,13 +609,23 @@ public sealed class OperationalJourney
         // R-04 for every stop the slice gave a distance for. _stops is in sequence order, so events come out in order.
         foreach (var stop in _stops)
         {
-            if (stop.Zone == ZonePhase.Finished || stop.Status == StopStatus.Skipped || !sample.DistanceToStationsMetres.TryGetValue(stop.StationId, out var metres))
+            if (stop.Zone == ZonePhase.Finished || !sample.DistanceToStationsMetres.TryGetValue(stop.StationId, out var metres))
             {
                 continue;
             }
 
             var step = StationZone.Observe(stop.ZoneState, new ZoneSample(eventTime, metres, sample.SpeedKmh));
             stop.SetZoneState(step.State);
+
+            // Agreed 19 Oct (rehearsal #10): a stop the controller skipped is still on the route, so the train goes through it. GPS
+            // records when (source GPS, for "last passed ...") but the stop stays Skipped: no status change, no event, no delay (R-01,
+            // R-21) and no control version (R-18). R-05 still applies to the times already there.
+            if (stop.Status == StopStatus.Skipped)
+            {
+                RecordTimeOnSkippedStop(stop, step);
+                continue;
+            }
+
             switch (step.Event)
             {
                 case ZoneEvent.Arrived: RecordArrival(stop, step.EventTime!.Value, Source.Gps); break;
@@ -625,6 +635,26 @@ public sealed class OperationalJourney
         }
 
         return PositionVerdict.Accepted;
+    }
+
+    private static void RecordTimeOnSkippedStop(JourneyStop stop, ZoneStep step)
+    {
+        var zoneEvent = step.Event;
+        if (zoneEvent == ZoneEvent.None)
+        {
+            return;
+        }
+
+        var time = new TimeWithSource(step.EventTime!.Value, Source.Gps);
+        if (zoneEvent is ZoneEvent.Arrived or ZoneEvent.Passed)
+        {
+            stop.SetActualArrival(TimeWithSource.Resolve(stop.ActualArrivalTime, time));
+        }
+
+        if (zoneEvent is ZoneEvent.Departed or ZoneEvent.Passed)
+        {
+            stop.SetActualDeparture(TimeWithSource.Resolve(stop.ActualDepartureTime, time));
+        }
     }
 
     // A crew tap (source = Crew). occurredAt is already corrected (R-09).

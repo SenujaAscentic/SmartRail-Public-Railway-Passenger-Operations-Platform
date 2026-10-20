@@ -176,4 +176,31 @@ public class SimulatorEndToEndTests(ApiFixture api) : IAsyncLifetime
         var actualDeparture = done.GetProperty("stops")[1].GetProperty("actualDeparture").GetDateTimeOffset();
         Assert.True(actualDeparture >= scheduledDeparture.AddMinutes(10), $"It left at {actualDeparture:HH:mm}, but was held until after {scheduledDeparture.AddMinutes(10):HH:mm}.");
     }
+
+    // Rehearsal #10: the train really goes through a stop the controller skipped. GPS records when, the stop stays Skipped.
+    [Fact]
+    public async Task A_train_that_runs_through_a_skipped_stop_gets_its_GPS_pass_time_recorded_and_the_stop_stays_Skipped()
+    {
+        var journeyId = await JourneyAsync();
+        var http = api.Factory.CreateClient();
+        var before = await http.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{journeyId}", Ct);
+        var skipped = before.GetProperty("stops")[1];
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ops/journeys/{journeyId}/stops/{skipped.GetProperty("stationId").GetGuid()}/skip")
+        {
+            Content = JsonContent.Create(new { expectedVersion = 0 }),
+        };
+        request.Headers.Add("Authorization", "Bearer " + await api.TokenForAsync("Controller", Ct));
+        Assert.Equal(HttpStatusCode.OK, (await http.SendAsync(request, Ct)).StatusCode);
+
+        var result = await Simulator(http, journeyId, Scenario.Normal, _ => { }).RunAsync(Ct);
+
+        Assert.Equal(0, result.Discarded);
+        var detail = await http.GetFromJsonAsync<JsonElement>($"/api/v1/journeys/{journeyId}", Ct);
+        var stop = detail.GetProperty("stops")[1];
+        Assert.Equal("Skipped", stop.GetProperty("status").GetString());
+        Assert.NotEqual(JsonValueKind.Null, stop.GetProperty("actualArrival").ValueKind);
+        Assert.NotEqual(JsonValueKind.Null, stop.GetProperty("actualDeparture").ValueKind);
+        Assert.Equal(1, detail.GetProperty("version").GetInt32());   // GPS did not bump the control version (R-18)
+        Assert.Equal("Completed", detail.GetProperty("status").GetProperty("kind").GetString());
+    }
 }
