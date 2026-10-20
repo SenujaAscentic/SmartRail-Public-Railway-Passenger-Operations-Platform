@@ -263,14 +263,21 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
         <div className="markers markers-above">
           {placed.filter((p) => p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
         </div>
-        <ol className="track" style={{ gridTemplateColumns: `repeat(${track.length}, 1fr)`, "--cols": track.length } as CSSProperties}>
-          {track.map((s) => (
-            <li key={s.stationId}>
-              <span className="node" aria-hidden="true" />
-              <span className="station">{s.name}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="track-wrap">
+          <ol className="track" style={{ gridTemplateColumns: `repeat(${track.length}, 1fr)`, "--cols": track.length } as CSSProperties}>
+            {track.map((s) => (
+              <li key={s.stationId}>
+                <span className="node" aria-hidden="true" />
+                <span className="station">{s.name}</span>
+              </li>
+            ))}
+          </ol>
+          {/* The trains ON the line: icon, service number and the status colour, at the place the backend announced. The cards above and
+              below carry the details and the link, so these pins are hidden from screen readers (they would only repeat the card). */}
+          <div className="on-track" aria-hidden="true">
+            {placed.map((p) => <TrackPin key={p.entry.detail.journeyId} entry={p.entry} percent={p.percent} />)}
+          </div>
+        </div>
         <div className="markers markers-below">
           {placed.filter((p) => !p.towardsEnd).map((p) => <TrainMarker key={p.entry.detail.journeyId} {...p} nowMs={nowMs} />)}
         </div>
@@ -278,6 +285,17 @@ function LineView({ line, entries, nowMs }: { line: Line; entries: Entry[]; nowM
         </div>
       </div>
     </Panel>
+  );
+}
+
+function TrackPin({ entry, percent }: { entry: Entry; percent: number }) {
+  const { detail } = entry;
+  const view = statusView(detail.status, { terminatesAt: detail.terminatesAt?.name ?? null, hold: detail.hold !== null });
+  return (
+    <span className={`track-pin status status-${view.tone}`} style={{ left: `${percent}%` }}>
+      <Icon name="train" />
+      <span className="mono">{detail.serviceNumber}</span>
+    </span>
   );
 }
 

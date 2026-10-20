@@ -99,6 +99,23 @@ describe("the dashboard", () => {
     expect(within(line).getByText("Kandy")).toBeTruthy();
   });
 
+  it("draws a pin ON the line for each running train, at the backend's place, with an icon, the service number and the status colour", async () => {
+    const backend = signedInWith(all);
+
+    renderApp(backend.services, "/");
+
+    const line = (await screen.findByRole("heading", { name: "Line view" }, { timeout: 3000 })).closest("section")!;
+    await within(line).findAllByText(/between Colombo Fort and Rambukkana/);
+    const pins = Array.from(line.querySelectorAll<HTMLElement>(".track-pin"));
+    expect(pins).toHaveLength(2);   // 1001 and 2001 are running with a position
+    const late = pins.find((pin) => pin.textContent === "1001")!;
+    expect(late.className).toContain("status-late");                // coloured by status ...
+    expect(late.querySelector("svg")).toBeTruthy();                  // ... with an icon ...
+    expect(late.textContent).toBe("1001");                           // ... and the service number
+    expect(late.style.left).toBe("25%");                             // 25% of the way from Fort to Rambukkana: (0.25 + 0.5) / 3 stations
+    expect(late.closest("[aria-hidden='true']")).toBeTruthy();      // the card keeps the details and the link
+  });
+
   it("filters by section: a journey that does not run between the two chosen stations is hidden", async () => {
     const backend = signedInWith(all);
     renderApp(backend.services, "/");
