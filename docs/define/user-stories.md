@@ -96,7 +96,7 @@ Stories are grouped into epics by **user outcome**. Each epic names who it serve
 2. Tapping shows the provider's menu preview: items, prices, available / sold out.
 3. **Call to order** opens the phone dialler with the provider's hotline; opening hours are shown; outside hours: "Hotline closed – opens 06:00".
 4. A summary is shown for the call: "Mention: Train 1005 · arriving Polgahawela ~10:52 · your coach".
-5. Labels "In-app ordering coming soon" and "Orders are handled by RailBites Catering" are shown.
+5. Labels "In-app ordering coming soon" and "Orders are handled by RailCantima" are shown (RailCantima is the caterer's display name; the code name of the provider service is RailBites).
 6. If the provider is unreachable: "Menu unavailable"; all train information keeps working.
 
 ---
