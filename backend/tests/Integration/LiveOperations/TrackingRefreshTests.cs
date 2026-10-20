@@ -1,8 +1,10 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using SmartRail.LiveOperations.Domain;
 using SmartRail.LiveOperations.Persistence;
@@ -118,5 +120,63 @@ public class TrackingRefreshTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal("Lost", detail.GetProperty("freshness").GetProperty("tracking").GetString());
         Assert.Equal("Late", detail.GetProperty("status").GetProperty("kind").GetString());
         Assert.Equal(22, detail.GetProperty("status").GetProperty("delayMinutes").GetInt32());
+    }
+
+    // SM-2 candidate (QA 20 Oct): the refresh round handles every tracked journey. If ONE of them cannot be refreshed (here: a stored hold
+    // that names a station the journey does not have), the others must still be refreshed in the same round, and the failure is logged
+    // with the journey id and the kind of error only.
+    [Fact]
+    public async Task One_journey_that_cannot_be_refreshed_does_not_stop_the_others_and_the_error_is_logged_without_personal_data()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2027, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var log = new LogCapture("TrackingRefresher", LogLevel.Error);
+        var database = await api.CreateDatabaseAsync("iso_" + Guid.NewGuid().ToString("N")[..8]);
+        using var factory = api.CreateFactory(
+            builder =>
+            {
+                builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(clock));
+                builder.ConfigureLogging(logging => logging.AddProvider(log));
+            },
+            useFixtureClock: false, connectionString: database);
+        var services = factory.Services;
+
+        PositionSample Far(DateTime now) => new(new GeoPoint(7.0, 80.0), 60, now, now, TimeSpan.Zero, 0, new Dictionary<Guid, double>());
+        Action<OperationalJourney> running = j =>
+        {
+            j.Start(j.Stops[0].ScheduledDeparture!.Value, Guid.NewGuid(), Guid.NewGuid());
+            var now = clock.GetUtcNow().UtcDateTime;
+            j.RecordPosition(Far(now), now);
+        };
+
+        // Created first, so it is read first: the broken one must not be able to hide the good one behind it.
+        var broken = await RealJourneys.CreateAsync(services, "2002", new DateOnly(2027, 6, 21), running);
+        var good = await RealJourneys.CreateAsync(services, "2001", new DateOnly(2027, 6, 20), running);
+
+        DateTime nextScheduled;
+        using (var scope = services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LiveOperationsDbContext>();
+            var now = clock.GetUtcNow().UtcDateTime;
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""UPDATE ops."Journeys" SET "HoldStationId" = {Guid.NewGuid()}, "HoldMinutes" = 5, "HoldSetAt" = {now} WHERE "Id" = {broken}""", Ct);
+            var journey = await db.Journeys.AsNoTracking().Include(j => j.Stops).SingleAsync(j => j.Id == good, Ct);
+            nextScheduled = journey.Stops.OrderBy(x => x.Sequence).First(x => x.Status == StopStatus.Scheduled && x.ScheduledArrival is not null).ScheduledArrival!.Value;
+        }
+
+        clock.SetUtcNow(new DateTimeOffset(nextScheduled.AddMinutes(22), TimeSpan.Zero));   // hours of silence, and 22 minutes overdue
+
+        var delay = 0;
+        for (var attempt = 0; attempt < 100 && delay != 22; attempt++)
+        {
+            await Task.Delay(50, Ct);
+            using var scope = services.CreateScope();
+            delay = await scope.ServiceProvider.GetRequiredService<LiveOperationsDbContext>().Journeys.AsNoTracking()
+                .Where(j => j.Id == good).Select(j => j.DelayMinutes).SingleAsync(Ct);
+        }
+
+        Assert.Equal(22, delay);   // the good journey was refreshed although the broken one failed in the same round
+        var errors = log.Messages.Where(m => m.Level == LogLevel.Error).Select(m => m.Message).ToList();
+        Assert.Contains(errors, m => m.Contains(broken.ToString()) && m.Contains("InvalidOperationException"));
+        Assert.All(errors, m => Assert.DoesNotMatch(@"@|\+?\d[\d ]{8,}|token|password", m));   // ids and the error type only
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SmartRail.LiveOperations.Domain;
 using SmartRail.LiveOperations.Persistence;
 
@@ -6,7 +7,7 @@ namespace SmartRail.LiveOperations.Features.RefreshTracking;
 
 // One round of "has any train gone quiet?" (R-06) and "is any train overdue at its next stop?" (R-23).
 // Positions keep a train Live by themselves; nothing arrives when a train goes silent, so the clock has to ask.
-internal sealed class TrackingRefresher(LiveOperationsDbContext db, TimeProvider clock)
+internal sealed class TrackingRefresher(LiveOperationsDbContext db, TimeProvider clock, ILogger<TrackingRefresher> log)
 {
     // Only journeys that are being tracked: NotStarted has no data to age, and Ended is over (domain model 4.4).
     private static readonly TrackingStatus[] Tracked = [TrackingStatus.Live, TrackingStatus.Stale, TrackingStatus.Lost];
@@ -21,7 +22,16 @@ internal sealed class TrackingRefresher(LiveOperationsDbContext db, TimeProvider
 
         foreach (var journey in journeys)
         {
-            journey.RefreshTracking(now);
+            // One journey that cannot be refreshed must not stop the others: the whole round used to fail and NO train was refreshed
+            // (QA 20 Oct). Only the id and the kind of error are logged, never a message that could carry data.
+            try
+            {
+                journey.RefreshTracking(now);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log.LogError("Refreshing journey {JourneyId} failed ({ErrorType}); the other journeys were refreshed.", journey.Id, ex.GetType().Name);
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);
