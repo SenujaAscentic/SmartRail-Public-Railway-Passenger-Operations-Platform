@@ -140,7 +140,7 @@ public sealed class CateringRelayTests(ApiFixture api) : CateringTestBase(api)
     }
 
     [Fact]
-    public async Task After_the_whole_retry_schedule_the_delivery_is_marked_Failed_and_nothing_else_is_stopped()
+    public async Task After_24_hours_of_retries_the_delivery_is_marked_Failed_and_nothing_else_is_stopped()
     {
         var id = await NewJourney();
         _providerDown = true;
@@ -151,16 +151,28 @@ public sealed class CateringRelayTests(ApiFixture api) : CateringTestBase(api)
             await Task.Delay(100, Ct);
         }
 
-        foreach (var wait in RelayService.RetryDelays)
+        // Four early retries, then one every 15 minutes: after 23 hours it is still being tried ...
+        var first = _clock.GetUtcNow();
+        while (_clock.GetUtcNow() - first < TimeSpan.FromHours(23))
         {
-            _clock.Advance(wait);
+            _clock.Advance(TimeSpan.FromMinutes(1));
+            await RunRoundAsync();
+        }
+
+        Assert.All(await Etas(), x => Assert.Equal(DeliveryStatus.Pending, x.Status));
+
+        // ... and 24 hours after the first attempt it gives up.
+        while (_clock.GetUtcNow() - first < TimeSpan.FromHours(25))
+        {
+            _clock.Advance(TimeSpan.FromMinutes(1));
             await RunRoundAsync();
         }
 
         Assert.All(await Etas(), x =>
         {
             Assert.Equal(DeliveryStatus.Failed, x.Status);
-            Assert.Equal(RelayService.RetryDelays.Length + 1, x.Attempts);
+            Assert.InRange(x.Attempts, 90, 100);
+            Assert.InRange(x.NextAttemptAt - x.FirstAttemptAt!.Value, TimeSpan.Zero, TimeSpan.FromHours(24));   // the last retry was inside the 24 hours
         });
         Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"/api/v1/journeys/{id}", Ct)).StatusCode);   // train information is unaffected
     }
