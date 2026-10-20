@@ -117,7 +117,8 @@ abstract final class Strings {
   static String mentionOnCall(String train, String station, String? time) =>
       'Mention: Train $train · arriving $station${time == null ? '' : ' ~$time'} · your coach';
   static const inAppOrderingSoon = 'In-app ordering coming soon';
-  static const ordersHandledBy = 'Orders are handled by RailBites Catering';
+  static const catererName = 'RailCantima';
+  static const ordersHandledBy = 'Orders are handled by RailCantima';
   static const couldNotCall = "Couldn't open the phone app";
 }
 

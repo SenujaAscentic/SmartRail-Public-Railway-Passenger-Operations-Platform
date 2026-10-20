@@ -119,6 +119,11 @@ void main() {
       expect(Strings.price(450.0), 'Rs 450');
     });
 
+    test('the caterer is shown as RailCantima (a display name only)', () {
+      expect(Strings.catererName, 'RailCantima');
+      expect(Strings.ordersHandledBy, 'Orders are handled by RailCantima');
+    });
+
     test('the closed message and the call summary', () {
       expect(Strings.hotlineClosed('06:00'), 'Hotline closed – opens 06:00');
       expect(Strings.mentionOnCall('1005', 'Polgahawela', '10:52'), 'Mention: Train 1005 · arriving Polgahawela ~10:52 · your coach');
