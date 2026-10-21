@@ -1,0 +1,9 @@
+{
+  "flow": "flow3",
+  "recordedAt": "2026-10-21T08:52:24.472Z",
+  "sm3_cancelToDisplayMs": 781,
+  "sm3_limitMs": 5000,
+  "journeyVersionAfter": 1,
+  "stopsSkipped": 11,
+  "audited": true
+}
