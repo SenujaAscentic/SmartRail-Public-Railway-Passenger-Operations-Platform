@@ -28,13 +28,13 @@ async function setDelay(page: import("@playwright/test").Page, minutes: number) 
 test("flow 5: a delay reaches the provider within 10 s; after a provider outage it is delivered once", async ({ page }) => {
   const s = stack();
   await signInAsController(page);
-  await openJourney(page, "1001");
+  await openJourney(page, "2002");
 
   // ---- the delay, and the provider hears of it (SM-5 < 10 s) ----
   const clickedAt = await setDelay(page, 15);
   await expect(page.getByText("Done. The change is on its way to everyone.")).toBeVisible();
   const first = await until("the ETA events at the provider", async () => {
-    const found = etasFor(await events(), "1001");
+    const found = etasFor(await events(), "2002");
     return found.length >= 2 ? found : undefined;
   }, 30);
   const sm5 = first.at - clickedAt;
@@ -57,7 +57,7 @@ test("flow 5: a delay reaches the provider within 10 s; after a provider outage 
   killTree(state.pids.railBites!);
   await expect.poll(async () => fetch(`${s.railBites}/events`).then(() => "up", () => "down"), { timeout: 15_000 }).toBe("down");
 
-  const before = etasFor(await events().catch(() => []), "1001").length; // unreachable now: 0
+  const before = etasFor(await events().catch(() => []), "2002").length; // unreachable now: 0
   const secondClick = await setDelay(page, 25);
   await expect(page.getByText("Done. The change is on its way to everyone.")).toBeVisible();
   await page.waitForTimeout(8_000); // SmartRail tries, fails and keeps the webhook (the retry waits grow: 10 s, 30 s, 1 min of the demo clock)
@@ -70,10 +70,10 @@ test("flow 5: a delay reaches the provider within 10 s; after a provider outage 
   await until("RailBites to be back", async () => (await fetch(`${s.railBites}/events`)).ok, 120);
 
   const delivered = await until("the retried ETA events at the provider", async () => {
-    const found = etasFor(await events(), "1001").filter((e) => Date.parse(e.expectedArrival!) - Date.parse(e.scheduledArrival!) === 25 * 60_000);
+    const found = etasFor(await events(), "2002").filter((e) => Date.parse(e.expectedArrival!) - Date.parse(e.scheduledArrival!) === 25 * 60_000);
     return found.length >= 2 ? found : undefined;
   }, 120);
-  const all = etasFor(await events(), "1001");
+  const all = etasFor(await events(), "2002");
   const ids = all.map((e) => e.eventId);
   expect(new Set(ids).size, "no event is stored twice").toBe(ids.length);
   expect(all.filter((e) => Date.parse(e.expectedArrival!) - Date.parse(e.scheduledArrival!) === 25 * 60_000), "each station got the new ETA exactly once").toHaveLength(2);
