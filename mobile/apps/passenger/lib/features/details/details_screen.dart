@@ -288,7 +288,7 @@ class _Body extends StatelessWidget {
         padding: const EdgeInsets.only(top: spaceXs),
         child: StopRow(
           name: stop.name,
-          state: stop.state,
+          state: journey.shownStopState(stop),
           scheduled: time,
           expected: shown,
           // The platform shows at the passenger's station; a changed platform shows anywhere.
