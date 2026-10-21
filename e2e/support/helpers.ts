@@ -1,8 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { repo, stateFile, type Stack } from "./stack.ts";
+import { repo, simsFile, stateFile, type Stack } from "./stack.ts";
 
 export type RunningStack = Stack & { catering: { secret: string; key: string } };
 
@@ -64,7 +64,53 @@ export function startSimulator(options: { service: string; device: string; drive
     [dll, "--api", s.api, "--device", options.device, "--driver", options.driver, "--service", options.service, "--from", "FOT", "--to", "KDT", "--speed", String(s.clockSpeed), ...(options.extra ?? [])],
     { env: { ...process.env, SMARTRAIL_CAB_SECRET: s.cabSecrets[options.device]!, SMARTRAIL_DEMO_PASSWORD: s.demoPassword }, windowsHide: true },
   );
+  const pids: number[] = existsSync(simsFile) ? (JSON.parse(readFileSync(simsFile, "utf-8")) as number[]) : [];
+  writeFileSync(simsFile, JSON.stringify([...pids, child.pid!])); // the run's teardown stops it if the flow does not
   child.stdout?.on("data", (d) => (text += d));
   child.stderr?.on("data", (d) => (text += d));
   return { process: child, output: () => text };
+}
+
+// The API's own clock, as an apps sees it (the Date header), and the Colombo date of it.
+export async function serverNow(): Promise<Date> {
+  const response = await fetch(`${stack().api}/api/v1/lines`);
+  return new Date(response.headers.get("date")!);
+}
+
+export const colomboClock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Colombo", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+export const colomboDate = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Colombo" }).format(d); // yyyy-MM-dd
+
+export async function stationId(code: string): Promise<string> {
+  const lines = await getJson<any[]>(`${stack().api}/api/v1/lines`);
+  for (const line of lines) for (const route of line.routes) for (const st of route.stations) if (st.code === code) return st.stationId;
+  throw new Error(`No station ${code}`);
+}
+
+// One stream message as it arrived, with the wall-clock time it arrived.
+export interface StreamMessage { event: string; data: any; at: number }
+
+// Listens to the public event stream like an app does (only the events of the given journeys) and keeps what arrives.
+export function listen(journeyId: string): { messages: StreamMessage[]; stop: () => void } {
+  const messages: StreamMessage[] = [];
+  const controller = new AbortController();
+  void (async () => {
+    const response = await fetch(`${stack().api}/api/v1/stream?journeyIds=${journeyId}`, { signal: controller.signal });
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      buffer += decoder.decode(value, { stream: true });
+      let end: number;
+      while ((end = buffer.indexOf("\n\n")) >= 0) {
+        const block = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        const event = /^event: (.+)$/m.exec(block)?.[1];
+        const data = /^data: (.+)$/m.exec(block)?.[1];
+        if (event && data) messages.push({ event, data: JSON.parse(data), at: Date.now() });
+      }
+    }
+  })().catch(() => undefined);
+  return { messages, stop: () => controller.abort() };
 }

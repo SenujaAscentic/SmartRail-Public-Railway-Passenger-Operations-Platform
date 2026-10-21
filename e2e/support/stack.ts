@@ -16,9 +16,9 @@ const logs = join(here, "..", ".state", "logs");
 
 export const ports = { postgres: 55433, api: 5099, railBites: 5199, opsWeb: 5273, display: 5274 };
 
-// The demo clock: a Wednesday morning, ten minutes before the first train leaves. It runs 5 times faster than real time, so a train
+// The demo clock: a Wednesday morning, ten minutes before the first train (2001, 06:00) leaves. It runs 5 times faster than real time, so a train
 // moves between stations in minutes; every latency the flows measure is real wall-clock time, whatever the clock speed.
-export const clock = { start: "2026-10-21T06:20:00+05:30", speed: 5 };
+export const clock = { start: "2026-10-21T05:50:00+05:30", speed: 5 };
 
 export interface Stack {
   api: string;
@@ -172,12 +172,20 @@ export async function startStack(): Promise<Stack> {
   return stack;
 }
 
+export const simsFile = join(here, "..", ".state", "sims.json");
+
 export function stopStack() {
   try {
     const state = JSON.parse(readFileSync(stateFile, "utf-8")) as { pids: Record<string, number> };
     for (const pid of Object.values(state.pids)) killTree(pid);
   } catch {
     // never started
+  }
+  try {
+    for (const pid of JSON.parse(readFileSync(simsFile, "utf-8")) as number[]) killTree(pid); // simulators a flow left running
+    writeFileSync(simsFile, "[]");
+  } catch {
+    // none
   }
   try {
     run("docker", ["rm", "-f", container]);

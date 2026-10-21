@@ -1,0 +1,10 @@
+{
+  "flow": "flow1",
+  "recordedAt": "2026-10-21T09:00:10.938Z",
+  "found": "search listed 2001 as NotStarted before the run",
+  "sm2_departureToDelayEventMs": 0,
+  "sm2_delayEventToOpsWebMs": 1368,
+  "sm2_delayEventToBoardMs": 2409,
+  "sm2_limitMs": 60000,
+  "clockSpeed": 5
+}
