@@ -58,3 +58,5 @@ The station in the address is its **code** (FOT, GPH, KDT, any case) or its **id
 7. **The fixture file was brought over from the passenger branch** (commit "fixtures: S-05 hours wording ..."): develop still had the old one.
 
 - **Displays use the public, read-only API for now (20 Oct).** No display credential or token exists yet (deferred in re-plan 2; threat model T-13 says so): the app only calls the public `GET` endpoints and the public stream, and a test checks that no token is sent.
+
+- **A cancelled or early-ended train says so, not "Does not stop" (21 Oct, found by the E2E run).** The backend marks every stop of a cancelled journey Skipped, so the board showed "Does not stop" (S-12) for a cancelled train. `rowStatus` now lets the journey's own status win (S-06 "Cancelled", S-07 "Terminates at X"); "Does not stop" is for one skipped stop of a train that runs. Two tests, red first.

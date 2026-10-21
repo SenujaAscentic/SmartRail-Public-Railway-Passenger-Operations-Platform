@@ -164,6 +164,26 @@ describe("what a line says", () => {
     expect(screen.getByText("Extra stop")).toBeTruthy();
   });
 
+  // Found by the E2E run (flow 3, 21 Oct): the backend marks EVERY stop of a cancelled journey Skipped, so the board said "Does not stop"
+  // for a cancelled train. The journey's own status wins (fixtures S-06 and S-07); "Does not stop" is for one skipped stop of a train that runs.
+  it("a cancelled train says 'Cancelled' even though the backend marks its stop here as skipped", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "Cancelled", delayMinutes: null }, stopStatus: "Skipped" })];
+    });
+
+    expect(await screen.findByText("Cancelled")).toBeTruthy();
+    expect(screen.queryByText("Does not stop")).toBeNull();
+  });
+
+  it("a train that ends early says where it terminates, not 'Does not stop', at a stop it will not reach", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "TerminatedEarly", delayMinutes: null }, stopStatus: "Skipped" })];
+    });
+
+    expect(await screen.findByText(/^Terminates at /)).toBeTruthy();
+    expect(screen.queryByText("Does not stop")).toBeNull();
+  });
+
   it("a train nobody has started says 'Not started', never 'On time'", async () => {
     await openBoard(({ backend }) => (backend.board = [toKandy(1, { status: { kind: "NotStarted", delayMinutes: null } })]));
 

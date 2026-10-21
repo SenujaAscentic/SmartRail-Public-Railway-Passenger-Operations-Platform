@@ -139,11 +139,15 @@ export const OFFLINE_STATUS_TEXT = "Scheduled";
 export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
   if (offline) return { text: OFFLINE_STATUS_TEXT, style: STYLES.scheduled, expected: null, extra: null };
 
-  const skipped = row.stopStatus === "Skipped";
+  const kind = row.status.kind;
+
+  // The backend marks every stop of a cancelled or early-ended journey Skipped. The journey's own status is what a passenger must read
+  // (S-06, S-07), so it wins; "Does not stop" (S-12) is for one skipped stop of a train that otherwise runs.
+  const journeyEnded = kind === "Cancelled" || kind === "TerminatedEarly";
+  const skipped = row.stopStatus === "Skipped" && !journeyEnded;
   const extra = row.stopStatus === "Added" ? stopStatusText("Added") : null;
   if (skipped) return { text: "Does not stop", style: STYLES.cancelled, expected: null, extra };
 
-  const kind = row.status.kind;
   const runs = kind !== "Cancelled" && kind !== "TerminatedEarly" && kind !== "NotStarted";
   const expectedDiffers = runs && row.expectedTime !== null && formatTime(row.expectedTime) !== formatTime(row.time);
   return {
