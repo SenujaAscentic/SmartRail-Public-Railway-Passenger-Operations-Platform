@@ -6,7 +6,7 @@ import { colomboClock, getJson, openJourney, record, serverNow, signInAsControll
 // recommends a hold; with a hold, the displays say "The train will wait for passengers"; without one the wording makes no promise (A-113).
 // The old platform's display sends people to the new one. (The crew instruction is deferred.)
 
-test.setTimeout(900_000); // alone, the demo clock needs about 6 real minutes to reach 06:26
+test.setTimeout(900_000); // alone, the demo clock needs about 9 real minutes to reach 06:26
 
 test("flow 4: a platform change under 5 minutes with a hold: the warning, the displays, no promise without the hold", async ({ page, context }) => {
   const s = stack();

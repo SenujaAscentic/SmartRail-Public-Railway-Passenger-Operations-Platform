@@ -6,6 +6,8 @@ import { killTree } from "../support/stack.ts";
 // announces the delay and the ops web and the station board show "6 min late" within a minute (SM-2). The passenger app shows the same
 // words from the same fixture (Flutter fixture tests).
 
+test.setTimeout(600_000); // the train leaves about 3.5 real minutes after the flow starts (demo clock x5)
+
 test("flow 1: search finds the train, a 6 minute delay is announced and shown within a minute", async ({ page, context }) => {
   const s = stack();
 

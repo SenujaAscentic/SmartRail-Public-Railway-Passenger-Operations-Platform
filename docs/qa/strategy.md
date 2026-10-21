@@ -65,17 +65,21 @@ Playwright drives browsers only. It cannot tap buttons in the native Flutter pas
 
 ---
 
-## 5. The 5 end-to-end flows
+## 5. The 5 end-to-end flows (final text, run 21 Oct 2026)
 
-| # | Flow | Automated by | Key assertions |
-|---|---|---|---|
-| 1 | **Search → live delay** | Playwright (API) + Flutter integration | Search returns the journey; simulator delays it; `DelayChanged` received; app shows "6 min late" (fixture) within 1 min of the missed time (SM-2) |
-| 2 | **Driver starts → train moves** in app and on platform display | Simulator as cab (API) + Playwright (display) + Flutter | `JourneyStarted`; positions accepted; platform display shows the train approaching; stop status changes |
-| 3 | **Controller cancels** → push + display | Playwright (ops web → display) + backend push test | Confirmation shows impact; display shows "Cancelled" < 5 s (SM-3); push sent once to saved-trip holder; audit entry exists |
-| 4 | **Platform change < 5 min with hold** | Playwright (ops web, displays) + Flutter (crew instruction) | Preview shows Late level and conflicts; hold set; old platform display redirects; info screen says "The train will wait"; crew instruction acknowledged |
-| 5 | **Train delayed → provider gets new ETA** | Playwright (provider event log page) | Signed webhook received < 10 s (SM-5); stop provider, delay again, restart → delivered after retry, no duplicate |
+**How they run:** `e2e/` (Playwright 1.64.0, `npm run e2e`) starts its own stack and removes it at the end: a scratch PostgreSQL in Docker, the API, RailBites (shown as RailCantima), the ops web and the station display, on ports of their own, on a demo clock that runs 5 times faster than real time (so a train moves in minutes; every latency below is real wall-clock time). Playwright drives the ops web and the displays and checks API state and events; the simulator acts as the cab tablet (the driver app is deferred); the passenger app side is covered by the Flutter fixture tests (option C in section 4). Each flow writes its numbers to `docs/qa/evidence/<flow>.json`; traces and screenshots are in `docs/qa/evidence/`. Order of the run: 5, 3, 1, 4, 2.
 
-Each flow records timestamps so SM-2, SM-3 and SM-5 are **measured**, not assumed.
+| # | Flow | Automated by | Key assertions | Measured (21 Oct) |
+|---|---|---|---|---|
+| 1 | **Search → live delay.** Search finds 2001; the simulator (as the cab tablet) drives it 6 minutes late; the live stream announces the delay; the ops web and the station board show it | `e2e/tests/03-flow1-search-live-delay.spec.ts` + Flutter fixture tests for the app's words | Search lists the train as NotStarted; `DelayChanged` with 6 minutes; API says Late 6; the ops web and the Gampaha board say "6 min late" | SM-2: delay event to ops web **1777 ms**, to the board **2287 ms** (limit 60 s). The delay is announced in the same save as the departure that shows it (0 ms) |
+| 2 | **Simulator starts a journey → the train moves** | `05-flow2-train-moves.spec.ts` | `JourneyStarted`; the departure event; at least 3 position updates (25 seen); tracking Live; the train is further along 8 s later (0.19 to 0.32 of the section); no staff field (source, device, session) in any public stream message; the ops web draws the train on the line | start to departure event 49770 ms (includes the wait for the simulator's start window) |
+| 3 | **Controller cancels (ops web) → station display** | `02-flow3-cancel-to-display.spec.ts` | The dialog shows what the cancellation affects before anything is sent; "Cancelled" on the Polgahawela board; API status Cancelled, all 11 stops Skipped, version 1; the audit page shows `JourneyCancelled` by CTRL-01 | SM-3: confirm to board **818 ms** (limit 5 s). *Push is deferred: the app learns of it through the same live stream (ADR-04 fallback)* |
+| 4 | **Platform change under 5 minutes with a hold** | `04-flow4-platform-change-hold.spec.ts` | At demo clock 06:26 the lead time is 3 min: the dialog says Late, recommends (does not force) a hold; its preview promises "The train will wait" only when the hold is ticked; after confirming, the new platform display says "The train will wait for passengers at Platform N", the old platform display points to the new platform; the platform change and the hold are in the API; releasing the hold removes the promise and the old display says "Now departing from Platform N" (no promise). *The crew instruction is deferred* | SM-3: confirm to new platform display **964 ms**, to old platform display **971 ms** (limit 5 s) |
+| 5 | **Train delayed → RailCantima (RailBites) gets the new ETA** | `01-flow5-delay-to-provider.spec.ts` | A delay set in the ops web reaches the provider as a signed webhook, one ETA for each catering station (PLG, PDA) and no other, scheduled time + 15 min; the provider is stopped, the train is delayed again, the provider comes back: each station gets the new ETA exactly once, no event stored twice | SM-5: delay to provider **2066 ms** (limit 10 s); after the outage the retried ETA arrived 3400 ms after the provider was back |
+
+**What these runs do not measure:** SM-2's "growing lateness of a train that misses its stop" (R-23) at real time (covered by the integration test with a fake clock); SM-3 for the passenger app and for the crew device (deferred); everything runs on one machine, so the latencies are lower than over a network.
+
+**Run alone or in order:** the whole run takes about 12 minutes (21 Oct: 5 of 5 passed in 12.5 min). Flow 4 waits for the demo clock to reach 06:26 (its window is 06:26 to 06:27:30, so the lead time is under 5 minutes) and flow 2 waits for 06:25, so run alone each takes about 9 minutes; the file names carry the run order (01 to 05). The run is not in CI yet (it needs Docker, the .NET SDK, Node and Chromium).
 
 ---
 

@@ -16,9 +16,9 @@ const logs = join(here, "..", ".state", "logs");
 
 export const ports = { postgres: 55433, api: 5099, railBites: 5199, opsWeb: 5273, display: 5274 };
 
-// The demo clock: a Wednesday morning, ten minutes before the first train (2001, 06:00) leaves. It runs 5 times faster than real time, so a train
+// The demo clock: a Wednesday morning, twenty-five minutes before the first train (2001, 06:00) leaves, so that flow 1 can still search for it. It runs 5 times faster than real time, so a train
 // moves between stations in minutes; every latency the flows measure is real wall-clock time, whatever the clock speed.
-export const clock = { start: "2026-10-21T05:50:00+05:30", speed: 5 };
+export const clock = { start: "2026-10-21T05:35:00+05:30", speed: 5 };
 
 export interface Stack {
   api: string;
