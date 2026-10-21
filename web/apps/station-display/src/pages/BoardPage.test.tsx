@@ -194,8 +194,9 @@ describe("what a line says", () => {
       backend.board = Array.from({ length: 14 }, (_, i) => toKandy(i + 1, { time: `2026-10-20T0${2 + Math.floor(i / 6)}:${String((i % 6) * 10).padStart(2, "0")}:00Z` }));
     });
 
-    await screen.findByText("Departures");
-    expect(screen.getAllByRole("listitem")).toHaveLength(10);
+    // Wait for the lines themselves: the heading "Departures" is on the page before any data has arrived (this test used to pass
+    // only by timing, and failed every time when run alone).
+    expect(await screen.findAllByRole("listitem")).toHaveLength(10);
   });
 });
 
