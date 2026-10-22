@@ -23,15 +23,13 @@ class DetailsScreen extends StatefulWidget {
     required this.controller,
     required this.onOpenJourney,
     this.launchPhone = openDialler,
-    this.nowUtc,
   });
 
   final DetailController controller;
   final ValueChanged<JourneySummary> onOpenJourney;
 
-  /// For "Call to order" on the menu screen, and the clock it falls back on (US-P8).
+  /// For "Call to order" on the menu screen (US-P8).
   final PhoneLauncher launchPhone;
-  final DateTime Function()? nowUtc;
 
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
@@ -75,7 +73,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CateringScreen(
-          controller: CateringController(_c.api, stop.stationId, widget.nowUtc ?? DateTime.timestamp),
+          controller: CateringController(_c.api, stop.stationId),
           stationName: stop.name,
           serviceNumber: journey.serviceNumber,
           arrival: stop.actualArrival ?? stop.expectedArrival ?? stop.scheduledArrival,
@@ -211,7 +209,7 @@ class _Body extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: spaceSm),
-        Center(child: StatusBadge.journey(journey.status, terminatesAt: journey.terminatesAt?.name)),
+        Center(child: StatusBadge.journey(journey.shownStatus, terminatesAt: journey.terminatesAt?.name)),
         if (boardingPlatformChange != null) ...[
           const SizedBox(height: spaceSm),
           Center(child: boardingPlatformChange),
@@ -290,7 +288,7 @@ class _Body extends StatelessWidget {
         padding: const EdgeInsets.only(top: spaceXs),
         child: StopRow(
           name: stop.name,
-          state: stop.state,
+          state: journey.shownStopState(stop),
           scheduled: time,
           expected: shown,
           // The platform shows at the passenger's station; a changed platform shows anywhere.

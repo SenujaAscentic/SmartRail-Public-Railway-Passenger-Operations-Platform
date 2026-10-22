@@ -44,11 +44,11 @@ void main() {
   setUpAll(loadAppFonts);
 
   group('cancelled', () {
-    testWidgets('shows "Cancelled" and the stops as not served', (tester) async {
+    testWidgets('shows "Cancelled" once; the stops are not marked "Does not stop" (the journey status says it)', (tester) async {
       await pumpDetails(tester, withTrains(cancelled()), boarding: gampahaId, destination: kandyId);
 
       expect(find.text('Cancelled'), findsOneWidget);
-      expect(find.text('Does not stop'), findsNWidgets(4));
+      expect(find.text('Does not stop'), findsNothing);
     });
 
     testWidgets('asks the search for the next 3 trains: same stations, this train\'s departure, limit 3', (tester) async {
@@ -123,11 +123,11 @@ void main() {
   });
 
   group('terminated early', () {
-    testWidgets('says where it ends: "Terminates at Gampaha"', (tester) async {
+    testWidgets('says where it ends: "Terminates at Gampaha"; the stops after it are not marked "Does not stop"', (tester) async {
       await pumpDetails(tester, withTrains(terminatedAtGampaha()), boarding: gampahaId, destination: kandyId);
 
       expect(find.text('Terminates at Gampaha'), findsOneWidget);
-      expect(find.text('Does not stop'), findsNWidgets(3));
+      expect(find.text('Does not stop'), findsNothing);
     });
 
     testWidgets('offers other trains from where it ends to the destination, with no "after"', (tester) async {

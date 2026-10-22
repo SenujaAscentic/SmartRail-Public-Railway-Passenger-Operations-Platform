@@ -10,18 +10,12 @@ import '../../support/fake_backend.dart';
 // down. The journey is the real answer of train 1001 (Colombo Fort to Kandy); the passenger rides Gampaha to Kandy, so the
 // stops between are Polgahawela and Peradeniya (Veyangoda, Rambukkana and Kadugannawa are only passed).
 
-// Server times (Date header) on 20 Oct 2026. Colombo is UTC+05:30.
-const midday = 'Tue, 20 Oct 2026 06:30:00 GMT'; // 12:00 in Colombo: the hotline is open (06:00 to 20:00)
-const evening = 'Tue, 20 Oct 2026 15:30:00 GMT'; // 21:00: closed
-const beforeOpening = 'Tue, 20 Oct 2026 00:00:00 GMT'; // 05:30: closed, opens 06:00
-
 FakeBackend backendWithFood({bool polgahawela = true, bool peradeniya = false}) {
   return FakeBackend()
     ..detail = detailJson()
     ..dateHeader = 'Tue, 20 Oct 2026 01:17:02 GMT'
     ..cateringStations.addAll({polgahawelaId: polgahawela, peradeniyaId: peradeniya})
-    ..catering = cateringJson()
-    ..cateringDateHeader = midday;
+    ..catering = cateringJson();
 }
 
 /// The details screen for a passenger riding from [boarding] to [destination] (null: the stations are not known).
@@ -54,13 +48,20 @@ Future<List<Uri>> pumpDetails(
               calls.add(uri);
               return true;
             },
-        nowUtc: () => DateTime.utc(2026, 10, 20, 6, 30),
       ),
     ),
   );
   await tester.pumpAndSettle();
   return calls;
 }
+
+/// The food backend with another catering answer (open / closed now, hotline, hours).
+FakeBackend backendWith({
+  bool openNow = true,
+  String hotline = '+94112345678',
+  Map<String, String>? openingHours = const {'opens': '06:00', 'closes': '20:00'},
+}) =>
+    backendWithFood()..catering = cateringJson(openNow: openNow, hotline: hotline, openingHours: openingHours);
 
 Future<void> openMenu(WidgetTester tester) async {
   await tester.tap(find.text(Strings.foodAvailableAt('Polgahawela')));
@@ -128,7 +129,7 @@ void main() {
       expect(find.text('Chicken rice'), findsOneWidget);
       expect(find.text('Rs 450'), findsOneWidget);
       expect(find.text('Egg roti'), findsOneWidget);
-      expect(find.text('Rs 120.50'), findsOneWidget);
+      expect(find.text('Rs 120'), findsOneWidget);
       // Words with an icon, never colour alone.
       expect(find.text(Strings.available), findsOneWidget);
       expect(find.text(Strings.soldOut), findsOneWidget);
@@ -141,7 +142,61 @@ void main() {
       await openMenu(tester);
 
       expect(find.text('In-app ordering coming soon'), findsOneWidget);
-      expect(find.text('Orders are handled by RailBites Catering'), findsOneWidget);
+      expect(find.text('Orders are handled by RailCantima'), findsOneWidget);
+    });
+  });
+
+  group('the layout', () {
+    testWidgets('the header: a food icon in a circle, the caterer RailCantima, the opening hours under it, then the menu', (tester) async {
+      await pumpDetails(tester, backendWithFood());
+      await openMenu(tester);
+
+      final circle = find.byType(CircleAvatar);
+      expect(circle, findsOneWidget);
+      expect(find.descendant(of: circle, matching: find.byIcon(Icons.restaurant)), findsOneWidget);
+
+      final name = tester.getTopLeft(find.text('RailCantima')).dy;
+      final hours = tester.getTopLeft(find.text('Opening hours 06:00–20:00')).dy;
+      final menu = tester.getTopLeft(find.text(Strings.menuHeading)).dy;
+      expect(tester.getTopLeft(circle).dy, lessThan(name));
+      expect(name, lessThan(hours));
+      expect(hours, lessThan(menu));
+    });
+
+    testWidgets('"Call to order" and the "Mention" line are pinned at the bottom: outside the scrolling list, below the menu, inside the screen', (tester) async {
+      await pumpDetails(tester, backendWithFood());
+      await openMenu(tester);
+
+      final list = find.byType(ListView);
+      expect(find.descendant(of: list, matching: find.text(Strings.callToOrder)), findsNothing);
+      expect(find.descendant(of: list, matching: find.textContaining('Mention:')), findsNothing);
+      final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final button = tester.getRect(find.text(Strings.callToOrder));
+      final mention = tester.getRect(find.textContaining('Mention:'));
+      expect(mention.bottom, lessThan(button.top));
+      expect(button.bottom, lessThanOrEqualTo(screenHeight));
+      expect(button.top, greaterThan(tester.getRect(find.text('Chicken rice')).bottom));
+    });
+
+    testWidgets('the bar stays on screen while a long menu scrolls', (tester) async {
+      final items = [for (var i = 1; i <= 30; i++) {'name': 'Item $i', 'price': 100 + i, 'available': true}];
+      await pumpDetails(tester, backendWithFood()..catering = cateringJson(menu: items));
+      await openMenu(tester);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -1500));
+      await tester.pumpAndSettle();
+
+      expect(find.text(Strings.callToOrder), findsOneWidget);
+      expect(find.textContaining('Mention:'), findsOneWidget);
+    });
+
+    testWidgets('unavailable: no bar at all', (tester) async {
+      await pumpDetails(tester, backendWithFood()..failCatering = true);
+      await openMenu(tester);
+
+      expect(find.text(Strings.callToOrder), findsNothing);
+      expect(find.textContaining('Mention:'), findsNothing);
+      expect(find.byType(CircleAvatar), findsNothing);
     });
   });
 
@@ -169,47 +224,60 @@ void main() {
       expect(find.text(Strings.couldNotCall), findsOneWidget);
     });
 
-    testWidgets('shows the opening hours; open now, so no closed message', (tester) async {
-      await pumpDetails(tester, backendWithFood());
+    testWidgets('shows the opening hours; open now (the server says so), so no closed message', (tester) async {
+      await pumpDetails(tester, backendWith(openNow: true));
       await openMenu(tester);
 
       expect(find.text('Opening hours 06:00–20:00'), findsOneWidget);
       expect(find.textContaining('Hotline closed'), findsNothing);
     });
 
-    testWidgets('outside the hours: "Hotline closed – opens 06:00" (evening)', (tester) async {
-      await pumpDetails(tester, backendWithFood()..cateringDateHeader = evening);
+    testWidgets('openNow false: "Hotline closed – opens 06:00" (icon and words)', (tester) async {
+      await pumpDetails(tester, backendWith(openNow: false));
       await openMenu(tester);
 
       expect(find.text('Hotline closed – opens 06:00'), findsOneWidget);
       expect(find.text('Opening hours 06:00–20:00'), findsOneWidget);
-      expect(find.byIcon(Icons.schedule), findsOneWidget); // icon + words
+      expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 
-    testWidgets('outside the hours: before opening in the morning', (tester) async {
-      await pumpDetails(tester, backendWithFood()..cateringDateHeader = beforeOpening);
+    testWidgets('openNow comes from the server: no clock of the phone is looked at', (tester) async {
+      // Even with a Date header at midday the closed answer wins.
+      await pumpDetails(tester, backendWith(openNow: false)..cateringDateHeader = 'Tue, 20 Oct 2026 06:30:00 GMT');
       await openMenu(tester);
 
       expect(find.text('Hotline closed – opens 06:00'), findsOneWidget);
     });
 
-    testWidgets('a closed hotline can still be called (a wrong clock must not block a call)', (tester) async {
+    testWidgets('"Call to order" stays enabled when the hotline is closed', (tester) async {
       final launched = <Uri>[];
-      await pumpDetails(tester, backendWithFood()..cateringDateHeader = evening, launched: launched);
+      await pumpDetails(tester, backendWith(openNow: false), launched: launched);
       await openMenu(tester);
 
       await tester.tap(find.text(Strings.callToOrder));
       await tester.pumpAndSettle();
 
       expect(launched, hasLength(1));
+      expect(launched.single.path, '+94112345678');
     });
 
-    testWidgets('without a Date header the phone clock decides', (tester) async {
-      // The phone clock in this test is 06:30 UTC = 12:00 in Colombo: open.
-      await pumpDetails(tester, backendWithFood()..cateringDateHeader = null);
+    testWidgets('no opening hours (null): the menu and the call button show, no hours line and no closed message, no crash', (tester) async {
+      await pumpDetails(tester, backendWith(openNow: false, openingHours: null));
       await openMenu(tester);
 
+      expect(find.text('Chicken rice'), findsOneWidget);
+      expect(find.text(Strings.callToOrder), findsOneWidget);
+      expect(find.textContaining('Opening hours'), findsNothing);
       expect(find.textContaining('Hotline closed'), findsNothing);
+    });
+
+    testWidgets('an empty hotline: the menu shows, but no call button and no "Mention" line', (tester) async {
+      await pumpDetails(tester, backendWith(hotline: ''));
+      await openMenu(tester);
+
+      expect(find.text('Chicken rice'), findsOneWidget);
+      expect(find.text(Strings.callToOrder), findsNothing);
+      expect(find.textContaining('Mention:'), findsNothing);
     });
 
     testWidgets('shows what to say on the phone: train, arrival time, coach', (tester) async {
@@ -225,11 +293,27 @@ void main() {
 
   group('the provider is down (AC6)', () {
     testWidgets('"Menu unavailable" when the provider says it is not available', (tester) async {
-      await pumpDetails(tester, backendWithFood()..catering = cateringJson(available: false, hotline: null, openingHours: null, menu: []));
+      await pumpDetails(tester, backendWithFood()..catering = cateringJson(available: false, openNow: false, hotline: '', openingHours: null, menu: []));
       await openMenu(tester);
 
       expect(find.text(Strings.menuUnavailable), findsOneWidget);
       expect(find.text(Strings.callToOrder), findsNothing);
+    });
+
+    testWidgets('available:false shows "Menu unavailable" with Try again, and no call button', (tester) async {
+      await pumpDetails(tester, backendWithFood()..catering = cateringJson(available: false, openNow: false, hotline: '', openingHours: null, menu: []));
+      await openMenu(tester);
+
+      expect(find.text(Strings.menuUnavailable), findsOneWidget);
+      expect(find.text(Strings.tryAgain), findsOneWidget);
+      expect(find.text(Strings.callToOrder), findsNothing);
+    });
+
+    testWidgets('"Menu unavailable" for an unknown station (404 NOT_FOUND)', (tester) async {
+      await pumpDetails(tester, backendWithFood()..catering = null);
+      await openMenu(tester);
+
+      expect(find.text(Strings.menuUnavailable), findsOneWidget);
     });
 
     testWidgets('"Menu unavailable" when the request fails', (tester) async {

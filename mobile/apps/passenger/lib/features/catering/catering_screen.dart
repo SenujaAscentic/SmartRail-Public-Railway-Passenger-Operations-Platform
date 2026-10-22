@@ -56,66 +56,106 @@ class _CateringScreenState extends State<CateringScreen> {
     if (!opened) messenger.showSnackBar(const SnackBar(content: Text(Strings.couldNotCall)));
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(Strings.foodAt(widget.stationName))),
+      // "Call to order" and what to say on the phone stay at the bottom, inside the safe area, while the menu scrolls. Only when
+      // the menu is shown and there is a hotline (an empty hotline: no button); the button is enabled whether the hotline is open or not.
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _c,
+        builder: (context, _) => switch (_c.state) {
+          CateringLoaded(:final catering) when catering.hasHotline => _CallBar(
+              hotline: catering.hotline,
+              mention: Strings.mentionOnCall(
+                widget.serviceNumber,
+                widget.stationName,
+                widget.arrival == null ? null : formatTime(widget.arrival!),
+              ),
+              onCall: _call,
+            ),
+          _ => const SizedBox.shrink(),
+        },
+      ),
       body: ListenableBuilder(
         listenable: _c,
         builder: (context, _) => switch (_c.state) {
           CateringLoading() => const Center(child: CircularProgressIndicator()),
           CateringUnavailable() => ErrorState(message: Strings.menuUnavailable, retryLabel: Strings.tryAgain, onRetry: _c.load),
-          CateringLoaded(:final catering, :final now) => _Loaded(
-              catering: catering,
-              now: now,
-              stationName: widget.stationName,
-              serviceNumber: widget.serviceNumber,
-              arrival: widget.arrival,
-              onCall: _call,
-            ),
+          CateringLoaded(:final catering) => _Loaded(catering: catering),
         },
       ),
     );
   }
 }
 
-class _Loaded extends StatelessWidget {
-  const _Loaded({
-    required this.catering,
-    required this.now,
-    required this.stationName,
-    required this.serviceNumber,
-    required this.arrival,
-    required this.onCall,
-  });
+/// The pinned bottom bar: what to mention on the call, and "Call to order".
+class _CallBar extends StatelessWidget {
+  const _CallBar({required this.hotline, required this.mention, required this.onCall});
 
-  final StationCatering catering;
-  final DateTime now;
-  final String stationName;
-  final String serviceNumber;
-  final DateTime? arrival;
+  final String hotline;
+  final String mention;
   final ValueChanged<String> onCall;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 3,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(spaceMd),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // What to say on the phone (US-P8 AC4).
+              Text(mention, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: spaceSm),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => onCall(hotline),
+                  icon: const Icon(Icons.call),
+                  label: const Text(Strings.callToOrder),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The header (a food icon in a circle, the caterer, its opening hours), then the menu.
+class _Loaded extends StatelessWidget {
+  const _Loaded({required this.catering});
+
+  final StationCatering catering;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final hours = catering.openingHours;
-    final hotline = catering.hotline;
-    final closed = hours != null && !hours.isOpenAt(now);
+    // Whether it is open now is the server's `openNow`; no clock in the app. The message needs the hours to say when it opens.
+    final closed = !catering.openNow && hours != null;
 
     return ListView(
       padding: const EdgeInsets.all(spaceMd),
       children: [
-        if (hotline != null) ...[
-          // Enabled even when the hotline is closed: a wrong clock must never block a call.
-          FilledButton.icon(
-            onPressed: () => onCall(hotline),
-            icon: const Icon(Icons.call),
-            label: const Text(Strings.callToOrder),
+        Center(
+          child: ExcludeSemantics(
+            child: CircleAvatar(
+              radius: 44,
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+              child: Icon(Icons.restaurant, size: 48, color: theme.colorScheme.primary),
+            ),
           ),
-          const SizedBox(height: spaceSm),
-          Text(hotline, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge),
-        ],
+        ),
+        const SizedBox(height: spaceMd),
+        Text(Strings.catererName, textAlign: TextAlign.center, style: theme.textTheme.titleLarge),
         if (hours != null) ...[
           const SizedBox(height: spaceXs),
           Text(Strings.openingHours(hours.opens, hours.closes), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
@@ -135,15 +175,6 @@ class _Loaded extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ],
-        if (hotline != null) ...[
-          const SizedBox(height: spaceMd),
-          // What to say on the phone (US-P8 AC4).
-          Text(
-            Strings.mentionOnCall(serviceNumber, stationName, arrival == null ? null : formatTime(arrival!)),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
           ),
         ],
         const SizedBox(height: spaceLg),

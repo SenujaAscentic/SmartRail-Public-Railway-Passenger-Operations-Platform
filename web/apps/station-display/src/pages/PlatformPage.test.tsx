@@ -337,3 +337,32 @@ describe("a train that has not started", () => {
     expect(nextPanel.queryByText("Scheduled")).toBeNull();
   });
 });
+
+describe("a hold (rehearsal #8)", () => {
+  it("the next train held here says Held in its panel (the API kept status OnTime); released, it says On time", async () => {
+    const fake = await openPlatform(({ backend }) => {
+      backend.board = [toKandy(1, { hold: true, status: { kind: "OnTime", delayMinutes: 0 } }), second(), third()];
+    });
+
+    const nextPanel = within(await screen.findByRole("region", { name: "Next" }));
+    expect(nextPanel.getByText("Held")).toBeTruthy();
+    expect(nextPanel.queryByText("On time")).toBeNull();
+
+    fake.backend.board = [toKandy(1), second(), third()];
+    fake.stream.event("JourneyHeld", { released: true }, 1);
+    await settle(1000);
+
+    const after = within(screen.getByRole("region", { name: "Next" }));
+    expect(after.queryByText("Held")).toBeNull();
+    expect(after.getByText("On time")).toBeTruthy();
+  });
+
+  it("a held train in the Then list says Held", async () => {
+    await openPlatform(({ backend }) => {
+      backend.board = [next(), toKandy(2, { time: "2026-10-20T02:00:00Z", expectedTime: "2026-10-20T02:00:00Z", hold: true, status: { kind: "Late", delayMinutes: 4 } }), third()];
+    });
+
+    const then = within(await screen.findByRole("region", { name: "Then" }));
+    expect(then.getByText("Held · 4 min late")).toBeTruthy();
+  });
+});

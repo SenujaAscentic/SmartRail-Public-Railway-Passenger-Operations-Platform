@@ -35,7 +35,7 @@ void main() {
       MockClient((request) async {
         seen = request.url;
         return http.Response(
-          '{"available":true,"hotline":"+94112345678","openingHours":{"opens":"06:00","closes":"20:00"},"menu":[{"name":"Tea","price":80,"available":true}]}',
+          '{"available":true,"openNow":true,"hotline":"+94112345678","openingHours":{"opens":"06:00","closes":"20:00"},"menu":[{"name":"Tea","price":80,"available":true}]}',
           200,
           headers: {'content-type': 'application/json', 'date': 'Tue, 20 Oct 2026 06:30:00 GMT'},
         );

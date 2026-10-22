@@ -77,6 +77,21 @@ class JourneyDetail {
   /// Null unless the controller has set a hold.
   final JourneyHold? hold;
 
+  /// The status to show: Held while a hold is set, else `status`.
+  JourneyStatus get shownStatus => status.shownWithHold(hold);
+
+  /// What to show for [stop]. A cancelled journey has EVERY stop Skipped, and a journey that ends early has every stop after its end
+  /// Skipped (contract 3.3): the journey's own status ("Cancelled", "Terminates at X") says it, so those stops are not shown as "Does
+  /// not stop". A stop skipped on a journey that runs keeps Skipped.
+  StopState shownStopState(JourneyStop stop) {
+    final ownStatusSaysIt = status.kind == StatusKind.cancelled || status.kind == StatusKind.terminatedEarly;
+    return (ownStatusSaysIt && stop.state == StopState.skipped) ? StopState.scheduled : stop.state;
+  }
+
+  /// True when the train will not serve [stop] because the journey is cancelled or ends before it (the stop is Skipped and the
+  /// journey's own status explains it).
+  bool notServedBecauseOfJourney(JourneyStop stop) => stop.state == StopState.skipped && shownStopState(stop) != stop.state;
+
   /// The controller's reason for a delay, cancellation or early end; null when none was given.
   final JourneyReason? reason;
   final int version;

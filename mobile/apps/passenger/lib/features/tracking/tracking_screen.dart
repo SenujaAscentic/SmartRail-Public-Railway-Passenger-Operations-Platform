@@ -182,6 +182,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   /// Waiting: when the train is expected at the boarding station.
   List<Widget> _waiting(JourneyDetail journey, JourneyStop? boarding) {
     if (boarding == null) return const [];
+    // The train will not serve the passenger's station (the journey is cancelled, or ends before it): no "expected" time, only the
+    // journey's own status, "Cancelled" (S-06) or "Terminates at X" (S-07).
+    if (journey.notServedBecauseOfJourney(boarding)) return [_JourneyStatusCard(journey: journey)];
     final times = arrivalTimes(boarding);
     // Before it arrives: expected. At the station: when it arrived. After: when it left.
     final (label, shown, showScheduled) = switch (boarding.state) {
@@ -201,7 +204,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         label: label,
         time: shown ?? times.scheduled,
         scheduled: showScheduled ? times.scheduled : null,
-        status: journey.status,
+        status: journey.shownStatus,
         side: boarding.platform == null ? null : _PlatformBox(platform: boarding.platform!),
       ),
       if (platformChanged) ...[
@@ -220,6 +223,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final reached = destination != null &&
         (destination.state == StopState.arrived || destination.state == StopState.departed || destination.state == StopState.passed);
     final times = destination == null ? null : arrivalTimes(destination);
+    if (destination != null && journey.notServedBecauseOfJourney(destination)) return [_JourneyStatusCard(journey: journey)];
     return [
       if (next != null) _NextStopCard(stop: next),
       if (next != null) const SizedBox(height: spaceMd),
@@ -228,7 +232,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           label: reached ? Strings.arrivedAt(destination.name) : Strings.arrivesAt(destination.name),
           time: times.expected ?? times.scheduled,
           scheduled: reached ? null : times.scheduled,
-          status: journey.status,
+          status: journey.shownStatus,
         ),
     ];
   }
@@ -311,6 +315,27 @@ class _BigTimeCard extends StatelessWidget {
           ),
           if (side != null) ...[const SizedBox(width: spaceSm), side!],
         ],
+      ),
+    );
+  }
+}
+
+/// The journey's own status where a time would be: used when the train will not serve the passenger's station.
+class _JourneyStatusCard extends StatelessWidget {
+  const _JourneyStatusCard({required this.journey});
+
+  final JourneyDetail journey;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(spaceMd),
+      decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(radiusLg)),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: StatusBadge.journey(journey.shownStatus, terminatesAt: journey.terminatesAt?.name),
       ),
     );
   }

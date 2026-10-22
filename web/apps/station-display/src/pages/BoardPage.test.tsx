@@ -175,6 +175,17 @@ describe("what a line says", () => {
     expect(screen.queryByText("Does not stop")).toBeNull();
   });
 
+  // Priority on a line: Cancelled / Terminates > Held > the stop-level states (merge of the hold fix and the cancelled fix, 22 Oct).
+  it("a cancelled train with a hold still set says 'Cancelled', not 'Held'", async () => {
+    await openBoard(({ backend }) => {
+      backend.board = [toKandy(1, { status: { kind: "Cancelled", delayMinutes: null }, stopStatus: "Skipped", hold: true })];
+    });
+
+    expect(await screen.findByText("Cancelled")).toBeTruthy();
+    expect(screen.queryByText(/^Held/)).toBeNull();
+    expect(screen.queryByText("Does not stop")).toBeNull();
+  });
+
   it("a train that ends early says where it terminates, not 'Does not stop', at a stop it will not reach", async () => {
     await openBoard(({ backend }) => {
       backend.board = [toKandy(1, { status: { kind: "TerminatedEarly", delayMinutes: null }, stopStatus: "Skipped" })];
@@ -214,8 +225,9 @@ describe("what a line says", () => {
       backend.board = Array.from({ length: 14 }, (_, i) => toKandy(i + 1, { time: `2026-10-20T0${2 + Math.floor(i / 6)}:${String((i % 6) * 10).padStart(2, "0")}:00Z` }));
     });
 
-    await screen.findByText("Departures");
-    expect(screen.getAllByRole("listitem")).toHaveLength(10);
+    // Wait for the lines themselves: the heading "Departures" is on the page before any data has arrived (this test used to pass
+    // only by timing, and failed every time when run alone).
+    expect(await screen.findAllByRole("listitem")).toHaveLength(10);
   });
 });
 
@@ -423,5 +435,40 @@ describe("a train that has not started (rehearsal #3)", () => {
 
     expect(await screen.findByText("Not started")).toBeTruthy();
     expect(screen.queryByText("Expected")).toBeNull();
+  });
+});
+
+describe("a hold (rehearsal #8)", () => {
+  // The backend sends a hold as the flag `hold` and keeps the status kind (D-4): the board must still say Held.
+  it("a train held here says Held (S-21), not 'On time', whatever status kind the API sent", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "OnTime", delayMinutes: 0 } })]));
+
+    expect(await screen.findByText("Held")).toBeTruthy();
+    expect(screen.queryByText("On time")).toBeNull();
+  });
+
+  it("a held late train says 'Held · 8 min late' (S-08): the delay the API sent, nothing added", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "Late", delayMinutes: 8 } })]));
+
+    expect(await screen.findByText("Held · 8 min late")).toBeTruthy();
+  });
+
+  it("released (hold false): the Held badge is gone and the status is the API's", async () => {
+    const fake = await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true })]));
+    expect(await screen.findByText("Held")).toBeTruthy();
+
+    fake.backend.board = [toKandy(1, { hold: false })];
+    fake.stream.event("JourneyHeld", { released: true }, 1);
+    await settle(1000);
+
+    expect(screen.queryByText("Held")).toBeNull();
+    expect(screen.getByText("On time")).toBeTruthy();
+  });
+
+  it("a cancelled train keeps 'Cancelled' even with a hold flag", async () => {
+    await openBoard(({ backend }) => (backend.board = [toKandy(1, { hold: true, status: { kind: "Cancelled", delayMinutes: null } })]));
+
+    expect(await screen.findByText("Cancelled")).toBeTruthy();
+    expect(screen.queryByText("Held")).toBeNull();
   });
 });

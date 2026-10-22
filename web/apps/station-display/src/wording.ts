@@ -134,24 +134,36 @@ export interface RowStatus {
 
 export const OFFLINE_STATUS_TEXT = "Scheduled";
 
+// The status to SHOW for a line: while the train is held here (`hold` is true on the row) it is the Held status of the fixtures (S-21
+// "Held", S-08 "Held · 3 min late"), with the delay the API sent. The backend sends a hold as a flag and keeps the status kind (D-4), so
+// the line would otherwise say "On time". A cancelled, ended-early or completed train keeps its own status. Nothing is calculated.
+export function shownStatus(row: BoardRow): JourneyStatus {
+  if (!row.hold) return row.status;
+  const own = row.status.kind;
+  if (own === "Cancelled" || own === "TerminatedEarly" || own === "Completed") return row.status;
+  return { kind: "Held", delayMinutes: row.status.delayMinutes };
+}
+
 // The status of a line. [offline] means there has been no contact for 2 minutes: then nothing live is known, so the line says
 // "Scheduled" and never "On time" (US-D4, and the star rule of US-P4: no false "On time").
 export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
   if (offline) return { text: OFFLINE_STATUS_TEXT, style: STYLES.scheduled, expected: null, extra: null };
 
-  const kind = row.status.kind;
+  const shown = shownStatus(row);
+  const kind = shown.kind;
 
-  // The backend marks every stop of a cancelled or early-ended journey Skipped. The journey's own status is what a passenger must read
-  // (S-06, S-07), so it wins; "Does not stop" (S-12) is for one skipped stop of a train that otherwise runs.
+  // Priority: the journey's own Cancelled / Terminates (S-06, S-07) > Held (S-21, S-08) > the stop-level states. The backend marks every
+  // stop of a cancelled or early-ended journey Skipped, so the journey status must win over "Does not stop" (S-12), which is for one
+  // skipped stop of a train that otherwise runs. (shownStatus already keeps a cancelled train's own status over a hold flag.)
   const journeyEnded = kind === "Cancelled" || kind === "TerminatedEarly";
-  const skipped = row.stopStatus === "Skipped" && !journeyEnded;
+  const skipped = row.stopStatus === "Skipped" && !journeyEnded && kind !== "Held";
   const extra = row.stopStatus === "Added" ? stopStatusText("Added") : null;
   if (skipped) return { text: "Does not stop", style: STYLES.cancelled, expected: null, extra };
 
   const runs = kind !== "Cancelled" && kind !== "TerminatedEarly" && kind !== "NotStarted";
   const expectedDiffers = runs && row.expectedTime !== null && formatTime(row.expectedTime) !== formatTime(row.time);
   return {
-    text: statusText(row.status, row.destination.name),
+    text: statusText(shown, row.destination.name),
     style: styleForKind(kind),
     expected: expectedDiffers ? formatTime(row.expectedTime) : null,
     extra,
