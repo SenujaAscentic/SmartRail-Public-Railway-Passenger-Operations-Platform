@@ -177,6 +177,6 @@ public class TrackingRefreshTests(ApiFixture api) : IAsyncLifetime
         Assert.Equal(22, delay);   // the good journey was refreshed although the broken one failed in the same round
         var errors = log.Messages.Where(m => m.Level == LogLevel.Error).Select(m => m.Message).ToList();
         Assert.Contains(errors, m => m.Contains(broken.ToString()) && m.Contains("InvalidOperationException"));
-        Assert.All(errors, m => Assert.DoesNotMatch(@"@|\+?\d[\d ]{8,}|token|password", m));   // ids and the error type only
+        Assert.All(errors, m => Assert.DoesNotMatch(@"@|\+?\d[\d ]{8,}|token|password", m.Replace(broken.ToString(), "<journey id>")));   // the id and the error type only (a GUID can hold a long run of digits, so it is taken out first)
     }
 }

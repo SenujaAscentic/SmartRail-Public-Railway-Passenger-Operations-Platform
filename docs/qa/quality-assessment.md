@@ -1,6 +1,6 @@
 # SmartRail – Quality assessment (21 Oct 2026)
 
-Facts only. Sources: [test-inventory.md](test-inventory.md) (20 Oct), [strategy.md](strategy.md) §5 (E2E run of 21 Oct, `docs/qa/evidence/`), the commits named below. **`docs/qa/defect-log.md` does not exist** (strategy §8 promises it); the defect table below is rebuilt from commits, so the severities are mine, using the scale in strategy §8.
+Facts only. Sources: [test-inventory.md](test-inventory.md) (20 Oct, counts refreshed 22 Oct), [strategy.md](strategy.md) §5 (E2E run, `docs/qa/evidence/`), and [defect-log.md](defect-log.md) (started 19 Oct, last updated 20 Oct) for the defects; fixes made after the log was last updated are listed separately in §4. Frozen 22 Oct 2026 at commit `fc5fc35` plus the commit that adds this update.
 
 ## 1. Success measures (moscow.md)
 
@@ -14,18 +14,18 @@ Facts only. Sources: [test-inventory.md](test-inventory.md) (20 Oct), [strategy.
 
 All E2E times are real wall-clock milliseconds on one machine (the demo clock ran 5× faster), so they are lower than over a network.
 
-## 2. Tests
+## 2. Tests (run 22 Oct, after merging develop)
 
-| Level | Tests | Result (last run) |
+| Level | Tests | Result |
 |---|---|---|
 | Unit (domain rules and slice logic) | 529 | pass |
 | Integration (Testcontainers, PostgreSQL) | 520 (incl. 19 security tests, the permission matrix 151 rows) | pass |
 | Architecture | 4 | pass |
 | Provider service (RailBites) | 11 | pass |
-| Web: ops-web 207, station-display 152, packages 27 | 386 | pass (station-display flaked under load on 20 Oct, see §4) |
-| Flutter: core 325, passenger 196 | 521 | pass (run locally) |
-| **E2E (Playwright, 5 flows)** | 5 | pass, 12.5 min |
-| **Total** | **1 976** | none skipped or ignored |
+| Web: ops-web 207, station-display 163, packages 27 | 397 | pass |
+| Flutter: core 337, passenger 218 | 555 | pass (run locally) |
+| **E2E (Playwright, 5 flows)** | 5 | pass, 12.4 min |
+| **Total** | **2 021** | none skipped or ignored |
 
 No `Contract` project (removed, empty); contract tests live in each app (openapi, 66 event-example tests, status fixtures in three apps). No accessibility (axe), mutation or load tests. Approved test names (domain model §10): 72 of 78 present; the 6 missing belong to deferred features (unscheduled-stop alerts, announcements, push).
 
@@ -33,19 +33,27 @@ No `Contract` project (removed, empty); contract tests live in each app (openapi
 
 Covered: **US-P4.1** (rule, wording, timer), **US-O3.1** (source and age), **US-O5.5** (under-5-minute warning, hold, wording; also flow 4). Partly: **US-O4.5** (measured on the stream and two displays, not the apps), **US-F2.1** (ETA, cancel, terminate; skipped and added stops are not sent). Deferred, still marked ★: **US-P7.2** (push), **US-C3.1** (glance view): no code, no test.
 
-## 4. Defects (by severity, strategy §8)
+## 4. Defects (from defect-log.md; severity High / Medium / Low as in the log)
+
+Totals in the log: 16 defects (#1 to #16) and 1 process finding (P-1). Status as the log states it, with what changed since in brackets.
+
+| Sev. | Defects | Status |
+|---|---|---|
+| **High** | **#6** dialog selects closed on live updates (`51946fa`); **#8** a hold hidden behind "On time" in the app (`82ce634`) | Fixed |
+| **High** | **#12** false "On time" on a Lost train (SM-2) | **Open, cause not proven.** R-23 holds while Lost (regression tests `408d769`). Since the log: a real defect found in the refresh round, where one journey that throws stops every train's refresh (`688c66b`, fixed, test first); it is the best candidate, not a confirmed cause |
+| **High** (process) | **P-1** CI red for 8 hours while merges continued | Process fix agreed: no merge into develop while CI is red |
+| Medium | #1, #2 (demo script), #3 ("Expected" for an unstarted train), #4 (runbook: wrong driver and cab for 2001), #5a (simulator ignores holds, `de736ef`), #7 (board row heights), #9 (status wording drift, `b8b76dd`), #11 (webhook retries stopped after 15 min, `bebac61`), #13 (live page needed a line id, `a6ce91a`), #14 (gap beside the board on a wide screen), #16 (no list of unstarted trains, `816414f`) | Fixed |
+| Medium | **#15** no train marker on the line view | Open in the log. Since the log: a pin on the line is built (`8fb7d99`, on this branch); Vitest checks it, it has not been looked at in a browser |
+| Low | **#10** "Last passed" ignores a skipped stop the train ran through | Backend fixed (`5872d3d`); **the passenger app does not use it yet**, no event announces it (open) |
+
+**Found after the log was last updated (not in it yet):**
 
 | Sev. | Defect | Status |
 |---|---|---|
-| **S1** | One journey whose tracking refresh threw stopped the refresh of **every** train (no delay growth, a possible false "On time"); found by a test, `688c66b` | **Fixed**, test first |
-| **S1** | The station board said "Does not stop" for a **cancelled** train (every stop of a cancelled journey is Skipped); found by E2E flow 3, **`60032a6`** | **Fixed**, test first (also "Terminates at" for early-ended trains) |
-| S1 | Rehearsal "On time" for 2001 with tracking Lost (SM-2) | **Open, cause not proven.** R-23 itself holds while Lost (tests); the refresh-isolation defect above is the best candidate |
-| S2 | Native selects in the decision dialogs closed by themselves on live trains (focus stolen on every stream event), `51946fa` | Fixed |
-| S2 | CI red: ops-web status wording differed from `status-fixtures.json`, `b8b76dd` | Fixed |
-| S2 | station-display tests `shows at most 10 departures` and `offline after 2 minutes` failed in seven runs on a busy machine; passed in the later full run (152) | **Open**, flaky under load, cause not found |
-| S3 | US-F2.1: skipped and added stops are not sent to the provider | Open (StopSkipped webhook cut; add-stop deferred) |
-| S3 | A skipped stop the train runs through gets its pass time (`5872d3d`), but the passenger app does not count it in "Last passed" and no event announces it | Open (code guide point 55; app change or event) |
-| S4 | CLAUDE.md still lists a `Contract` test folder; strategy and delivery plan text were behind (fixed in strategy) | Logged |
+| High | The station board said "Does not stop" for a **cancelled** train (every stop of a cancelled journey is Skipped); found by E2E flow 3, `60032a6` | Fixed, test first. The passenger app had the same wording problem: fixed by `94ab0e4` (on develop). Merged with the hold rule on 22 Oct (`fc5fc35`): Cancelled / Terminates > Held > stop-level states, with a test for a cancelled journey whose hold is still set |
+| Medium | station-display tests (`shows at most 10 departures`, `offline after 2 minutes`) failed in seven runs on a busy machine; the test passed only by timing | Fixed by `7a63403` (on develop); the 163 tests passed in the 22 Oct run |
+| Low | My own test for the refresh isolation failed once because a random GUID holds a long run of digits and my pattern read it as a phone number | Fixed (the id is removed before the pattern is applied) |
+| Medium | US-F2.1: skipped and added stops are not sent to the provider | Open (StopSkipped webhook cut; add-stop deferred) |
 
 ## 5. Security controls and their tests
 
@@ -73,4 +81,4 @@ No rate limits or stream connection limits (T-10); no Content-Security-Policy (T
 4. E2E and Flutter jobs in CI; a deliberate failing check of the vulnerability grep.
 5. Rate limits, a CSP header test, audit-table rights, display-token rows in the permission matrix (when the credential exists).
 6. A shared example and parse test for the provider webhook bodies; the catering endpoint example.
-7. axe scans on the ops web and the displays; mutation testing on the domain core; the station-display flake.
+7. axe scans on the ops web and the displays; mutation testing on the domain core; a look at the line view pin in a real browser; the open defects #12, #10 and the US-F2.1 gap.
