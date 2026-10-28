@@ -1,0 +1,18 @@
+{
+  "flow": "n2",
+  "recordedAt": "2026-10-28T13:26:52.567Z",
+  "train": "1002",
+  "surfacesScanned": [
+    "journey",
+    "search",
+    "boardPolgahawela",
+    "boardKandy",
+    "arrivalsPolgahawela",
+    "stream",
+    "stationDisplay"
+  ],
+  "needles": 17,
+  "streamMessages": 2,
+  "stackStartupMs": 22516,
+  "clockSpeed": 5
+}
