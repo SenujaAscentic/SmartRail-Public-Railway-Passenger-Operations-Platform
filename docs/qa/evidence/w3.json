@@ -1,0 +1,11 @@
+{
+  "flow": "w3",
+  "recordedAt": "2026-10-28T11:37:33.242Z",
+  "train": "2002",
+  "w3_cancelToBoardMs": 890,
+  "w3_reinstateToBoardMs": 872,
+  "sm3_limitMs": 5000,
+  "auditRows": 2,
+  "stackStartupMs": 14042,
+  "clockSpeed": 5
+}
