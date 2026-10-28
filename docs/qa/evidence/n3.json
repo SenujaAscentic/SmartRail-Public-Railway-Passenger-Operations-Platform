@@ -1,0 +1,11 @@
+{
+  "flow": "n3",
+  "recordedAt": "2026-10-28T13:27:57.135Z",
+  "train": "2002",
+  "versionStale": 0,
+  "versionAfterA": 1,
+  "delayShown": 8,
+  "auditDecisions": 1,
+  "stackStartupMs": 26357,
+  "clockSpeed": 5
+}
