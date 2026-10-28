@@ -116,7 +116,8 @@ export function startRailBites(catering: { secret: string; key: string }, clockS
   return start("railbites", "dotnet", [join(project, "bin", "Debug", "net10.0", "RailBites.dll")], project, railBitesEnv(catering, clockStart));
 }
 
-export async function startStack(): Promise<Stack> {
+// `clockStart` lets a flow choose its own demo-clock start (the default is the start the five original flows share).
+export async function startStack(clockStart: string = clock.start): Promise<Stack> {
   const demoPassword = `E2e-${secret(8)}`;
   const jwtKey = secret(32);
   const catering = { secret: secret(), key: secret() };
@@ -142,7 +143,7 @@ export async function startStack(): Promise<Stack> {
   await new Promise((r) => setTimeout(r, 2000)); // pg_isready answers a moment before the init restart is over
 
   // 3. the API on the demo clock, then RailBites on the same clock (joined from the API's own clock)
-  const api = start("api", "dotnet", [dll("SmartRail.Api", "SmartRail.Api")], join(repo, "backend", "src", "SmartRail.Api"), apiEnv({ cabSecrets, demoPassword, jwtKey, catering }, clock.start));
+  const api = start("api", "dotnet", [dll("SmartRail.Api", "SmartRail.Api")], join(repo, "backend", "src", "SmartRail.Api"), apiEnv({ cabSecrets, demoPassword, jwtKey, catering }, clockStart));
   const apiUrl = `http://localhost:${ports.api}`;
   await waitFor("the API", answers(`${apiUrl}/api/v1/lines`), 180);
 

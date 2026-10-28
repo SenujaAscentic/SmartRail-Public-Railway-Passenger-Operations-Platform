@@ -1,0 +1,12 @@
+{
+  "flow": "w1",
+  "recordedAt": "2026-10-28T11:34:12.891Z",
+  "train": "1002",
+  "station": "Polgahawela",
+  "delayMinutes": 8,
+  "w1_clickToBoardMs": 957,
+  "w1_clickToPlatformDisplayMs": 958,
+  "sm3_limitMs": 5000,
+  "stackStartupMs": 29934,
+  "clockSpeed": 5
+}
