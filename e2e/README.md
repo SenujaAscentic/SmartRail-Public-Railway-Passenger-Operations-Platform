@@ -13,7 +13,7 @@ Three happy-path flows for the ops web and the station displays, written to the 
 | File | Flow | Demo clock start |
 |---|---|---|
 | `w1-delay-to-boards.spec.ts` | the controller delays 1002 by 8 minutes with a reason; the board and the platform display say "8 min late" | 09:30 |
-| `w2-platform-change-then-hold.spec.ts` | a platform change under 5 minutes' notice, then a hold; "will wait" appears only with the hold | 06:20 |
+| `w2-platform-change-then-hold.spec.ts` | a platform change under 5 minutes' notice, then a hold; "will wait" appears only with the hold | 06:24, 2x speed (it waits for 4 minutes before the departure, whatever the start) |
 | `w3-cancel-then-reinstate.spec.ts` | the controller cancels 2002 and reinstates it; the board follows; the audit log has both rows | 09:50 |
 
 Each file starts its **own** stack on its **own** demo-clock start (`support/own-stack.ts`) and removes it at the end, so each runs alone and none depends on another. They use `playwright.web.config.ts`, not the global stack of the five original flows:

@@ -4,7 +4,7 @@ import { useOwnStack } from "../support/own-stack.ts";
 
 // W2: a platform change with less than 5 minutes of notice, then a hold. Nothing promises that the train waits until the hold is real.
 //
-// Given  the demo clock is about 06:23 on Wed 21 Oct; train 1001 (Colombo Fort to Kandy, 06:30 from Platform 5) has not started;
+// Given  the demo clock runs at 2x on Wed 21 Oct, a few minutes before 06:30; train 1001 (Colombo Fort to Kandy, 06:30 from Platform 5) has not started;
 //        the platform displays of Platform 5 (old) and of another in-service platform (new) are open
 // When   the controller changes the platform with under 5 minutes of notice (R-11), WITHOUT a hold
 // Then   the old display says "Train 1001 to Kandy now departs from Platform N" with "Now departing from Platform N" (US-D2 AC3, S-20),
@@ -13,9 +13,10 @@ import { useOwnStack } from "../support/own-stack.ts";
 // Then   the new display says "The train will wait for passengers at Platform N" (S-19)
 // Latencies (click to text visible) go to docs/qa/evidence/w2.json. SM-3 limit: 5 s.
 
-// The window for "under 5 minutes" is 06:25 to 06:30 on the demo clock (5 real minutes at speed 5 is 1 real minute); the stack takes about
-// 30 real seconds (= 2.5 demo minutes) to come up, so a start at 06:20 gets the test to the window after about 30 real seconds.
-const startupMs = useOwnStack("2026-10-21T06:20:00+05:30");
+// The window for "under 5 minutes" is 06:25 to 06:30 on the demo clock, which is 2.5 real minutes at speed 2. The test does not rely on the
+// start: it reads the train's expected departure from the API and waits until the demo clock is 4 minutes before it. The start 06:24 only keeps
+// that wait short (about 40 real seconds); the stack may take up to about 2.5 real minutes to come up and the test still finds the window.
+const startupMs = useOwnStack("2026-10-21T06:24:00+05:30", 2);
 
 test("W2: a platform change under 5 minutes, then a hold: 'will wait' appears only with the hold", async ({ page, context }) => {
   const s = stack();
@@ -38,14 +39,15 @@ test("W2: a platform change under 5 minutes, then a hold: 'will wait' appears on
   await expect(newDisplay.getByLabel(`Platform ${newPlatform}`)).toBeVisible();
   await page.bringToFront();
 
-  // Wait (on the API's demo clock, no fixed sleep) until the train is less than 4.5 minutes from leaving; fail clearly if the window has gone.
+  // Read the expected departure from the API (1001 starts here, so R-11 measures from its departure, there is no arrival) and wait, on the
+  // API's demo clock and without a fixed sleep, until the train is 4 minutes from leaving; fail clearly if the window has gone.
   const expectedDeparture = Date.parse(before.stops[0].expectedDeparture);
   const leadSeconds = async () => (expectedDeparture - (await serverNow()).getTime()) / 1000;
-  await until("the lead time to drop under 4.5 minutes", async () => {
+  await until("the demo clock to be 4 minutes before the departure", async () => {
     const lead = await leadSeconds();
     if (lead < 30) throw new Error(`The window has passed: ${Math.round(lead)} s left on the demo clock. Start the demo clock earlier in this file.`);
-    return lead < 270 ? true : undefined;
-  }, 240, 1000);
+    return lead <= 240 ? true : undefined;
+  }, 280, 1000);
 
   // The controller opens the platform dialog and picks the new platform; it warns (Late, under 5 min) and recommends a hold, but does not force one.
   await page.getByRole("button", { name: "Change platform", exact: true }).click();

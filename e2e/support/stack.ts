@@ -75,7 +75,7 @@ export function killTree(pid: number) {
 
 const dll = (project: string, name: string) => join(repo, "backend", "src", project, "bin", "Debug", "net10.0", `${name}.dll`);
 
-function apiEnv(s: { cabSecrets: Record<string, string>; demoPassword: string; jwtKey: string; catering: { secret: string; key: string } }, clockStart: string) {
+function apiEnv(s: { cabSecrets: Record<string, string>; demoPassword: string; jwtKey: string; catering: { secret: string; key: string } }, clockStart: string, clockSpeed: number) {
   const env: Record<string, string> = {
     ASPNETCORE_ENVIRONMENT: "Development",
     ASPNETCORE_URLS: `http://localhost:${ports.api}`,
@@ -86,13 +86,13 @@ function apiEnv(s: { cabSecrets: Record<string, string>; demoPassword: string; j
     Catering__SharedSecret: s.catering.secret,
     Catering__ProviderApiKey: s.catering.key,
     Clock__Start: clockStart,
-    Clock__Speed: String(clock.speed),
+    Clock__Speed: String(clockSpeed),
   };
   for (const [id, value] of Object.entries(s.cabSecrets)) env[`Seed__CabDevice__${id}__Token`] = value;
   return env;
 }
 
-export function railBitesEnv(catering: { secret: string; key: string }, clockStart: string) {
+export function railBitesEnv(catering: { secret: string; key: string }, clockStart: string, clockSpeed: number = clock.speed) {
   return {
     ASPNETCORE_ENVIRONMENT: "Development",
     ASPNETCORE_URLS: `http://localhost:${ports.railBites}`,
@@ -100,7 +100,7 @@ export function railBitesEnv(catering: { secret: string; key: string }, clockSta
     RailBites__SharedSecret: catering.secret,
     RailBites__ApiKey: catering.key,
     Clock__Start: clockStart,
-    Clock__Speed: String(clock.speed),
+    Clock__Speed: String(clockSpeed),
   };
 }
 
@@ -111,13 +111,13 @@ export async function apiClockNow(api: string): Promise<string> {
 }
 
 // Starts RailBites (also used by a flow that stops it and brings it back). It keeps its database, so what it received stays.
-export function startRailBites(catering: { secret: string; key: string }, clockStart: string) {
+export function startRailBites(catering: { secret: string; key: string }, clockStart: string, clockSpeed: number = clock.speed) {
   const project = join(repo, "provider", "RailBites");
-  return start("railbites", "dotnet", [join(project, "bin", "Debug", "net10.0", "RailBites.dll")], project, railBitesEnv(catering, clockStart));
+  return start("railbites", "dotnet", [join(project, "bin", "Debug", "net10.0", "RailBites.dll")], project, railBitesEnv(catering, clockStart, clockSpeed));
 }
 
-// `clockStart` lets a flow choose its own demo-clock start (the default is the start the five original flows share).
-export async function startStack(clockStart: string = clock.start): Promise<Stack> {
+// `clockStart` and `clockSpeed` let a flow choose its own demo clock (the defaults are the clock the five original flows share).
+export async function startStack(clockStart: string = clock.start, clockSpeed: number = clock.speed): Promise<Stack> {
   const demoPassword = `E2e-${secret(8)}`;
   const jwtKey = secret(32);
   const catering = { secret: secret(), key: secret() };
@@ -143,11 +143,11 @@ export async function startStack(clockStart: string = clock.start): Promise<Stac
   await new Promise((r) => setTimeout(r, 2000)); // pg_isready answers a moment before the init restart is over
 
   // 3. the API on the demo clock, then RailBites on the same clock (joined from the API's own clock)
-  const api = start("api", "dotnet", [dll("SmartRail.Api", "SmartRail.Api")], join(repo, "backend", "src", "SmartRail.Api"), apiEnv({ cabSecrets, demoPassword, jwtKey, catering }, clockStart));
+  const api = start("api", "dotnet", [dll("SmartRail.Api", "SmartRail.Api")], join(repo, "backend", "src", "SmartRail.Api"), apiEnv({ cabSecrets, demoPassword, jwtKey, catering }, clockStart, clockSpeed));
   const apiUrl = `http://localhost:${ports.api}`;
   await waitFor("the API", answers(`${apiUrl}/api/v1/lines`), 180);
 
-  const railBites = startRailBites(catering, await apiClockNow(apiUrl));
+  const railBites = startRailBites(catering, await apiClockNow(apiUrl), clockSpeed);
   const railBitesUrl = `http://localhost:${ports.railBites}`;
   await waitFor("RailBites", answers(`${railBitesUrl}/events`), 120);
 
@@ -166,7 +166,7 @@ export async function startStack(clockStart: string = clock.start): Promise<Stac
     demoPassword,
     cabSecrets,
     pids: { api: api.pid!, railBites: railBites.pid!, ops: ops.pid!, display: display.pid! },
-    clockSpeed: clock.speed,
+    clockSpeed,
   };
   mkdirSync(dirname(stateFile), { recursive: true });
   writeFileSync(stateFile, JSON.stringify({ ...stack, catering }, null, 2));
