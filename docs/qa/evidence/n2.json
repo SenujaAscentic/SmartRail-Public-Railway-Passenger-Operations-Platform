@@ -1,6 +1,6 @@
 {
   "flow": "n2",
-  "recordedAt": "2026-10-28T13:26:52.567Z",
+  "recordedAt": "2026-10-28T13:41:33.699Z",
   "train": "1002",
   "surfacesScanned": [
     "journey",
@@ -13,6 +13,6 @@
   ],
   "needles": 17,
   "streamMessages": 2,
-  "stackStartupMs": 22516,
+  "stackStartupMs": 34220,
   "clockSpeed": 5
 }

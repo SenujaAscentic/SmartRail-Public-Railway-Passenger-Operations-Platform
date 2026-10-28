@@ -1,11 +1,11 @@
 {
   "flow": "n1",
-  "recordedAt": "2026-10-28T13:20:28.956Z",
+  "recordedAt": "2026-10-28T13:40:46.916Z",
   "train": "2002",
   "managerStatus": 403,
   "versionBefore": 0,
   "versionAfter": 0,
   "auditRows": 0,
-  "stackStartupMs": 24223,
+  "stackStartupMs": 34305,
   "clockSpeed": 5
 }
