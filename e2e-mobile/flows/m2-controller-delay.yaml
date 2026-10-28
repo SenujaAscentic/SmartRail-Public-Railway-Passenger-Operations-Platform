@@ -1,0 +1,18 @@
+# M2: the controller delays 1001 by 5 minutes through the test API; the open tracking screen shows "5 min late" and the reason.
+# Continues on the tracking screen that M1 left open. Needs the flow env API and CONTROLLER_PASSWORD.
+appId: lk.smartrail.smartrail_passenger
+---
+- runScript: ../scripts/controller-login.js
+- assertVisible: "(?s).*Expected at Gampaha.*On time.*"
+- takeScreenshot: m2-01-before-delay
+- runScript: ../scripts/delay-apply.js
+- extendedWaitUntil:
+    visible: "(?s).*Expected at Gampaha.*5 min late.*"
+    timeout: 60000
+- runScript: ../scripts/mark-delay-seen.js
+# The measured time (API call to text visible, ms) is part of the file name, because Maestro prints no script output.
+- takeScreenshot: m2-02-5-min-late-after-${output.delayLatencyMs}ms
+- extendedWaitUntil:
+    visible: "(?s).*Signal failure.*Signal fault near Ragama.*"
+    timeout: 10000
+- takeScreenshot: m2-03-reason

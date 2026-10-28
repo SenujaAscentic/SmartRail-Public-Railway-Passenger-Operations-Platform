@@ -1,0 +1,45 @@
+# M1: search Gampaha -> Kandy, 1001 is listed with its time, platform and status; open it; Track this train: line diagram,
+# platform and "Updated N s ago". Needs the stack and the simulator for 1001 running (see README).
+appId: lk.smartrail.smartrail_passenger
+---
+- launchApp:
+    clearState: true
+- tapOn: From
+- inputText: Gampaha
+- extendedWaitUntil:
+    visible: Gampaha
+    timeout: 15000
+# The suggestion is tapped by position: the keyboard's own suggestion strip also says "Gampaha", so the text would be ambiguous.
+- tapOn:
+    point: 50%,23%
+- tapOn: To
+- inputText: Kandy
+- extendedWaitUntil:
+    visible: Kandy
+    timeout: 15000
+- tapOn:
+    point: 50%,29%
+- hideKeyboard
+- takeScreenshot: m1-01-search-form
+- tapOn: Search
+# The result card is one element whose text is "07:12 -> 09:15 / status / 1001 Kandy Express / Platform 1".
+- extendedWaitUntil:
+    visible: "(?s).*07:12.*(Not started|On time).*1001 Kandy Express.*Platform 1.*"
+    timeout: 20000
+- takeScreenshot: m1-02-1001-listed
+
+- tapOn: "(?s).*1001 Kandy Express.*"
+- extendedWaitUntil:
+    visible: Track this train
+    timeout: 20000
+- takeScreenshot: m1-03-details
+- tapOn: Track this train
+- extendedWaitUntil:
+    visible: Where the train is
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "Updated .* ago"
+    timeout: 120000
+# The status card is one element: "Expected at Gampaha / 07:10 / status / Platform / 1".
+- assertVisible: "(?s).*Expected at Gampaha.*Platform.*1.*"
+- takeScreenshot: m1-04-tracking
