@@ -52,6 +52,21 @@ describe("the journey page", () => {
     expect(screen.queryByRole("button", { name: "Change platform" })).toBeNull();
   });
 
+  it("tells the controller under every note field that the note is visible to passengers (K-19)", async () => {
+    const backend = backendFor();
+    renderApp(backend.services, `/journeys/${ID}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delay" }, { timeout: 3000 }));
+    expect(screen.getByLabelText(/^Note/).getAttribute("aria-describedby")).toBe("delay-note-warning");
+    expect(screen.getByText("Visible to passengers – no names or personal details")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Cancel journey" }));
+    const dialog = await screen.findByRole("dialog", { name: "Cancel this journey?" });
+    expect(within(dialog).getByText("Visible to passengers – no names or personal details")).toBeTruthy();
+  });
+
   it("shows who changed the journey first when a decision is refused with 409, and reloads it on request", async () => {
     const backend = backendFor();
     backend.routes[`POST ${BASE}/delay`] = () =>

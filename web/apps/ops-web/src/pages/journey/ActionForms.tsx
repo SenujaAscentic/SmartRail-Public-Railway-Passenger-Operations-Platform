@@ -29,6 +29,10 @@ export const REASONS: [code: string, label: string][] = [
 
 export const MAX_NOTE = 300;
 
+// A note is part of the public reason (contract section 5: `reason {code, note}` reaches the board, the journey and the stream), so the
+// person typing it is told so (K-19). Wording only: nothing is checked or blocked.
+export const NOTE_WARNING = "Visible to passengers – no names or personal details";
+
 export function Field({ id, label, error, children }: { id: string; label: string; error?: string[] | undefined; children: ReactNode }) {
   return (
     <div className="field">
@@ -54,7 +58,8 @@ function ReasonFields({ idPrefix, code, setCode, note, setNote, errors, optional
         </select>
       </Field>
       <Field id={`${idPrefix}-note`} label={`Note (optional, plain text, at most ${MAX_NOTE} characters)`} error={errors.note}>
-        <input id={`${idPrefix}-note`} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} />
+        <input id={`${idPrefix}-note`} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} aria-describedby={`${idPrefix}-note-warning`} />
+        <p className="hint" id={`${idPrefix}-note-warning`}>{NOTE_WARNING}</p>
       </Field>
     </>
   );

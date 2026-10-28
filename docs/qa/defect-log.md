@@ -32,6 +32,12 @@ Status: **Fixed** (with the commit), **In progress** (someone is on it, not merg
 | #15 | 20 Oct, ops web line view | No train marker on the line view | Medium | **Open**: no fix on develop or on `feature/ops-web` at the time of writing; the ops web side is to confirm the cause (an earlier fix (code guide, ops web section) only moved markers that were already drawn) | Not yet verified. Retest: with a running simulated train, a marker must show on the line view |
 | #16 | 20 Oct, ops web dashboard | No list of unstarted trains in the ops web (reported 20 Oct; the cause is B's to confirm) | Medium | Fixed, `816414f` (on `feature/ops-web`, not yet on develop): "Today's trains", every journey of the day, started or not, each opens its journey page. **To be confirmed by B / the ops web side** that this is the list that was asked for | `DashboardPage.test.tsx` (changed in the commit); retest by Senuja |
 
+## Findings of 28 Oct 2026
+
+| ID | Found | Description | Severity | Status | Verified by |
+|---|---|---|---|---|---|
+| K-19 | 28 Oct, review of the e2e privacy flow (risk K-19) | Decision notes are public. The note of a delay, hold, cancel or terminate is part of the public reason `{code, note}` (contract section 5, board row and journey summary; `JourneyReasonResponse` in the public journey and board responses; the public events carry it, domain model 8.2), so staff could publish personal data (a name) in free text | Medium (risk score 6) | **Mitigated by a warning**: every note field in the ops web decision dialogs says "Visible to passengers – no names or personal details" (wording only, nothing is checked or blocked). **Next step, not built:** staff-only notes (a separate internal note that no public surface carries), which needs a contract and event change | `JourneyPage.test.tsx` "tells the controller under every note field that the note is visible to passengers (K-19)"; the e2e flow N2 asserts the warning in the dialog |
+
 ## Process findings
 
 | ID | Found | Finding | Severity | Status |
