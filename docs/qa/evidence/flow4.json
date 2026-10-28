@@ -1,0 +1,12 @@
+{
+  "flow": "flow4",
+  "recordedAt": "2026-10-22T03:44:21.792Z",
+  "clockAtChange": "06:26",
+  "leadTimeMinutes": 3,
+  "sm3_confirmToNewPlatformDisplayMs": 892,
+  "sm3_confirmToOldPlatformDisplayMs": 897,
+  "sm3_limitMs": 5000,
+  "holdReleased": true,
+  "platformChange": "5 -> 1",
+  "clockSpeed": 5
+}

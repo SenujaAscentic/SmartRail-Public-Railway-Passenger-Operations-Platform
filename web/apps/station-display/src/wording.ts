@@ -149,12 +149,17 @@ export function shownStatus(row: BoardRow): JourneyStatus {
 export function rowStatus(row: BoardRow, offline: boolean): RowStatus {
   if (offline) return { text: OFFLINE_STATUS_TEXT, style: STYLES.scheduled, expected: null, extra: null };
 
-  const skipped = row.stopStatus === "Skipped";
+  const shown = shownStatus(row);
+  const kind = shown.kind;
+
+  // Priority: the journey's own Cancelled / Terminates (S-06, S-07) > Held (S-21, S-08) > the stop-level states. The backend marks every
+  // stop of a cancelled or early-ended journey Skipped, so the journey status must win over "Does not stop" (S-12), which is for one
+  // skipped stop of a train that otherwise runs. (shownStatus already keeps a cancelled train's own status over a hold flag.)
+  const journeyEnded = kind === "Cancelled" || kind === "TerminatedEarly";
+  const skipped = row.stopStatus === "Skipped" && !journeyEnded && kind !== "Held";
   const extra = row.stopStatus === "Added" ? stopStatusText("Added") : null;
   if (skipped) return { text: "Does not stop", style: STYLES.cancelled, expected: null, extra };
 
-  const shown = shownStatus(row);
-  const kind = shown.kind;
   const runs = kind !== "Cancelled" && kind !== "TerminatedEarly" && kind !== "NotStarted";
   const expectedDiffers = runs && row.expectedTime !== null && formatTime(row.expectedTime) !== formatTime(row.time);
   return {

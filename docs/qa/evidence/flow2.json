@@ -1,0 +1,12 @@
+{
+  "flow": "flow2",
+  "recordedAt": "2026-10-22T03:45:27.088Z",
+  "spawnToJourneyStartedMs": 512,
+  "startedToDepartureEventMs": 55324,
+  "positionUpdatesSeen": 28,
+  "trackingAfterDeparture": "Live",
+  "fractionBefore": 0.17734874833375383,
+  "fractionAfter8s": 0.3126067949996589,
+  "staffFieldsInPublicStream": 0,
+  "clockSpeed": 5
+}

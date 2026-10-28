@@ -1,0 +1,14 @@
+{
+  "name": "smartrail-e2e",
+  "private": true,
+  "type": "module",
+  "description": "SmartRail end-to-end flows (Playwright): drives the ops web and the station displays against a real, separate stack and checks API state and events.",
+  "scripts": {
+    "install-browser": "playwright install chromium",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.2"
+  }
+}

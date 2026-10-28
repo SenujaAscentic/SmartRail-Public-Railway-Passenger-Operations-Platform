@@ -35,6 +35,9 @@ public sealed class ApiFixture : IAsyncLifetime
     // What the outbox dispatcher logs, for the tests that check it writes ids only.
     public LogCapture OutboxLog { get; } = new("OutboxPump", Microsoft.Extensions.Logging.LogLevel.Information);
 
+    // EVERY line any test application writes to the log, at every level the application produces (the security log scan reads it).
+    public LogCapture AllLogs { get; } = new("", Microsoft.Extensions.Logging.LogLevel.Trace);
+
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
@@ -61,7 +64,7 @@ public sealed class ApiFixture : IAsyncLifetime
                 // A test can make the hand-over of one journey's events fail (see FaultInjectingPublisher).
                 services.AddSingleton<IEventPublisher>(provider => new FaultInjectingPublisher(provider.GetRequiredService<StreamHub>()));
             });
-            builder.ConfigureLogging(logging => logging.AddProvider(OutboxLog));
+            builder.ConfigureLogging(logging => { logging.AddProvider(OutboxLog); logging.AddProvider(AllLogs); });
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 var settings = new Dictionary<string, string?>

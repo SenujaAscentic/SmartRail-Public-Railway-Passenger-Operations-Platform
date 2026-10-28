@@ -1,0 +1,11 @@
+{
+  "flow": "flow5",
+  "recordedAt": "2026-10-22T03:34:41.159Z",
+  "sm5_delayToProviderMs": 2236,
+  "sm5_limitMs": 10000,
+  "outage_delayClickToDeliveredMs": 11690,
+  "outage_providerBackToDeliveredMs": 3478,
+  "etaEventsStored": 4,
+  "duplicates": 0,
+  "clockSpeed": 5
+}
