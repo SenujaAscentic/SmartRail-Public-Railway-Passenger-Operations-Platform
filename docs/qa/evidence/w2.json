@@ -1,12 +1,12 @@
 {
   "flow": "w2",
-  "recordedAt": "2026-10-28T11:36:27.673Z",
+  "recordedAt": "2026-10-28T11:54:13.385Z",
   "train": "1001",
   "platformChange": "5 -> 1",
-  "w2_changeToOldDisplayMs": 909,
-  "w2_changeToNewDisplayMs": 909,
-  "w2_holdToWillWaitMs": 878,
+  "w2_changeToOldDisplayMs": 910,
+  "w2_changeToNewDisplayMs": 911,
+  "w2_holdToWillWaitMs": 887,
   "sm3_limitMs": 5000,
-  "stackStartupMs": 20051,
+  "stackStartupMs": 27412,
   "clockSpeed": 5
 }
