@@ -1,0 +1,24 @@
+# M3: about 4 minutes before 1001's expected arrival at Gampaha (read from the API) the controller changes the platform 1 to 2
+# and sets a hold; the app shows "Platform 2 (was 1)" and "Held". Continues on the tracking screen.
+appId: lk.smartrail.smartrail_passenger
+---
+# Wait for the window on the demo clock: poll the API until the lead time is 4 minutes or less.
+- evalScript: ${output.windowOpen = false}
+- repeat:
+    while:
+      true: ${!output.windowOpen}
+    commands:
+      - runScript: ../scripts/check-window.js
+- takeScreenshot: m3-01-before-change
+# Sign in again: the API runs on the demo clock (5 times faster), so the access token from M2 has expired by now.
+- runScript: ../scripts/controller-login.js
+- runScript: ../scripts/platform-hold.js
+- extendedWaitUntil:
+    visible: "(?s).*Platform 2 [(]was 1[)].*"
+    timeout: 60000
+- runScript: ../scripts/mark-platform-seen.js
+- takeScreenshot: m3-02-platform-2-was-1-after-${output.platformLatencyMs}ms
+- extendedWaitUntil:
+    visible: "(?s).*Held.*"
+    timeout: 30000
+- takeScreenshot: m3-03-held

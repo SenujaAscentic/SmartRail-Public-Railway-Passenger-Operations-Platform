@@ -1,0 +1,7 @@
+# The whole happy path: M1 search and track, M2 controller delay, M3 platform change and hold, M4 departure and on board.
+appId: lk.smartrail.smartrail_passenger
+---
+- runFlow: m1-search-and-track.yaml
+- runFlow: m2-controller-delay.yaml
+- runFlow: m3-platform-change-and-hold.yaml
+- runFlow: m4-departs-and-on-board.yaml

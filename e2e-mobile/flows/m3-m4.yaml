@@ -1,0 +1,6 @@
+# M3 then M4 (used to try them on a train that is already running; the full path is passenger-happy-path.yaml).
+appId: lk.smartrail.smartrail_passenger
+---
+- runScript: ../scripts/controller-login.js
+- runFlow: m3-platform-change-and-hold.yaml
+- runFlow: m4-departs-and-on-board.yaml

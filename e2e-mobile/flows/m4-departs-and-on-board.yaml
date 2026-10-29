@@ -1,0 +1,15 @@
+# M4: the controller releases the hold, the train leaves Gampaha, the app asks "Are you on board?"; Yes opens on-board mode
+# with the next stop. Continues on the tracking screen.
+appId: lk.smartrail.smartrail_passenger
+---
+- runScript: ../scripts/controller-login.js
+- runScript: ../scripts/hold-release.js
+- extendedWaitUntil:
+    visible: Are you on board?
+    timeout: 240000
+- takeScreenshot: m4-01-are-you-on-board
+- tapOn: Yes, I'm on board
+- extendedWaitUntil:
+    visible: "(?s).*Next stop.*Polgahawela.*"
+    timeout: 30000
+- takeScreenshot: m4-02-on-board-next-stop

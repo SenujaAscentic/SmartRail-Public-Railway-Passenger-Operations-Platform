@@ -1,0 +1,5 @@
+# The slices so far, in order (M1 then M2).
+appId: lk.smartrail.smartrail_passenger
+---
+- runFlow: m1-search-and-track.yaml
+- runFlow: m2-controller-delay.yaml
